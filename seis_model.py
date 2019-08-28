@@ -4,7 +4,7 @@ import numpy as np
 from scipy.signal import chirp
 from pathlib import Path
 
-from utils import sinc_interp_factor
+from utils import sinc_interp_factor, plotseis
 
 
 class SeisModel:
@@ -181,4 +181,11 @@ class SeisModel:
             return np.vstack((raw_model, np.zeros((self.height_model - height_raw, width))))
         else:
             return raw_model
+
+
+if __name__ == '__main__':
+    seis_model = SeisModel()
+    seismic_gather, picking = seis_model.get_random_model()
+
+    plotseis(seismic_gather, picking, colorseis=True)
 
