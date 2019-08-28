@@ -31,7 +31,7 @@ def sinc_interp_factor(x, factor):
     return sinc_interp(x, t_prev, t_new)
 
 
-def plotwiggle(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch=True, colorseis=False):
+def plotseis(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch=True, colorseis=False, wiggle=True):
     num_time, num_trace = np.shape(data)
 
     if normalizing == 'indiv':
@@ -50,7 +50,6 @@ def plotwiggle(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch
     mask_overflow = np.abs(data) > clip
     data[mask_overflow] = np.sign(data[mask_overflow]) * clip
 
-    data_to_plot = data + (np.arange(num_trace) + 1)[np.newaxis, :]
     data_time = np.tile((np.arange(num_time) + 1)[:, np.newaxis], (1, num_trace))
 
     _, ax = plt.subplots()
@@ -60,14 +59,18 @@ def plotwiggle(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch
     ax.invert_yaxis()
     ax.xaxis.tick_top()
 
-    plot_param = {'color': (0, 0, 0)}
-    ax.plot(data_to_plot, data_time, **plot_param)
+    if wiggle:
+        data_to_wiggle = data + (np.arange(num_trace) + 1)[np.newaxis, :]
+
+        wiggle_param = {'color': (0, 0, 0)}
+        ax.plot(data_to_wiggle, data_time, **wiggle_param)
 
     if colorseis:
         colorseis_param = {'aspect': 'auto',
                            'interpolation': 'bilinear',
                            'alpha': 1,
-                           'extent': (-0.5, num_trace + 2 - 0.5, num_time - 0.5, -0.5)}
+                           'extent': (-0.5, num_trace + 2 - 0.5, num_time - 0.5, -0.5),
+                           'cmap': 'gray'}
         ax.imshow(data, **colorseis_param)
 
     if patch:
