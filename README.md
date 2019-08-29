@@ -5,8 +5,8 @@ thousands.
 
 The figures below show examples of field data and manual picking with a red line.
 
-![](examples/real_segment_1.svg)
-![](examples/real_segment_2.svg)
+![](examples/real_segment_1.svg) | ![](examples/real_segment_2.svg)
+
 ![](examples/real_segment_3.svg)
 
 It is proposed to build a neural network to pick the first arrivals. 
