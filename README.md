@@ -15,7 +15,7 @@ It is also worth noting that if the picking is performed by several people, then
 different due to various factors.
 
 In this regard, we will construct a synthetic data set and the corresponding pick. The following figures show 
-synthetic data with a pick.
+noiseless synthetic data with a pick.
 
 ![](examples/synth_segment_1.svg)
 ![](examples/synth_segment_2.svg)
