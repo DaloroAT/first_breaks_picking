@@ -60,7 +60,7 @@ def plotseis(data, picking=None,
 
     data_time = np.tile((np.arange(num_time) + 1)[:, np.newaxis], (1, num_trace)) * dt
 
-    _, ax = plt.subplots()
+    fig, ax = plt.subplots()
 
     plt.xlim((0, num_trace + 1))
     plt.ylim((0, num_time * dt))
@@ -106,4 +106,5 @@ def plotseis(data, picking=None,
         ax.plot(np.arange(num_trace) + 1, picking * dt, **picking_param)
 
     plt.show()
+    return fig
 
