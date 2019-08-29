@@ -31,7 +31,15 @@ def sinc_interp_factor(x, factor):
     return sinc_interp(x, t_prev, t_new)
 
 
-def plotseis(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch=True, colorseis=False, wiggle=True):
+def plotseis(data, picking=None,
+             normalizing='entire',
+             clip=0.9,
+             ampl=1,
+             patch=True,
+             colorseis=False,
+             wiggle=True,
+             dt=1):
+
     num_time, num_trace = np.shape(data)
 
     if normalizing == 'indiv':
@@ -50,12 +58,12 @@ def plotseis(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch=T
     mask_overflow = np.abs(data) > clip
     data[mask_overflow] = np.sign(data[mask_overflow]) * clip
 
-    data_time = np.tile((np.arange(num_time) + 1)[:, np.newaxis], (1, num_trace))
+    data_time = np.tile((np.arange(num_time) + 1)[:, np.newaxis], (1, num_trace)) * dt
 
     _, ax = plt.subplots()
 
     plt.xlim((0, num_trace + 1))
-    plt.ylim((0, num_time))
+    plt.ylim((0, num_time * dt))
     ax.invert_yaxis()
     ax.xaxis.tick_top()
 
@@ -69,7 +77,7 @@ def plotseis(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch=T
         colorseis_param = {'aspect': 'auto',
                            'interpolation': 'bilinear',
                            'alpha': 1,
-                           'extent': (-0.5, num_trace + 2 - 0.5, num_time - 0.5, -0.5),
+                           'extent': (-0.5, num_trace + 2 - 0.5, (num_time - 0.5) * dt, -0.5 * dt),
                            'cmap': 'gray'}
         ax.imshow(data, **colorseis_param)
 
@@ -86,7 +94,7 @@ def plotseis(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch=T
             patch_data = np.hstack(patch_data)
 
             head = np.array((k_trace + 1, 0))[np.newaxis, :]
-            tail = np.array((k_trace + 1, num_time))[np.newaxis, :]
+            tail = np.array((k_trace + 1, num_time * dt))[np.newaxis, :]
             patch_data = np.vstack((head, patch_data, tail))
 
             polygon = Polygon(patch_data, **patch_param)
@@ -95,7 +103,7 @@ def plotseis(data, picking=None, normalizing='entire', clip=0.9, ampl=1, patch=T
     if picking is not None:
         picking_param = {'linewidth': 1,
                          'color': 'red'}
-        ax.plot(np.arange(num_trace) + 1, picking, **picking_param)
+        ax.plot(np.arange(num_trace) + 1, picking * dt, **picking_param)
 
     plt.show()
 
