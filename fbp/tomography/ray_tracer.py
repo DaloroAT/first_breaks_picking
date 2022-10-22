@@ -27,7 +27,9 @@ class PerfCounter:
 class RayTracer:
     PI = torch.tensor(torch.pi)
     PI_M2 = PI * 2
+    PI_D2 = PI / 2
     PI_M3_D2 = PI * 3 / 2
+    PI_M3 = PI * 3
     ZERO = torch.tensor(0, dtype=torch.float32)
 
     RIGHT = torch.tensor(1)
@@ -70,8 +72,8 @@ class RayTracer:
         self._Z0 = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.float32)
         self._X1 = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.float32)
         self._Z1 = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.float32)
-        self._CELL_X = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.int32)
-        self._CELL_Z = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.int32)
+        self._CELL_X = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.long)
+        self._CELL_Z = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.long)
         self._ANGLES = torch.zeros((self._N_RAYS, self.max_steps), dtype=torch.float32)
         self._ACTIVE_RAY = torch.ones((self._N_RAYS, self.max_steps), dtype=torch.bool)
 
@@ -91,8 +93,9 @@ class RayTracer:
         self._angles = None
         self._cell_x = None
         self._cell_z = None
-        self._next_border = None
-        self._next_slowness = None
+        self._border = None
+        self._v1 = None
+        self._v2 = None
         self._active_ray = None
 
         self.set_active_rays()
@@ -106,11 +109,13 @@ class RayTracer:
         self._angles = self._ANGLES[self._active_ray, self._CURRENT_STEP]
         self._cell_x = self._CELL_X[self._active_ray, self._CURRENT_STEP]
         self._cell_z = self._CELL_Z[self._active_ray, self._CURRENT_STEP]
+        self._v1 = self.velocity_model[self._cell_z, self._cell_x]
 
     def step(self):
         self.set_active_rays()
         self.find_next_points_borders_slowness()
-        print(sum(self._next_border == self.INACTIVE), len(self._next_border))
+        self.get_next_v()
+        self.get_next_angles()
 
     def calc_borders_angles(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         right_bottom = torch.arctan(torch.divide(self._W - self._x0, self._H - self._z0))
@@ -132,51 +137,110 @@ class RayTracer:
 
         num_rays = len(self._x0)
         border = self.INACTIVE * torch.ones(num_rays, dtype=torch.int32)
-        x = torch.zeros(num_rays)
-        z = torch.zeros(num_rays)
+        x1 = torch.zeros(num_rays, dtype=torch.float32)
+        z1 = torch.zeros(num_rays, dtype=torch.float32)
 
         right_mask = torch.logical_and(right_bottom < self._angles, self._angles <= right_top)
         border[right_mask] = self.RIGHT
-        x[right_mask] = self._W
-        z[right_mask] = self.calc_z1(x[right_mask], self._x0[right_mask], self._z0[right_mask], self._angles[right_mask])
+        x1[right_mask] = self._W
+        z1[right_mask] = self.calc_z1(x1[right_mask], self._x0[right_mask], self._z0[right_mask], self._angles[right_mask])
 
         top_mask = torch.logical_and(right_top < self._angles, self._angles <= left_top)
         border[top_mask] = self.TOP
-        z[top_mask] = self.ZERO
-        x[top_mask] = self.calc_x1(z[top_mask], self._x0[top_mask], self._z0[top_mask], self._angles[top_mask])
+        z1[top_mask] = self.ZERO
+        x1[top_mask] = self.calc_x1(z1[top_mask], self._x0[top_mask], self._z0[top_mask], self._angles[top_mask])
 
         left_mask = torch.logical_and(left_top < self._angles, self._angles <= left_bottom)
         border[left_mask] = self.LEFT
-        x[left_mask] = self.ZERO
-        z[left_mask] = self.calc_z1(x[left_mask], self._x0[left_mask], self._z0[left_mask], self._angles[left_mask])
+        x1[left_mask] = self.ZERO
+        z1[left_mask] = self.calc_z1(x1[left_mask], self._x0[left_mask], self._z0[left_mask], self._angles[left_mask])
 
         bottom_mask = torch.logical_or(torch.logical_and(left_bottom < self._angles, self._angles <= self.PI_M2),
                                        torch.logical_and(0 <= self._angles, self._angles <= right_bottom))
-        border[bottom_mask] = self.RIGHT
-        z[bottom_mask] = self._H
-        x[bottom_mask] = self.calc_x1(z[bottom_mask], self._x0[bottom_mask], self._z0[bottom_mask], self._angles[bottom_mask])
+        border[bottom_mask] = self.BOTTOM
+        z1[bottom_mask] = self._H
+        x1[bottom_mask] = self.calc_x1(z1[bottom_mask], self._x0[bottom_mask], self._z0[bottom_mask], self._angles[bottom_mask])
 
-    #     self._x1 = x
-    #     self._z1 = z
-    #     self._next_border = border
-    #
-    # def get_next_slowness(self):
+        self._x1 = x1
+        self._z1 = z1
+        self._border = border
 
+    def get_next_v(self):
+        v2 = torch.nan * torch.ones(len(self._border), dtype=torch.float32)
 
+        right_mask = self._border == self.RIGHT
+        v2[right_mask] = self.velocity_model[self._cell_z[right_mask], self._cell_x[right_mask] + 1]
 
+        top_mask = self._border == self.TOP
+        v2[top_mask] = self.velocity_model[self._cell_z[top_mask] - 1, self._cell_x[top_mask]]
+
+        left_mask = self._border == self.LEFT
+        v2[left_mask] = self.velocity_model[self._cell_z[left_mask], self._cell_x[left_mask] - 1]
+
+        bottom_mask = self._border == self.BOTTOM
+        v2[bottom_mask] = self.velocity_model[self._cell_z[bottom_mask] + 1, self._cell_x[bottom_mask]]
+
+        self._v2 = v2
+
+    def get_next_angles(self):
+        border_shift = torch.zeros(len(self._border), dtype=torch.float32)
+
+        right_mask = self._border == self.RIGHT
+        top_mask = self._border == self.TOP
+        left_mask = self._border == self.LEFT
+        bottom_mask = self._border == self.BOTTOM
+
+        border_shift[right_mask] = self.PI_D2
+        border_shift[top_mask] = self.PI_M2
+        border_shift[left_mask] = self.PI_M3_D2
+
+        inc_angles = self._angles - border_shift
+        out_angles = torch.asin(self._v2 / self._v1 * torch.sin(inc_angles))
+        inner_reflection_mask = out_angles.isnan()
+        print(sum(inner_reflection_mask))
+
+        right_top_submask = self._z1[right_mask] <= self._z0[right_mask]
+        out_angles[right_mask][right_top_submask] = self.PI_D2 + out_angles[right_mask][right_top_submask]
+        out_angles[right_mask][~right_top_submask] = self.PI_D2 - out_angles[right_mask][~right_top_submask]
+        right_reflection_mask = torch.logical_and(right_mask, inner_reflection_mask)
+        out_angles[right_reflection_mask] = self.PI_M2 - self._angles[right_reflection_mask]
+
+        top_left_submask = self._x1[top_mask] <= self._x0[top_mask]
+        out_angles[top_mask][top_left_submask] = self.PI + out_angles[top_mask][top_left_submask]
+        out_angles[top_mask][~top_left_submask] = self.PI - out_angles[top_mask][~top_left_submask]
+        top_reflection_mask = torch.logical_and(top_mask, inner_reflection_mask)
+        out_angles[top_reflection_mask] = self.PI_D2 - self._angles[top_reflection_mask]
+
+        left_bottom_submask = self._z1[left_mask] >= self._z0[left_mask]
+        out_angles[left_mask][left_bottom_submask] = self.PI_M3_D2 + out_angles[left_mask][left_bottom_submask]
+        out_angles[left_mask][~left_bottom_submask] = self.PI_M3_D2 - out_angles[left_mask][~left_bottom_submask]
+        left_reflection_mask = torch.logical_and(left_mask, inner_reflection_mask)
+        out_angles[left_reflection_mask] = self.PI_M2 - self._angles[left_reflection_mask]
+
+        bottom_left_submask = self._x1[bottom_mask] <= self._x0[bottom_mask]
+        out_angles[bottom_mask][bottom_left_submask] = self.PI_M2 - out_angles[bottom_mask][bottom_left_submask]
+        bottom_reflection_mask = torch.logical_and(bottom_mask, inner_reflection_mask)
+        bottom_angles = self._angles[bottom_reflection_mask]
+        left_bottom_angles_mask = bottom_angles > self.PI
+        bottom_angles[left_bottom_angles_mask] = self.PI_M2 - bottom_angles[left_bottom_angles_mask]
+        out_angles[bottom_reflection_mask] = self.PI - bottom_angles
+
+        Add next cell positions
 
 
 if __name__ == '__main__':
+    torch.manual_seed(0)
+
     NX = 300
     NZ = 200
-    N_RAYS = 500
-    SX = 0.5
-    SZ = 0.5
+    N_RAYS = 1000
+    SX = 3.5
+    SZ = 3.5
     HEIGHT = 200
     WIDTH = 300
     V_CONST = 1000
     V_VAR = 100
-    MAX_STEPS = 10
+    MAX_STEPS = 5
 
     SP = (SZ, SX)
     VELOCITY = V_CONST + V_VAR * torch.rand(NZ, NX)
@@ -192,7 +256,3 @@ if __name__ == '__main__':
 
     with PerfCounter():
         tracer.step()
-
-
-
-
