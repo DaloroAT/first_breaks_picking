@@ -39,9 +39,9 @@ def find_next_points_and_border(x0, z0, h, w, theta) -> Tuple[torch.Tensor, torc
     num_points = len(x0)
     right_bottom, right_top, left_top, left_bottom = calc_borders_angles(x0, z0, h, w)
 
-    border = torch.empty(num_points)
-    x = torch.empty(num_points)
-    z = torch.empty(num_points)
+    border = torch.zeros(num_points)
+    x = torch.zeros(num_points)
+    z = torch.zeros(num_points)
 
     right_mask = torch.logical_and(right_bottom < theta, theta <= right_top)
     border[right_mask] = RIGHT
@@ -67,19 +67,60 @@ def find_next_points_and_border(x0, z0, h, w, theta) -> Tuple[torch.Tensor, torc
     return x, z, border
 
 
+def get_next_slowness_for_rays(next_border, curr_cell_x, curr_cell_z, slowness):
+    # next_border: [N_RAYS] - array with indicators
+    # curr_cell_x, curr_cell_z: [N_RAYS] - the number of the cell in which the ray is currently located
+    # slowness: [NZ, NX] - blocked medium
+
+    next_slowness = torch.zeros(len(next_border))
+
+    right = 13
+
+
+
+    pass
+
+
+
+def calc_next_angles(x0, z0, x, z, borders, slowness, b):
+    pass
+
 def calc_next_init_border_and_angles(theta, border):
     pass
 
 
-N_RAYS = 500
+N_RAYS = 23
 NX = 10
 NZ = 10
+N_STEPS = 15
 VELOCITY = 1000 + 20 * torch.randn(NZ, NX)
+SLOWNESS = 1 / VELOCITY
 H = torch.tensor(2)
 W = torch.tensor(2)
-X0 = torch.linspace(0, W, N_RAYS)
-Z0 = torch.linspace(0, H, N_RAYS)
+CELL_X = torch.zeros((N_RAYS, N_STEPS), dtype=torch.int32)
+CELL_Z = torch.zeros((N_RAYS, N_STEPS), dtype=torch.int32)
+# X0 = torch.linspace(0, W, N_RAYS)
+# Z0 = torch.linspace(0, H, N_RAYS)
+X0 = 0 * torch.ones(N_RAYS)
+Z0 = 2 * torch.ones(N_RAYS)
 THETA = torch.linspace(0, PI_M2, N_RAYS)
+
+
+X, Z, BORDER = find_next_points_and_border(X0, Z0, H, W, THETA)
+
+print(BORDER)
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+
+for xi, zi, x0i, z0i in zip(X, Z, X0, Z0):
+    plt.plot([x0i, xi], [z0i, zi], color='r')
+
+ax.invert_yaxis()
+# ax.set_aspect('equal')
+ax.grid(True, which='both')
+plt.show()
+
 
 # print(torch.asin(torch.tensor(0.9)).isnan())
 #
@@ -91,12 +132,12 @@ THETA = torch.linspace(0, PI_M2, N_RAYS)
 # print(time.perf_counter() - st)
 
 
-v1 = 1300
-v2 = 1100
-theta_1 = PI_M3_D2 + torch.deg2rad(torch.tensor(45))
-
-theta_2 = PI_M2 - torch.asin(v2 / v1 * torch.sin(PI_M2 - theta_1))
-
-print(torch.rad2deg(theta_1), torch.rad2deg(theta_2))
+# v1 = 1300
+# v2 = 1100
+# theta_1 = PI_M3_D2 + torch.deg2rad(torch.tensor(45))
+#
+# theta_2 = PI_M2 - torch.asin(v2 / v1 * torch.sin(PI_M2 - theta_1))
+#
+# print(torch.rad2deg(theta_1), torch.rad2deg(theta_2))
 
 
