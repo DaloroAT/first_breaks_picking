@@ -128,7 +128,6 @@ class RayTracer:
         self.get_next_v()
         self.get_next_angles()
         self.fill_states_to_placeholders()
-        self._CURRENT_STEP += 1
 
     def run(self):
         pbar = tqdm(range(self.max_steps), desc='Rays calculation')
@@ -219,7 +218,6 @@ class RayTracer:
         inc_angles = self._angles - border_shift
         out_angles = torch.asin(self._v2 / self._v1 * torch.sin(inc_angles))
         inner_reflection_mask = out_angles.isnan()
-        print(sum(inner_reflection_mask))
 
         right_top_submask = self._z1[right_mask] <= self._z0[right_mask]
         out_angles[right_mask][right_top_submask] = self.PI_D2 + out_angles[right_mask][right_top_submask]
@@ -268,9 +266,8 @@ class RayTracer:
         self._X1[holder_mask, self._CURRENT_STEP] = self._x1
         self._Z1[holder_mask, self._CURRENT_STEP] = self._z1
 
-        if self._CURRENT_STEP < self.max_steps:
-            next_active_ray = composed_and(self._active_ray,
-                                           self._border != self.INACTIVE,
+        if self._CURRENT_STEP < self.max_steps - 1:
+            next_active_ray = composed_and(self._border != self.INACTIVE,
                                            self._next_cell_x >= 0,
                                            self._next_cell_x < self._NX,
                                            self._next_cell_z >= 0,
@@ -283,6 +280,8 @@ class RayTracer:
             self._CELL_X[holder_mask, next_step] = self._next_cell_x
             self._CELL_Z[holder_mask, next_step] = self._next_cell_z
             self._ANGLES[holder_mask, next_step] = self._next_angles
+
+            self._CURRENT_STEP += 1
 
 
 if __name__ == '__main__':
@@ -303,16 +302,16 @@ if __name__ == '__main__':
     VELOCITY = V_CONST + V_VAR * torch.rand(NZ, NX)
     ANGLES = torch.linspace(0, torch.deg2rad(torch.tensor(360)), N_RAYS)
 
-    with PerfCounter():
-        tracer = RayTracer(velocity_model=VELOCITY,
-                           height=HEIGHT,
-                           width=WIDTH,
-                           source_point=SP,
-                           init_angles=ANGLES,
-                           max_steps=MAX_STEPS)
+    # with PerfCounter():
+    tracer = RayTracer(velocity_model=VELOCITY,
+                       height=HEIGHT,
+                       width=WIDTH,
+                       source_point=SP,
+                       init_angles=ANGLES,
+                       max_steps=MAX_STEPS)
 
     # with PerfCounter():
     #     tracer.step()
 
-    with PerfCounter():
-        tracer.run()
+    # with PerfCounter():
+    tracer.run()
