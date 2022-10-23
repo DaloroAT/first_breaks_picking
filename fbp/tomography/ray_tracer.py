@@ -1,5 +1,5 @@
 import time
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 import matplotlib.pyplot as plt
 
 import torch
@@ -22,11 +22,18 @@ class PerfCounter:
         print(f"{self.message}: {self.duration} seconds")
 
 
-def composed_and(*values: Tuple[torch.Tensor, ...]):
+def composed_logical(mode: str, values: Tuple[Any, ...]):
     assert len(values) > 1
     res = values[0]
+
+    if mode == 'or':
+        func = torch.logical_or
+    elif mode == 'and':
+        func = torch.logical_and
+    else:
+        raise ValueError('Unsupported mode')
     for v in values[1:]:
-        res = torch.logical_and(res, v)
+        res = func(res, v)
     return res
 
 
@@ -196,6 +203,11 @@ class RayTracer:
         z1[bottom_mask] = self._H
         x1[bottom_mask] = self.calc_x1(z1[bottom_mask], self._x0[bottom_mask], self._z0[bottom_mask], self._angles[bottom_mask])
 
+        border[composed_logical(mode='or', values=(self._angles == right_bottom,
+                                                   self._angles == right_top,
+                                                   self._angles == left_top,
+                                                   self._angles == left_bottom))] = self.INACTIVE
+
         self._x1 = x1
         self._z1 = z1
         self._border = border
@@ -262,12 +274,13 @@ class RayTracer:
         next_cell_z[right_mask] = self._cell_z[right_mask]
         next_cell_x[right_reflection_mask] = self._cell_x[right_reflection_mask]
 
+        Check wrong direction, instad of position
         top_left_submask = torch.logical_and(part_left_mask, top_mask)
         top_right_submask = torch.logical_and(~part_left_mask, top_mask)
         next_angles[top_left_submask] = self.PI + next_angles[top_left_submask]
         next_angles[top_right_submask] = self.PI - next_angles[top_right_submask]
         top_reflection_mask = torch.logical_and(top_mask, inner_reflection_mask)
-        next_angles[top_reflection_mask] = self.PI_D2 - self._angles[top_reflection_mask]
+        next_angles[top_reflection_mask] = self.PI_M2 - self._angles[top_reflection_mask]
         next_x0[top_mask] = self._x1[top_mask]
         next_z0[top_mask] = self._H
         next_z0[top_reflection_mask] = self.ZERO
@@ -319,20 +332,36 @@ class RayTracer:
         print('Z_final', self._z0, self._z1)
 
         if self._CURRENT_STEP < self.max_steps - 1:
-            next_active_ray = composed_and(self._border != self.INACTIVE,
-                                           self._next_cell_x >= 0,
-                                           self._next_cell_x < self._NX,
-                                           self._next_cell_z >= 0,
-                                           self._next_cell_z < self._NZ)
+            next_active_ray = composed_logical(mode='and',
+                                               values=(
+                                                   self._border != self.INACTIVE,
+                                                   self._next_cell_x >= 0,
+                                                   self._next_cell_x < self._NX,
+                                                   self._next_cell_z >= 0,
+                                                   self._next_cell_z < self._NZ))
             next_step = self._CURRENT_STEP + 1
+            print(holder_mask)
+            print(torch.nonzero(holder_mask).squeeze(1))
+            print(next_active_ray)
+            holder_mask_ids = torch.nonzero(holder_mask).squeeze(1)[next_active_ray]
+            active_mask = torch.zeros(self._N_RAYS, dtype=torch.bool)
+            active_mask[holder_mask_ids] = True
 
-            self._ACTIVE_RAY[holder_mask, next_step] = next_active_ray
+            self._ACTIVE_RAY[active_mask, next_step] = True
 
-            self._X0[holder_mask, next_step] = self._next_x0
-            self._Z0[holder_mask, next_step] = self._next_z0
-            self._CELL_X[holder_mask, next_step] = self._next_cell_x
-            self._CELL_Z[holder_mask, next_step] = self._next_cell_z
-            self._ANGLES[holder_mask, next_step] = self._next_angles
+            self._X0[active_mask, next_step] = self._next_x0[next_active_ray]
+            self._Z0[active_mask, next_step] = self._next_z0[next_active_ray]
+            self._CELL_X[active_mask, next_step] = self._next_cell_x[next_active_ray]
+            self._CELL_Z[active_mask, next_step] = self._next_cell_z[next_active_ray]
+            self._ANGLES[active_mask, next_step] = self._next_angles[next_active_ray]
+
+            # self._ACTIVE_RAY[holder_mask, next_step] = next_active_ray
+            #
+            # self._X0[holder_mask, next_step] = self._next_x0
+            # self._Z0[holder_mask, next_step] = self._next_z0
+            # self._CELL_X[holder_mask, next_step] = self._next_cell_x
+            # self._CELL_Z[holder_mask, next_step] = self._next_cell_z
+            # self._ANGLES[holder_mask, next_step] = self._next_angles
 
             self._CURRENT_STEP = next_step
 
@@ -343,7 +372,8 @@ class RayTracer:
             plt.plot([col * self._W, col * self._W], [0, self.height], color='k')
 
     def visualize(self):
-        fig = plt.figure(figsize=(16 / 2, 9 / 2))
+        fig = plt.figure(figsize=(16, 9))
+        # fig = plt.figure(figsize=(16 / 2, 9 / 2))
         ax = fig.add_subplot(111)
 
         self.draw_borders()
@@ -378,10 +408,10 @@ if __name__ == '__main__':
     HEIGHT = 70
     WIDTH = 90
     V_CONST = 1000
-    V_VAR = 0
-    MAX_STEPS = 4
-    A1 = 45
-    A2 = 45
+    V_VAR = 500
+    MAX_STEPS = 3
+    A1 = 123.7500
+    A2 = 123.7500
 
     SP = (SZ, SX)
     VELOCITY = V_CONST + V_VAR * torch.rand(NZ, NX)
