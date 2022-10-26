@@ -203,10 +203,16 @@ class RayTracer:
         z1[bottom_mask] = self._H
         x1[bottom_mask] = self.calc_x1(z1[bottom_mask], self._x0[bottom_mask], self._z0[bottom_mask], self._angles[bottom_mask])
 
+        # deactivate rays that go to the corners of the cell
         border[composed_logical(mode='or', values=(self._angles == right_bottom,
                                                    self._angles == right_top,
                                                    self._angles == left_top,
                                                    self._angles == left_bottom))] = self.INACTIVE
+        # deactivate rays that touch model borders
+        border[composed_logical(mode='and', values=(right_mask, self._cell_x + 1 >= self._NX))] = self.INACTIVE
+        border[composed_logical(mode='and', values=(top_mask, self._cell_z - 1 < 0))] = self.INACTIVE
+        border[composed_logical(mode='and', values=(left_mask, self._cell_x - 1 < 0))] = self.INACTIVE
+        border[composed_logical(mode='and', values=(bottom_mask, self._cell_z + 1 >= self._NZ))] = self.INACTIVE
 
         self._x1 = x1
         self._z1 = z1
@@ -233,7 +239,7 @@ class RayTracer:
 
         self._v2 = v2
 
-        print('V', self.velocity_model)
+        # print('V', self.velocity_model)
         print('CELL', self._cell_x, self._cell_z)
         print('V1', self._v1)
         print("V2", self._v2)
@@ -249,17 +255,31 @@ class RayTracer:
         top_mask = self._border == self.TOP
         left_mask = self._border == self.LEFT
         bottom_mask = self._border == self.BOTTOM
+        Check direction, not coord
         part_top_mask = self._z1 < self._z0
         part_left_mask = self._x1 < self._x0
+        print(f'{self._x0=}', f'{self._x1=}', f'{self._x1 < self._x0=}')
+        print(f'{self._x0=}')
+        print(f'{self._x1=}')
+        print(f'{right_mask=}')
+        print(f'{top_mask=}')
+        print(f'{left_mask=}')
+        print(f'{bottom_mask=}')
+        print(f'{part_top_mask=}')
+        print(f'{part_left_mask=}')
 
         border_shift = torch.zeros(num_rays, dtype=torch.float32)
         border_shift[right_mask] = self.PI_D2
-        border_shift[top_mask] = self.PI_M2
+        # border_shift[top_mask] = self.PI_M2  # PI?
+        border_shift[top_mask] = self.PI
         border_shift[left_mask] = self.PI_M3_D2
 
         inc_angles = self._angles - border_shift
         next_angles = torch.abs(torch.asin(self._v2 / self._v1 * torch.sin(inc_angles)))
         inner_reflection_mask = next_angles.isnan()
+
+        print('TOUCH_IN_ANGLES', torch.rad2deg(inc_angles))
+        print('REFRAC_ANGLES', torch.rad2deg(next_angles))
 
         right_top_submask = torch.logical_and(part_top_mask, right_mask)
         right_bottom_submask = torch.logical_and(~part_top_mask, right_mask)
@@ -274,13 +294,16 @@ class RayTracer:
         next_cell_z[right_mask] = self._cell_z[right_mask]
         next_cell_x[right_reflection_mask] = self._cell_x[right_reflection_mask]
 
-        Check wrong direction, instad of position
+        # Check wrong direction, instad of position
         top_left_submask = torch.logical_and(part_left_mask, top_mask)
         top_right_submask = torch.logical_and(~part_left_mask, top_mask)
+
+        # print('TOP LEFT', top_left_submask)
+        # print('TOP RIGHT', top_right_submask)
         next_angles[top_left_submask] = self.PI + next_angles[top_left_submask]
         next_angles[top_right_submask] = self.PI - next_angles[top_right_submask]
         top_reflection_mask = torch.logical_and(top_mask, inner_reflection_mask)
-        next_angles[top_reflection_mask] = self.PI_M2 - self._angles[top_reflection_mask]
+        next_angles[top_reflection_mask] = self.PI - self._angles[top_reflection_mask]
         next_x0[top_mask] = self._x1[top_mask]
         next_z0[top_mask] = self._H
         next_z0[top_reflection_mask] = self.ZERO
@@ -372,8 +395,8 @@ class RayTracer:
             plt.plot([col * self._W, col * self._W], [0, self.height], color='k')
 
     def visualize(self):
-        fig = plt.figure(figsize=(16, 9))
-        # fig = plt.figure(figsize=(16 / 2, 9 / 2))
+        # fig = plt.figure(figsize=(16, 9))
+        fig = plt.figure(figsize=(16 / 2, 9 / 2))
         ax = fig.add_subplot(111)
 
         self.draw_borders()
@@ -410,8 +433,8 @@ if __name__ == '__main__':
     V_CONST = 1000
     V_VAR = 500
     MAX_STEPS = 3
-    A1 = 123.7500
-    A2 = 123.7500
+    A1 = 180 + 45 + 10
+    A2 = 180 + 45 + 10
 
     SP = (SZ, SX)
     VELOCITY = V_CONST + V_VAR * torch.rand(NZ, NX)
