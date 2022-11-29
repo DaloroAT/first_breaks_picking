@@ -24,7 +24,25 @@ def sin_coeffs(polynomial_degree):
     return coeffs
 
 
-class NN(nn.Module):
+def loss_classic(model, data, gt):
+    preds = model(data)
+    loss = torch.sum(torch.pow(gt - preds, 2))
+    return loss
+
+
+def loss_pinn(model, data, gt):
+    preds = model(data)
+
+    y_x = torch.autograd.grad(preds, data, grad_outputs=torch.ones_like(preds), retain_graph=True, create_graph=True)[0]
+    y_xx = torch.autograd.grad(y_x, data, grad_outputs=torch.ones_like(y_x), retain_graph=True, create_graph=True)[0]
+    res1 = y_xx + preds
+    loss = torch.sum(torch.pow(gt - preds, 2)) + torch.sum(torch.pow(res1, 2))
+    # loss = torch.sum(torch.abs(gt - preds)) + torch.sum(torch.abs(res1))
+
+    return loss
+
+
+class PolyNN(nn.Module):
     def __init__(self, polynomial_degree):
         super().__init__()
         self.polynomial_degree = polynomial_degree
@@ -48,66 +66,52 @@ class NN(nn.Module):
 
         return self.coeffs(features)
 
-    def residual(self, x):
-        # y''(x) + y(x) = 0
-        y = self(x)
 
-        y_x = torch.autograd.grad(y, x, grad_outputs=torch.ones_like(y), retain_graph=True, create_graph=True)[0]
-        y_xx = torch.autograd.grad(y_x, x, grad_outputs=torch.ones_like(y), retain_graph=True, create_graph=True)[0]
+class SinNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.amp = nn.Parameter(torch.tensor([0.5], requires_grad=True))
+        self.y_shift = nn.Parameter(torch.tensor([0.5], requires_grad=True))
+        self.x_shift = nn.Parameter(torch.tensor([0.5], requires_grad=True))
+        self.freq = nn.Parameter(torch.tensor([0.5], requires_grad=True))
 
-        return y_xx + y
+    def forward(self, x):
+        return self.y_shift + self.amp * torch.sin(self.freq * (x - self.x_shift))
 
-    def loss_classic(self, data, gt):
-        preds = model(data)
-        loss = torch.sum(torch.pow(gt - preds, 2))
-        return loss
 
-    def loss_pinn(self, data, gt):
-        preds = self(data)
-
-        y_x = torch.autograd.grad(preds, data, grad_outputs=torch.ones_like(preds), retain_graph=True, create_graph=True)[0]
-        y_xx = torch.autograd.grad(y_x, data, grad_outputs=torch.ones_like(y_x), retain_graph=True, create_graph=True)[0]
-        y_xxx = torch.autograd.grad(y_xx, data, grad_outputs=torch.ones_like(y_xx), retain_graph=True, create_graph=True)[
-            0]
-
-        res1 = y_xx + preds
-        res2 = y_xxx + y_x
-        # loss = torch.sum(torch.pow(gt - preds, 2)) + torch.sum(torch.pow(res, 2))
-        loss = torch.sum(torch.abs(gt - preds)) + torch.sum(torch.abs(res1)) + torch.sum(torch.abs(res2))
-
-        return loss
-
+def func(dataset):
+    # return torch.sin(dataset * torch.pi)
+    return torch.sin(dataset)
 
 
 set_global_seed(1)
-degree = 5
-# lr = 0.001 / factorial(degree)
-lr = 2e-2
-num_points = 400
-drop_rate = 0.9
-epochs = 500
-is_pinn = True
+degree = 7
+lr = 4e-2
+num_points = 40
+drop_rate = 0
+epochs = 700
+is_pinn = False
 
 diap = [-torch.pi, torch.pi]
 
 data_back = torch.linspace(*diap, 1000)
-sin_back = torch.sin(data_back)
+sin_back = func(data_back)
 data_full = torch.linspace(*diap, num_points)
-sin_full = torch.sin(data_full)
+sin_full = func(data_full)
 
-# keep_ids = sorted(np.random.choice(num_points, size=int((1 - drop_rate) * num_points), replace=False))
-keep_ids = sorted(np.random.choice(num_points, size=5, replace=False))
+keep_ids = sorted(np.random.choice(num_points, size=int((1 - drop_rate) * num_points), replace=False))
+# keep_ids = sorted(np.random.choice(num_points, size=5, replace=False))
 # keep_ids = [0, 1, 2, 18, 22, 30, 32]
 
 mask = torch.zeros_like(data_full, dtype=torch.bool)
 mask[keep_ids] = True
 data_dropped = data_full[mask].clone()
+# data_dropped = torch.tensor([-torch.pi, -torch.pi / 2, torch.pi / 2])
 
+# model = PolyNN(degree)
+# model.init_with_const(0)
 
-model = NN(degree)
-# model.init_with_exact()
-model.init_with_const(0)
-
+model = SinNN()
 optimizer = Adam(lr=lr, params=model.parameters())
 
 #
@@ -125,21 +129,22 @@ optimizer = Adam(lr=lr, params=model.parameters())
 out = cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640, 480))
 
 
-print(model.coeffs.weight.data)
+# print(model.coeffs.weight.data)
 
 pbar = tqdm(range(epochs))
 
-
+# noise = 0.2 * torch.randn(data_dropped.shape)
+noise = 0
 
 for _ in pbar:
     optimizer.zero_grad()
     data = data_dropped.clone().detach().requires_grad_(True)[:, None]
-    gt = torch.sin(data_dropped).clone().detach().requires_grad_(True)[:, None]
+    gt = (func(data_dropped) + noise).clone().detach().requires_grad_(True)[:, None]
 
     if is_pinn:
-        loss = model.loss_pinn(data, gt)
+        loss = loss_pinn(model, data, gt)
     else:
-        loss = model.loss_classic(data, gt)
+        loss = loss_classic(model, data, gt)
 
     # if not is_pinn:
     #     preds = model(data)
@@ -157,7 +162,7 @@ for _ in pbar:
 
     with torch.no_grad():
         plt.plot(data_back, sin_back, color=(0, 0, 0, 0.3))
-        plt.scatter(data_dropped, torch.sin(data_dropped), color='y')
+        plt.scatter(data_dropped, func(data_dropped) + noise, color='y')
         plt.xlim(diap)
         plt.ylim([-2, 2])
 
@@ -175,12 +180,12 @@ for _ in pbar:
 
         plt.close()
 
-    assert not torch.any(torch.isnan(model.coeffs.weight.data)), 'Divergence!'
+    # assert not torch.any(torch.isnan(model.coeffs.weight.data)), 'Divergence!'
 
 
 out.release()
 
-print(model.coeffs.weight.data)
+# print(model.coeffs.weight.data)
 
 # print(model.coeffs.weight.data)
 
