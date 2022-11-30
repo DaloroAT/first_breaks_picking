@@ -87,7 +87,7 @@ def func(dataset):
 set_global_seed(1)
 degree = 7
 lr = 4e-2
-num_points = 40
+num_points = 20
 drop_rate = 0
 epochs = 700
 is_pinn = False
@@ -126,7 +126,7 @@ optimizer = Adam(lr=lr, params=model.parameters())
 # plt.show()
 
 
-out = cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640, 480))
+# out = cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640, 480))
 
 
 # print(model.coeffs.weight.data)
@@ -136,7 +136,7 @@ pbar = tqdm(range(epochs))
 # noise = 0.2 * torch.randn(data_dropped.shape)
 noise = 0
 
-for _ in pbar:
+for epoch in pbar:
     optimizer.zero_grad()
     data = data_dropped.clone().detach().requires_grad_(True)[:, None]
     gt = (func(data_dropped) + noise).clone().detach().requires_grad_(True)[:, None]
@@ -180,10 +180,10 @@ for _ in pbar:
 
         plt.close()
 
-    # assert not torch.any(torch.isnan(model.coeffs.weight.data)), 'Divergence!'
+    assert not torch.any(torch.isnan(model.coeffs.weight.data)), 'Divergence!'
 
 
-out.release()
+# out.release()
 
 # print(model.coeffs.weight.data)
 
