@@ -50,7 +50,7 @@ class Eikonal(nn.Module):
     def forward(self, source, receiver):
         return self.tau(source, receiver) * self.forward_t0(source, receiver)
 
-    def get_slowness(self, source, receiver):
+    def get_velocity(self, source, receiver):
         tau_sr = self.tau(source, receiver)
         t0_sr = self.forward_t0(source, receiver)
 
@@ -113,15 +113,32 @@ class Eikonal(nn.Module):
 class Velocity(nn.Module):
     def __init__(self, v):
         super(Velocity, self).__init__()
-        self.model = torch.tensor([v], dtype=torch.float, device='cuda')
-        # self.to('cuda')
+        self.model = nn.Parameter(torch.tensor([v], dtype=torch.float), requires_grad=False)
 
     def forward(self, point):
-        # if self.model.device != point.device:
-        #     print(self.model.device != point.device, self.model.device, point.device)
-        #     self.to(point.device)
-        # print(self.model.repeat(len(point)).view(-1, 1).device)
         return self.model.repeat(len(point)).view(-1, 1)
+
+
+def visualize_maps(x_vec, z_vec, model, x0, z0, device):
+    x_vec = x_vec.clone().float().to(device)
+    z_vec = z_vec.clone().float().to(device)
+    xx, zz = torch.meshgrid([x_vec, z_vec])
+    xx = xx.flatten().view(-1, 1)
+    zz = zz.flatten().view(-1, 1)
+
+    source = torch.tensor([[x0, z0]], dtype=torch.float).repeat(len(xx), 1).to(device)
+    receiver = torch.cat([xx, zz], dim=1)
+
+    vel = model.get_velocity(source.clone().requires_grad_(True),
+                             receiver.clone().requires_grad_(True)).detach().squeeze().cpu().numpy()
+
+    vel_map = vel.reshape((len(x_vec), len(z_vec)), order='F')
+
+    time = model(source.clone().requires_grad_(True),
+                 receiver.clone().requires_grad_(True)).detach().squeeze().cpu().numpy()
+
+    time = time.reshape((len(x_vec), len(z_vec)), order='F')
+    return vel_map, time
 
 
 if __name__ == '__main__':
@@ -131,17 +148,17 @@ if __name__ == '__main__':
     num_layers = 8
     hidden_dim = 20
     num_samples = 500
-    lr = 1e-5
-    num_epochs = 600
+    lr = 1e-2
+    num_epochs = 40
 
-    eik = Eikonal(Tau(), Velocity(0.5)).to(device)
+    eik = Eikonal(Tau(), Velocity(0.2).to(device)).to(device)
     optim = Adam(lr=lr, params=eik.parameters())
 
-    s_train = torch.randn((num_samples, 2), device=device) / 3
-    r_train = torch.randn((num_samples, 2), device=device) / 3
+    s_train = torch.randn((num_samples, 2), device=device)
+    r_train = torch.randn((num_samples, 2), device=device)
 
-    s_val = torch.randn((num_samples, 2), device=device) / 3
-    r_val = torch.randn((num_samples, 2), device=device) / 3
+    s_val = torch.randn((num_samples, 2), device=device)
+    r_val = torch.randn((num_samples, 2), device=device)
 
     loss_train_epochs = []
     loss_val_epochs = []
@@ -172,8 +189,27 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-    t = eik(torch.tensor([[0, 0.]], device=device), torch.tensor([[0.6, 0.8]], device=device))
-    print(t)
+    vel, time = visualize_maps(torch.linspace(-1, 1, 100), torch.linspace(-1, 1, 100), eik, 0, 0, device=device)
+
+    plt.imshow(vel)
+    plt.colorbar()
+    plt.show()
+
+    plt.imshow(time)
+    plt.colorbar()
+    plt.show()
+
+    vel, time = visualize_maps(torch.linspace(-1, 1, 100), torch.linspace(-1, 1, 100), eik, 0.5, 0.5, device=device)
+
+    plt.imshow(vel)
+    plt.colorbar()
+    plt.show()
+
+    plt.imshow(time)
+    plt.colorbar()
+    plt.show()
+
+
 
 
 
