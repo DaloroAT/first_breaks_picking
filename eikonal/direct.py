@@ -31,7 +31,7 @@ class Tau(nn.Module):
 
         features = self.act(features)
 
-        return self.output(features)
+        return torch.log1p(self.output(features))
 
 
 class Eikonal(nn.Module):
@@ -143,15 +143,15 @@ def visualize_maps(x_vec, z_vec, model, x0, z0, device):
 
 if __name__ == '__main__':
     set_global_seed(1)
-    device = 'cuda'
+    device = 'cpu'
     dim = 2
-    num_layers = 8
+    num_layers = 5
     hidden_dim = 20
     num_samples = 500
     lr = 1e-2
-    num_epochs = 40
+    num_epochs = 60
 
-    eik = Eikonal(Tau(), Velocity(0.2).to(device)).to(device)
+    eik = Eikonal(Tau(hidden_size=hidden_dim, num_layers=num_layers), Velocity(0.1).to(device)).to(device)
     optim = Adam(lr=lr, params=eik.parameters())
 
     s_train = torch.randn((num_samples, 2), device=device)
@@ -168,8 +168,12 @@ if __name__ == '__main__':
     for _ in pbar:
         optim.zero_grad()
 
-        s_train_inp = s_train.clone().requires_grad_(True)
-        r_train_inp = r_train.clone().requires_grad_(True)
+        # s_train_inp = s_train.clone().requires_grad_(True)
+        # r_train_inp = r_train.clone().requires_grad_(True)
+
+        s_train_inp = torch.randn((num_samples, 2), device=device, requires_grad=True)
+        r_train_inp = torch.randn((num_samples, 2), device=device, requires_grad=True)
+
         loss = eik.loss(s_train_inp, r_train_inp)
 
         loss.backward()
@@ -189,7 +193,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-    vel, time = visualize_maps(torch.linspace(-1, 1, 100), torch.linspace(-1, 1, 100), eik, 0, 0, device=device)
+    vel, time = visualize_maps(torch.linspace(-3, 3, 100), torch.linspace(-3, 3, 100), eik, 0, 0, device=device)
 
     plt.imshow(vel)
     plt.colorbar()
@@ -199,15 +203,15 @@ if __name__ == '__main__':
     plt.colorbar()
     plt.show()
 
-    vel, time = visualize_maps(torch.linspace(-1, 1, 100), torch.linspace(-1, 1, 100), eik, 0.5, 0.5, device=device)
-
-    plt.imshow(vel)
-    plt.colorbar()
-    plt.show()
-
-    plt.imshow(time)
-    plt.colorbar()
-    plt.show()
+    # vel, time = visualize_maps(torch.linspace(-1, 1, 100), torch.linspace(-1, 1, 100), eik, 0.5, 0.5, device=device)
+    #
+    # plt.imshow(vel)
+    # plt.colorbar()
+    # plt.show()
+    #
+    # plt.imshow(time)
+    # plt.colorbar()
+    # plt.show()
 
 
 
