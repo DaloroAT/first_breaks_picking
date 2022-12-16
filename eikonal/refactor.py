@@ -1,7 +1,7 @@
 import torch
 from oml.utils.misc import set_global_seed
 from torch import nn
-from torch.optim import Adam, LBFGS
+from torch.optim import Adam
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
@@ -13,19 +13,20 @@ class Tau(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.act = nn.Tanh()
-        # self.act = nn.Sigmoid()
-        # self.act = nn.ReLU()
+        # self.act = torch.atan
+        # self.act = torch.sin
 
         bias = True
 
         self.input_source = nn.Linear(self.dim, self.hidden_size, bias=bias)
         self.input_reciever = nn.Linear(self.dim, self.hidden_size, bias=bias)
         self.concat_input = nn.Linear(2 * self.hidden_size, self.hidden_size, bias=bias)
-        self.blocks = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=bias) for _ in range(self.num_layers)])
+        self.blocks = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=bias)
+                                     for _ in range(self.num_layers)])
         self.output = nn.Linear(self.hidden_size, 1, bias=False)
 
         for layer in [self.input_source, self.input_reciever, self.concat_input, *self.blocks, self.output]:
-            nn.init.xavier_normal_(layer.weight.data)
+            nn.init.xavier_normal_(layer.weight.data, gain=1)
 
     def forward(self, source, receiver):
         source = self.input_source(source)
@@ -35,19 +36,13 @@ class Tau(nn.Module):
 
         for block in self.blocks:
             features = features + self.act(block(features))
+            # features = self.act(block(features))
 
         features = self.act(features)
 
-        # return torch.log1p(self.output(features))
-
-        features = self.act(self.output(features))
+        features = self.output(features)
+        features = torch.log1p(features)
         return features
-        # return torch.log1p(features)
-
-        # return torch.relu(self.output(features))
-        # return self.output(self.act(features))
-
-        # return self.output(features)
 
 
 class Eikonal(nn.Module):
@@ -58,17 +53,34 @@ class Eikonal(nn.Module):
 
         self.step = nn.ReLU()
 
+        self.logs_tau = []
+        self.logs_t0 = []
+
     def forward_t0(self, source, receiver):
         dist = (receiver - source).pow(2).sum(1).sqrt().view(-1, 1)
         vel_s = self.velocity(source).view(-1, 1)
+        # print('vel', vel_s.min(), vel_s.max(), 'dist', dist.min(), dist.max(), 't0', dist.max() / vel_s.min())
         return dist / vel_s
 
     def forward(self, source, receiver):
-        return self.tau(source, receiver) * self.forward_t0(source, receiver)
+        tau_sr = self.tau(source, receiver)
+        t0_sr = self.forward_t0(source, receiver)
+
+        self.logs_tau.append(tau_sr.clone().detach().sum().item())
+        self.logs_t0.append(t0_sr.clone().detach().sum().item())
+
+        return tau_sr * t0_sr
 
     def get_velocity(self, source, receiver):
+        sq_grad_eik = self.get_quare_grad_eikonal(source, receiver)
+        return 1 / sq_grad_eik.abs().sqrt()
+
+    def get_quare_grad_eikonal(self, source, receiver):
         tau_sr = self.tau(source, receiver)
         t0_sr = self.forward_t0(source, receiver)
+
+        self.logs_tau.append(tau_sr.clone().detach().abs().mean().item())
+        self.logs_t0.append(t0_sr.clone().detach().abs().mean().item())
 
         tau_sr_r = torch.autograd.grad(
             tau_sr,
@@ -84,57 +96,51 @@ class Eikonal(nn.Module):
             retain_graph=True,
             create_graph=True)[0]
 
-        first = t0_sr.pow(2) * tau_sr_r.pow(2).sum(1).view(-1, 1)
-        second = tau_sr.pow(2) * t0_sr_r.pow(2).sum(1).view(-1, 1)
-        third = 2 * (t0_sr_r * tau_sr_r).sum(1).view(-1, 1) * tau_sr * t0_sr
+        first = t0_sr.pow(2) * tau_sr_r.pow(2).sum(1, keepdims=True)
+        second = tau_sr.pow(2) * t0_sr_r.pow(2).sum(1, keepdims=True)
+        third = 2 * tau_sr * t0_sr * (tau_sr_r * t0_sr_r).sum(1, keepdims=True)
 
-        return 1 / (first + second + third).abs().sqrt()
+        return first + second + third
 
-    def get_losses(self, source, receiver):
-        tau_sr = self.tau(source, receiver)
-        t0_sr = self.forward_t0(source, receiver)
+    def _get_quare_grad_eikonal(self, source, receiver):
+        eikonal = self(source, receiver)
 
-        tau_sr_r = torch.autograd.grad(
-            tau_sr,
+        eikonal_r = torch.autograd.grad(
+            eikonal,
             receiver,
-            grad_outputs=torch.ones_like(tau_sr),
+            grad_outputs=torch.ones_like(eikonal),
             retain_graph=True,
             create_graph=True)[0]
 
-        t0_sr_r = torch.autograd.grad(
-            t0_sr,
-            receiver,
-            grad_outputs=torch.ones_like(t0_sr),
-            retain_graph=True,
-            create_graph=True)[0]
+        return eikonal_r.pow(2).sum(1, keepdims=True)
 
-        first = t0_sr.pow(2) * tau_sr_r.pow(2).sum(1).view(-1, 1)
-        second = tau_sr.pow(2) * t0_sr_r.pow(2).sum(1).view(-1, 1)
-        third = 2 * (t0_sr_r * tau_sr_r).sum(1).view(-1, 1) * tau_sr * t0_sr
-        loss_eikonal = first + second + third - 1 / self.velocity(receiver).pow(2)
+    def loss_eikonal(self, source, receiver):
+        return self.get_quare_grad_eikonal(source, receiver) - 1 / self.velocity(receiver).pow(2)
 
-        # loss_tau_init = torch.pow(self.tau(source, source) - 1, 2)
+    def loss_tau_init(self, source):
+        return self.tau(source, source) - 1
 
-        loss_tau_init = (self.tau(source, source) - 1).pow(2)
+    def loss_tau_positive(self, source, receiver):
+        return self.step(-self.tau(source, receiver))
 
-        # print(torch.pow(self.step(-tau_sr) * torch.abs(tau_sr), 2).pow(2))
+    def loss(self, source, receiver):
+        direct_order_losses = {'eikonal': self.loss_eikonal(source, receiver).abs().mean(),
+                               'tau_init': self.loss_tau_init(source).pow(2).mean(),
+                               'tau_positive': self.loss_tau_positive(source, receiver).abs().mean()}
 
-        loss_tau_positive = self.step(-tau_sr) * torch.abs(tau_sr)
+        inverse_order_losses = {'eikonal': self.loss_eikonal(receiver, source).abs().mean(),
+                                'tau_init': self.loss_tau_init(receiver).pow(2).mean(),
+                                'tau_positive': self.loss_tau_positive(receiver, source).abs()
+                                }
 
-        return loss_eikonal, loss_tau_init, loss_tau_positive
+        # loss_to_optimize = sum([*direct_order_losses.values(), *inverse_order_losses.values()]).sum()
+        loss_to_optimize = sum([direct_order_losses['eikonal'], inverse_order_losses['eikonal']])
 
-    def loss(self, source, receiver, as_floats: bool = False):
-        losses = [loss.pow(2) for loss in [*self.get_losses(source, receiver), *self.get_losses(receiver, source)]]
+        losses = {"loss": loss_to_optimize,
+                  **{k: (direct_order_losses[k] + inverse_order_losses[k]).sum().item()
+                     for k in direct_order_losses.keys()}}
 
-        output = {'loss': sum(losses).sum(),
-                  'loss_eikonal': (losses[0] + losses[3]).sum(),
-                  'loss_tau_init': (losses[1] + losses[4]).sum(),
-                  'loss_tau_positive': (losses[2] + losses[5]).sum()}
-
-        if as_floats:
-            output = {k: v.item() for k, v in output.items()}
-
-        return output
+        return losses
 
 
 class VelocityConst(nn.Module):
@@ -178,20 +184,6 @@ class VelocityVerticalLayers(nn.Module):
         output = sum(output).view(-1, 1)
         return output
 
-    # def forward(self, point):
-    #     z = point[:, -1]
-    #     v = torch.zeros(len(z), device=point.device)
-    #
-    #     for i, (z0_i, z1_i, v_i) in enumerate(zip([0, *self.depth_model[0:-1]], self.depth_model, self.vel_model)):
-    #         if i == 0:
-    #             v[z <= z1_i] = v_i
-    #         elif i == len(self.vel_model) - 1:
-    #             v[z >= z0_i] = v_i
-    #         else:
-    #             v[torch.logical_and(z >= z0_i, z < z1_i)] = v_i
-    #
-    #     return v
-
 
 def visualize_maps(x_vec, z_vec, model, x0, z0, device):
     x_vec = x_vec.clone().float().to(device)
@@ -215,39 +207,24 @@ def visualize_maps(x_vec, z_vec, model, x0, z0, device):
     return vel_map, time
 
 
-def train(model_arg, num_samples_arg, num_epochs_arg, lr_arg, title_arg):
+def train(model_arg, num_samples_arg, num_epochs_arg, lr_arg, title_arg, dim_arg):
     optim = Adam(lr=lr_arg, params=model_arg.parameters())
-    # optim = LBFGS(params=model_arg.parameters(), lr=lr)
     loss_train_epochs = []
     loss_val_epochs = []
 
-    s_val = torch.rand((num_samples_arg, 2), device=device)
-    r_val = torch.rand((num_samples_arg, 2), device=device)
+    s_val = torch.rand((num_samples_arg, dim_arg), device=device)
+    r_val = torch.rand((num_samples_arg, dim_arg), device=device)
 
     pbar = tqdm(range(num_epochs_arg), desc=title_arg)
 
     for _ in pbar:
 
-        # def closure():
-        #     optim.zero_grad()
-        #     s_train_inp = (torch.rand((num_samples_arg, 2), device=device) - 0.1).requires_grad_(True)
-        #     r_train_inp = (torch.rand((num_samples_arg, 2), device=device) - 0.1).requires_grad_(True)
-        #
-        #     loss = eik.loss(s_train_inp, r_train_inp)['loss']
-        #     loss.backward()
-        #     return loss
-
-        s_train_inp = (torch.rand((num_samples_arg, 2), device=device) - 0.1).requires_grad_(True)
-        r_train_inp = (torch.rand((num_samples_arg, 2), device=device) - 0.1).requires_grad_(True)
-
-
-
+        s_train_inp = (torch.rand((num_samples_arg, dim_arg), device=device)).requires_grad_(True)
+        r_train_inp = (torch.rand((num_samples_arg, dim_arg), device=device)).requires_grad_(True)
         loss = eik.loss(s_train_inp, r_train_inp)['loss']
 
         loss.backward()
         optim.step()
-
-        # loss = optim.step(closure)
 
         if loss.isnan():
             raise ValueError('None!!!')
@@ -258,9 +235,10 @@ def train(model_arg, num_samples_arg, num_epochs_arg, lr_arg, title_arg):
 
         s_val_inp = s_val.clone().requires_grad_(True)
         r_val_inp = r_val.clone().requires_grad_(True)
-        loss_val = eik.loss(s_val_inp, r_val_inp, as_floats=True)
+        loss_val = eik.loss(s_val_inp, r_val_inp)
 
         loss_train_epochs.append(loss_train)
+        loss_val['loss'] = loss_val['loss'].item()
         loss_val_epochs.append(loss_val['loss'])
 
         pbar.set_postfix({**loss_val,
@@ -272,6 +250,13 @@ def train(model_arg, num_samples_arg, num_epochs_arg, lr_arg, title_arg):
     plt.legend()
     plt.show()
 
+    plt.plot(eik.logs_tau)
+    plt.title('tau')
+    plt.show()
+    plt.plot(eik.logs_t0)
+    plt.title('t0')
+    plt.show()
+
 
 if __name__ == '__main__':
     set_global_seed(1)
@@ -279,21 +264,24 @@ if __name__ == '__main__':
     dim = 2
     num_layers = 5
     hidden_dim = 20
-    num_samples = 1000
-    lr = 1e-2
-    num_epochs = 600
+    num_samples = 40000
+    lr = 1e-3
+    num_epochs = 1000
 
-    vel_pretrain = VelocityConst(0.3).to(device)
-    tau_model = Tau(hidden_size=hidden_dim, num_layers=num_layers)
+    vel_pretrain = VelocityConst(3).to(device)
+    tau_model = Tau(hidden_size=hidden_dim, num_layers=num_layers, dim=dim)
     eik = Eikonal(tau_model, vel_pretrain).to(device)
 
     train(model_arg=eik,
           lr_arg=lr,
           num_samples_arg=num_samples,
           num_epochs_arg=20,
-          title_arg='pretrain')
+          title_arg='pretrain',
+          dim_arg=dim)
 
-    vel_model = VelocityVerticalLayers([1, 2, 3, 4], [0.1, 0.1, 0.2, 0.2]).to(device)
+    vel_model = VelocityVerticalLayers([10, 20, 30, 40], [0.1, 0.1, 0.2, 0.2]).to(device)
+    # vel_model = VelocityVerticalLayers([1000, 2000, 3000, 4000], [0.1, 0.1, 0.2, 0.2]).to(device)
+    # vel_model = VelocityVerticalLayers([1, 2, 3, 4], [0.2, 0.2, 0.3, 0.3]).to(device)
     # vel_model = VelocityVerticalLayers([0.1, 0.3], [0.1, 0.1]).to(device)
     eik = Eikonal(tau_model, vel_model).to(device)
 
@@ -301,7 +289,8 @@ if __name__ == '__main__':
           lr_arg=lr,
           num_samples_arg=num_samples,
           num_epochs_arg=num_epochs,
-          title_arg='model')
+          title_arg='model',
+          dim_arg=dim)
 
     vel, time = visualize_maps(torch.linspace(0, 1, 100), torch.linspace(0, 1, 100), eik, 0, 0, device=device)
 
