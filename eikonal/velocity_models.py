@@ -1,8 +1,22 @@
 import torch
 from torch import nn
+import matplotlib.pyplot as plt
 
 
-class VelocityConst(nn.Module):
+class VelocityBase(nn.Module):
+    def plot_vertical(self, z_min, z_max, n=1000):
+        points = torch.zeros(n, 2)
+        points[:, -1] = torch.linspace(z_min, z_max, len(points))
+        v_forward = self(points)
+
+        plt.plot(points[:, -1], v_forward.squeeze())
+        plt.title(f'Model {self.__class__.__name__}')
+        plt.xlabel('depth')
+        plt.ylabel('velocity')
+        plt.show()
+
+
+class VelocityConst(VelocityBase):
     def __init__(self, v):
         super(VelocityConst, self).__init__()
         self.model = nn.Parameter(torch.tensor([v], dtype=torch.float), requires_grad=False)
@@ -12,7 +26,7 @@ class VelocityConst(nn.Module):
         return outp
 
 
-class VelocityVerticalLayers(nn.Module):
+class VelocityVerticalLayers(VelocityBase):
     def __init__(self, vel, depth, smoothing=None):
         super(VelocityVerticalLayers, self).__init__()
         assert len(vel) == len(depth) > 1
@@ -45,7 +59,7 @@ class VelocityVerticalLayers(nn.Module):
         return output
 
 
-class VelocityVerticalGrad(nn.Module):
+class VelocityVerticalGrad(VelocityBase):
     def __init__(self, vel, depth):
         super(VelocityVerticalGrad, self).__init__()
         assert len(vel) == len(depth) == 2

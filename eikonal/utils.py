@@ -67,30 +67,53 @@ def get_dataset(x_min, x_max, z_min, z_max, nx, nz, scalar_for_float=100000):
 
     weights_res = weights_counts * weights_dist
 
-    return source, receiver, weights_res
+    sr_pairs = torch.cartesian_prod(torch.arange(len(points)), torch.arange(len(points)))
+    mask_to_keep = sr_pairs[:, 0] != sr_pairs[:, 1]
+
+    return source[mask_to_keep], receiver[mask_to_keep], weights_res[mask_to_keep]
 
 
-# _, _, weights = get_dataset(0, 1, 0, 1, 20, 20)
+# _, _, weights = get_dataset(0, 1, 0, 1, 2, 3)
+#
+# print(len(weights))
 #
 # plt.hist(weights, bins=50)
 # plt.show()
 
 
-def train(model_arg, num_samples_arg, num_epochs_arg, lr_arg, title_arg, dim_arg, device):
+def train(model_arg, num_grid_arg, num_epochs_arg, lr_arg, title_arg, dim_arg, device):
     optim = Adam(lr=lr_arg, params=model_arg.parameters())
     loss_train_epochs = []
     loss_val_epochs = []
 
-    s_val = torch.rand((num_samples_arg, dim_arg), device=device)
-    r_val = torch.rand((num_samples_arg, dim_arg), device=device)
+    s_train, r_train, weights_train = get_dataset(0.0, 1.0, 0.0, 1.0, num_grid_arg, num_grid_arg)
+    s_val, r_val, _ = get_dataset(0.01, 0.99, 0.01, 0.99, num_grid_arg, num_grid_arg)
+
+    s_train = s_train.to(device)
+    r_train = r_train.to(device)
+    weights_train = weights_train.to(device)
+
+    s_val = s_val.to(device)
+    r_val = r_val.to(device)
+
+    # s_val = torch.rand((num_grid_arg, dim_arg), device=device)
+    # r_val = torch.rand((num_grid_arg, dim_arg), device=device)
 
     pbar = tqdm(range(num_epochs_arg), desc=title_arg)
 
     for _ in pbar:
+        model_arg.train()
 
-        s_train_inp = (torch.rand((num_samples_arg, dim_arg), device=device)).requires_grad_(True)
-        r_train_inp = (torch.rand((num_samples_arg, dim_arg), device=device)).requires_grad_(True)
-        loss = model_arg.loss(s_train_inp, r_train_inp)['loss']
+        # s_train_inp = (torch.rand((num_grid_arg, dim_arg), device=device)).requires_grad_(True)
+        # r_train_inp = (torch.rand((num_grid_arg, dim_arg), device=device)).requires_grad_(True)
+
+        # print(s_train_inp.shape)
+
+        s_train_inp = s_train.clone().requires_grad_(True)
+        r_train_inp = r_train.clone().requires_grad_(True)
+        weights_train_inp = weights_train.clone()
+
+        loss = model_arg.loss(s_train_inp, r_train_inp, weights_train_inp)['loss']
 
         loss.backward()
         optim.step()
@@ -101,6 +124,8 @@ def train(model_arg, num_samples_arg, num_epochs_arg, lr_arg, title_arg, dim_arg
         loss_train = loss.item()
 
         optim.zero_grad()
+
+        model_arg.eval()
 
         s_val_inp = s_val.clone().requires_grad_(True)
         r_val_inp = r_val.clone().requires_grad_(True)
@@ -122,6 +147,6 @@ def train(model_arg, num_samples_arg, num_epochs_arg, lr_arg, title_arg, dim_arg
     plt.plot(model_arg.logs_tau)
     plt.title('tau')
     plt.show()
-    plt.plot(model_arg.logs_t0)
-    plt.title('t0')
-    plt.show()
+    # plt.plot(model_arg.logs_t0)
+    # plt.title('t0')
+    # plt.show()
