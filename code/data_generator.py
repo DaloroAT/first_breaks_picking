@@ -19,6 +19,7 @@ def main(args: Namespace):
 
     for k in range(args.num_data):
         model_and_picking = model_generator.get_random_model()
+        model_and_picking = np.array(model_and_picking, dtype="object")
         np.save(args.data_dir / f'model_{k}.npy', model_and_picking)
 
 
