@@ -3,11 +3,13 @@ import struct
 import time
 from hashlib import md5
 from pathlib import Path
+from pprint import pprint
 from struct import unpack
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
-from headers import FileHeaders, TraceHeaders
+from headers import FileHeadersOld, TraceHeadersOld, FileHeaders, TraceHeaders
+import pandas as pd
 
 from first_breaks.const import PROJECT_ROOT
 from first_breaks.utils.utils import chunk_iterable
@@ -55,16 +57,23 @@ class SGY:
 
         self.num_bytes = None
         self._ns = None  # number on data per trace
-        self._custom_ns = None
         self._dt = None  # time discretization
         self._bps = None  # bytes per sample
         self._ntr = None  # number of traces in file
         self._data_fmt = None  # traces format
 
+        self._general_headers_info = FileHeaders()
+        self._traces_headers_info = TraceHeaders()
+        self._general_headers = None
+        self._traces_headers_df = None
+
         try:
-            self._init_fields_header()
+            self.endianess = self.get_endianess()
             self.read_general_headers()
-            self.read_trace_headers()
+            self.read_traces_headers()
+            self._init_fields_header()
+            self.read_general_headers_old()
+            self.read_trace_headers_old()
         except Exception:
             raise InvalidSGY("Invalid structure of SGY file")
 
@@ -90,7 +99,7 @@ class SGY:
     def shape(self) -> SizeHW:
         return self._ns, self._ntr
 
-    def get_endianess(self):
+    def get_endianess(self) -> str:
         with open(self.fname, "rb") as file_io:
             file_io.seek(3224)
             value = file_io.read(2)
@@ -105,16 +114,33 @@ class SGY:
 
     def _init_fields_header(self):
         self.endianess = self.get_endianess()
+        print(self.endianess)
         self.gen_hdr_fmt = f"{self.endianess}3200siiiHHHHHHHHhHHHHhhHHHHHHHHH240sHHH94s"
-        file_headers = FileHeaders()
+        file_headers = FileHeadersOld()
         self.gen_hdr_dict = file_headers.get_headers()
-        trace_headers = TraceHeaders()
+        trace_headers = TraceHeadersOld()
         self.tr_hdr_fmt = trace_headers.get_headers()
         self.tr_hdr_fmt = [
             (pair[0], pair[1].replace(">", self.endianess).replace("<", self.endianess)) for pair in self.tr_hdr_fmt
         ]
 
     def read_general_headers(self):
+        gen_headers = {}
+        with open(self.fname, "rb") as file_io:
+            for pointer, name, fmt in self._general_headers_info.headers:
+                file_io.seek(pointer)
+                size = self._general_headers_info.get_num_bytes(fmt)
+                gen_headers[name] = unpack(f"{self.endianess}{fmt}", file_io.read(size))[0]
+
+            self.num_bytes = file_io.seek(0, 2)
+
+        self._general_headers = gen_headers
+        self._init_ns()
+        self._init_dt()
+        self._init_bps()
+        self._ntr = int((self.num_bytes - 3600) / (240 + self._ns * self._bps))
+
+    def read_general_headers_old(self):
         with open(self.fname, "rb") as file_io:
             gen_hdr_fromfile = unpack(self.gen_hdr_fmt, file_io.read(3600))
             for gen_idx, gen_key in enumerate(self.gen_hdr_dict):
@@ -122,13 +148,47 @@ class SGY:
 
             self.num_bytes = file_io.seek(0, 2)
 
-        self._init_ns()
-        self._init_dt()
-        self._init_bps()
+        self._init_ns_old()
+        self._init_dt_old()
+        self._init_bps_old()
 
         self._ntr = int((self.num_bytes - 3600) / (240 + self._ns * self._bps))
 
-    def read_trace_headers(self):
+    # def read_general_headers(self):
+    #     gen_headers = {}
+    #     with open(self.fname, "rb") as file_io:
+    #         for pointer, name, fmt in self._general_headers_info.headers:
+    #             file_io.seek(pointer)
+    #             size = self._general_headers_info.get_num_bytes(fmt)
+    #             gen_headers[name] = unpack(f"{self.endianess}{fmt}", file_io.read(size))[0]
+    #
+    #         self.num_bytes = file_io.seek(0, 2)
+    #
+    #     self._general_headers = gen_headers
+    #     self._init_ns()
+    #     self._init_dt()
+    #     self._init_bps()
+    #     self._ntr = int((self.num_bytes - 3600) / (240 + self._ns * self._bps))
+
+    def read_traces_headers(self):
+        traces_headers = {}
+
+        with open(self.fname, "rb") as file_io:
+            for offset, name, fmt in self._traces_headers_info.headers:
+                size = self._traces_headers_info.get_num_bytes(fmt)
+                buffer = []
+                for idx in range(self._ntr):
+                    pointer = 3600 + (240 + self._ns * self._bps) * idx + offset
+                    file_io.seek(pointer)
+                    buffer.append(file_io.read(size))
+
+                traces_headers[name] = unpack(f"{self.endianess}{fmt * self._ntr}", b"".join(buffer))
+
+        self._traces_headers_df = pd.DataFrame(data=traces_headers)
+
+        print(self._traces_headers_df)
+
+    def read_trace_headers_old(self):
         with open(self.fname, "rb") as file_io:
             buffer = []
 
@@ -200,13 +260,36 @@ class SGY:
                 file_io.seek(pointer)
                 file_io.write(pick_byte)
 
-    def _init_ns(self, key_ns="ns"):
+    def _init_ns(self):
+        self._ns = self._general_headers[self._general_headers_info.ns_name]
+
+    def _init_ns_old(self, key_ns="ns"):
         self._ns = self.gen_hdr_dict[key_ns]
 
-    def _init_dt(self, key_dt="dt"):
+    def _init_dt(self):
+        self._dt = self._general_headers[self._general_headers_info.dt_name]
+
+    def _init_dt_old(self, key_dt="dt"):
         self._dt = self.gen_hdr_dict[key_dt]
 
-    def _init_bps(self, key_bps="data_sample_format"):
+    def _init_bps(self):
+        self._data_fmt = self._general_headers[self._general_headers_info.data_sample_format_name]
+
+        bps = {
+            1: 4,  # 4-byte hexadecimal exponent data (IBM single precision floating point)
+            2: 4,  # 4-byte, two's complement integer
+            3: 2,  # 2-byte, two's complement integer
+            4: 4,  # 32-bit fixed point with gain values (Obsolete)
+            5: 4,  # 4-byte, IEEE Floating Point
+            6: 8,
+        }  # 8-byte, IEEE Floating Point
+
+        if self._data_fmt < 1 or self._data_fmt > 6:
+            raise NotImplementedReader(f"Not supported format '{self._data_fmt}'")
+
+        self._bps = bps[self._data_fmt]
+
+    def _init_bps_old(self, key_bps="data_sample_format"):
         if self.gen_hdr_dict[key_bps] == 0:
             raise ValueError("Unexpected data sample format")
 
@@ -324,5 +407,5 @@ class SGYPicks(SGY):
 
 if __name__ == "__main__":
     sgy = SGY(PROJECT_ROOT / "data/real_gather.sgy")
-    gather = sgy.read()
-    plotseis(gather, normalizing="indiv", dpi=200)
+    # gather = sgy.read()
+    # plotseis(gather, normalizing="indiv", dpi=200)
