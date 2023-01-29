@@ -23,7 +23,7 @@ repos:
   rev: 22.3.0
   hooks:
   - id: black
-    files: first_breaks/*
+    files: first_breaks
     args: [-l 120]
 
 
@@ -32,7 +32,7 @@ repos:
   rev: 5.6.4
   hooks:
   - id: isort
-    files: first_breaks/*
+    files: first_breaks
     args: ["--profile", "black"]
 
 
@@ -41,6 +41,7 @@ repos:
   rev: 3.8.4
   hooks:
   - id: flake8
+    files: first_breaks
     exclude: __init__.py
 
 
@@ -49,5 +50,5 @@ repos:
   rev: v0.910
   hooks:
   - id: mypy
-    files: first_breaks/*
+    files: first_breaks
     additional_dependencies: [types-requests==2.25.9]
