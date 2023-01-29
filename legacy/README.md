@@ -1,7 +1,3 @@
-# <span style="color:red">The repository is under refactoring</span>
-- Specific implementations in this readme will be out of date soon.
-- The previous code has been moved to the `legacy` folder.
-
 # First break picking
 ​​
 This project is devoted to pick waves that are the first to be detected on a seismogram (first breaks, first arrivals).
@@ -28,7 +24,7 @@ distance from the metal plate (offset). An engineer hits a metal plate with a sl
 propagates in the medium under study. At this time, geophones record the amplitude of the signal for some time.
 Records of each geophone are called a seismic trace (1D data).
 
-![](legacy/examples/seismic_survey.svg)
+![](examples/seismic_survey.svg)
 
 Since the data on adjacent seismic traces have similarities in the features of the wave field, it is convenient to
 consider the data together. Therefore, the traces are combined into a seismogram (2D data). The trace number is
@@ -44,7 +40,7 @@ Usually a color seismogram is drawn in grayscale.
 
 The figure below shows the equal seismograms in wiggle and color mode.
 
-![](legacy/examples/color.png)
+![](examples/color.png)
 
 Note that despite the square shape of the picture, it is not square. Usually, the number of samples in a trace is
 several thousand, and the number of trace is 24 or more. Therefore, when displayed in color, interpolation is used.
@@ -59,7 +55,7 @@ For both procedures, you must pick the first break. The first arrival is a sampl
 amplitude begins to increase for the first time and a signal is observed. Obviously, on noisy data, this definition is
 meaningless.
 
-![](legacy/examples/pick.png)
+![](examples/pick.png)
 
 Usually, the intersection of the tangent to the signal and the time axis is used as the first break. In practice, this
 approach minimizes the difference in picking between different people.
@@ -80,15 +76,15 @@ The figures below show examples of field data (time discretization step is 250 m
 
 |                                   |                                   |
 |:--------------------------------- |:--------------------------------- |
-|  ![](legacy/examples/real_segment_1.svg) |  ![](legacy/examples/real_segment_2.svg) |
-|  ![](legacy/examples/real_segment_3.svg) |                                   |
+|  ![](examples/real_segment_1.svg) |  ![](examples/real_segment_2.svg) |
+|  ![](examples/real_segment_3.svg) |                                   |
 
 The following figures show noiseless synthetic data with a pick.
 
 |                                    |                                    |
 |:---------------------------------- |:-----------------------------------|
-|  ![](legacy/examples/synth_segment_1.svg) |  ![](legacy/examples/synth_segment_2.svg) |
-|  ![](legacy/examples/synth_segment_3.svg) |  ![](legacy/examples/synth_segment_4.svg) |
+|  ![](examples/synth_segment_1.svg) |  ![](examples/synth_segment_2.svg) |
+|  ![](examples/synth_segment_3.svg) |  ![](examples/synth_segment_4.svg) |
 
 Synthetic data is very similar to real and can be used for training. Synthetic data also have a reliable pick. However,
 in order to use the neural network on real data, it is necessary to add some transformations, which will be discussed
@@ -189,9 +185,9 @@ orange is class after first breaks and brown is a narrow strip, which contain fi
 
 |                               |                                   |
 |:----------------------------- |:--------------------------------- |
-|  ![](legacy/examples/train_ex_1.png) |  ![](legacy/examples/train_ex_2.png)     |
-|  ![](legacy/examples/train_ex_3.png) |  ![](legacy/examples/train_ex_4.png)     |
-|  ![](legacy/examples/train_ex_5.png) |  ![](legacy/examples/train_ex_6.png)     |
+|  ![](examples/train_ex_1.png) |  ![](examples/train_ex_2.png)     |
+|  ![](examples/train_ex_3.png) |  ![](examples/train_ex_4.png)     |
+|  ![](examples/train_ex_5.png) |  ![](examples/train_ex_6.png)     |
 
 ## Neural network architecture
 
@@ -203,7 +199,7 @@ The architecture of the used neural network is based on [U-Net](https://arxiv.or
   transfer of features from contracting to expanding path occurs three times instead of four. Larger kernel size in the
   vertical direction are used. Also we use zero padding.
 
-![](legacy/examples/UnetFB.png)
+![](examples/UnetFB.png)
 
 The parameters of the neural network are as follows:
 
@@ -292,11 +288,11 @@ For the other two classes we use the same weights `(1 - 0.992) / 2 = 0.004`. Com
 
 IoU for validation dataset is presented below. Gray line - FL with weights, blue line - CEL with weights, pink line - FL without weights and red line - CEL without weights.
 
-![](legacy/examples/metrics_iou.png)
+![](examples/metrics_iou.png)
 
 RMS error in picking for validation dataset is presented below. Green line - FL with weights, orange line - CEL with weights, pare blue line - FL without weights and blue line - CEL without weights.
 
-![](legacy/examples/metrics_diff_fb.png)
+![](examples/metrics_diff_fb.png)
 
 As you can see, the choice of the loss function affects only the beginning of training,
 but by the end of training the metrics are almost equal. It is worth noting that without weights,
@@ -325,8 +321,8 @@ Even the presented manual pick may differ if it is performed by another person.
 
 | Traces 1 - 24   | Weights = (1, 1, 1)                  | Weights = (0.004, 0.004, 0.992)   |
 |:----------------|:------------------------------------ |:----------------------------------|
-|CrossEntropy loss|  ![](legacy/examples/0_cel_no_weights.png)  |  ![](legacy/examples/0_cel_weights.png)  |
-|Focal loss       |  ![](legacy/examples/0_fl_no_weights.png)   |  ![](legacy/examples/0_fl_weights.png)   |
+|CrossEntropy loss|  ![](examples/0_cel_no_weights.png)  |  ![](examples/0_cel_weights.png)  |
+|Focal loss       |  ![](examples/0_fl_no_weights.png)   |  ![](examples/0_fl_weights.png)   |
 
 In this segment (1 - 24), when using weights, picking very well coincides with manual picks.
 For traces from 11 to 16, the largest errors were made. It is worth noting that
@@ -335,8 +331,8 @@ Such situations are very complex and ambiguous when picking.
 
 | Traces 25 - 48  | Weights = (1, 1, 1)                   | Weights = (0.004, 0.004, 0.992)    |
 |:----------------|:------------------------------------- |:-----------------------------------|
-|CrossEntropy loss|  ![](legacy/examples/24_cel_no_weights.png)  |  ![](legacy/examples/24_cel_weights.png)  |
-|Focal loss       |  ![](legacy/examples/24_fl_no_weights.png)   |  ![](legacy/examples/24_fl_weights.png)   |
+|CrossEntropy loss|  ![](examples/24_cel_no_weights.png)  |  ![](examples/24_cel_weights.png)  |
+|Focal loss       |  ![](examples/24_fl_no_weights.png)   |  ![](examples/24_fl_weights.png)   |
 
 In the 25-48 segment, the best pick was also made using a neural network with weights.
 There is a faulty channel with number 11, the presence of which did not affect the accuracy of the pick.
@@ -345,8 +341,8 @@ Picking on this channel may either not be performed, or performed with interpola
 
 | Traces 49 - 72  | Weights = (1, 1, 1)                   | Weights = (0.004, 0.004, 0.992)    |
 |:----------------|:------------------------------------- |:-----------------------------------|
-|CrossEntropy loss|  ![](legacy/examples/48_cel_no_weights.png)  |  ![](legacy/examples/48_cel_weights.png)  |
-|Focal loss       |  ![](legacy/examples/48_fl_no_weights.png)   |  ![](legacy/examples/48_fl_weights.png)   |
+|CrossEntropy loss|  ![](examples/48_cel_no_weights.png)  |  ![](examples/48_cel_weights.png)  |
+|Focal loss       |  ![](examples/48_fl_no_weights.png)   |  ![](examples/48_fl_weights.png)   |
 
 On segment 3 (traces 49 - 72), there are a lot of features that can complicate the pick. Firstly, t
 races 1 to 9 contain a sync pulse at the beginning, which was successfully ignored during a picking.
@@ -359,8 +355,8 @@ is still well picked by a neural network with weights.
 
 | Traces 73 - 96  | Weights = (1, 1, 1)                   | Weights = (0.004, 0.004, 0.992)    |
 |:----------------|:------------------------------------- |:-----------------------------------|
-|CrossEntropy loss|  ![](legacy/examples/72_cel_no_weights.png)  |  ![](legacy/examples/72_cel_weights.png)  |
-|Focal loss       |  ![](legacy/examples/72_fl_no_weights.png)   |  ![](legacy/examples/72_fl_weights.png)   |
+|CrossEntropy loss|  ![](examples/72_cel_no_weights.png)  |  ![](examples/72_cel_weights.png)  |
+|Focal loss       |  ![](examples/72_fl_no_weights.png)   |  ![](examples/72_fl_weights.png)   |
 
 The last segment (73 - 96) contains many traces with high noise before the first arrivals.
 At the same time, neural networks with weights very accurately picked these traces.
@@ -369,7 +365,7 @@ However, without the use of weights, it is accurate.
 
 We present the error vector for the entire seismogram:
 
-![](legacy/examples/summary_results.png)
+![](examples/summary_results.png)
 
 #### Data transformations for generalization
 
@@ -380,7 +376,7 @@ The training parameters are the same as in the previous section. The Focal loss 
 
 |                                          |                                          |
 |:---------------------------------------- |:---------------------------------------- |
-|  ![](legacy/examples/without_absorp_sine_1.png) |  ![](legacy/examples/without_absorp_sine_2.png) |
+|  ![](examples/without_absorp_sine_1.png) |  ![](examples/without_absorp_sine_2.png) |
 
 The figure on the left shows that trace 7 is incorrectly segmented, due to there is no
 low-period interference in the training. It also distorts the segmentation of adjacent traces.
