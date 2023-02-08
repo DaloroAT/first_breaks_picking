@@ -5,8 +5,8 @@ from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from headers import FileHeaders, TraceHeaders
 
+from first_breaks.sgy.headers import FileHeaders, TraceHeaders
 from first_breaks.const import PROJECT_ROOT
 from first_breaks.utils.utils import chunk_iterable
 
