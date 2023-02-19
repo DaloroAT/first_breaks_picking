@@ -1,3 +1,4 @@
+import io
 import struct
 from pathlib import Path
 from struct import unpack
@@ -5,10 +6,10 @@ from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from headers import FileHeaders, TraceHeaders
+from first_breaks.sgy.headers import FileHeaders, TraceHeaders
 
 from first_breaks.const import PROJECT_ROOT
-from first_breaks.utils.utils import chunk_iterable
+from first_breaks.utils.utils import chunk_iterable, get_io, calc_hash
 
 
 class NotImplementedReader(Exception):
@@ -27,12 +28,8 @@ SizeHW = Tuple[int, int]
 
 
 class SGY:
-    def __init__(self, fname: Union[str, Path]):
-        fname = Path(fname).resolve()
-        if not fname.exists():
-            raise FileNotFoundError("There is no file: ", str(fname))
-
-        self.fname = fname
+    def __init__(self, source: Union[str, Path, bytes]):
+        self.descriptor = get_io(source, mode='rb')
 
         self.endianess: Optional[str] = None
         self.num_bytes: Optional[int] = None
@@ -55,6 +52,13 @@ class SGY:
 
         self.check_headers()
 
+    @property
+    def content_hash(self) -> str:
+        return calc_hash(self.descriptor)
+
+    def __hash__(self) -> int:
+        return hash(self.content_hash)
+
     def check_headers(self) -> None:
         problems = []
         if self._ns < 1:
@@ -72,13 +76,21 @@ class SGY:
             message = f'Invalid headers of SGY. Problems: {", ".join(problems)}.'
             raise InvalidSGY(message)
 
+    @property
+    def ns(self) -> int:
+        return self._ns
+
+    @property
+    def dt(self) -> int:
+        return self._dt
+
+    @property
     def shape(self) -> SizeHW:
         return self._ns, self._ntr
 
     def get_endianess(self) -> str:
-        with open(self.fname, "rb") as file_io:
-            file_io.seek(3224)
-            value = file_io.read(2)
+        self.descriptor.seek(3224)
+        value = self.descriptor.read(2)
 
         big = struct.unpack(">H", value)[0]
         little = struct.unpack("<H", value)[0]
@@ -90,13 +102,12 @@ class SGY:
 
     def read_general_headers(self) -> None:
         gen_headers = {}
-        with open(self.fname, "rb") as file_io:
-            for pointer, name, fmt in self._general_headers_info.headers:
-                file_io.seek(pointer)
-                size = self._general_headers_info.get_num_bytes(fmt)
-                gen_headers[name] = unpack(f"{self.endianess}{fmt}", file_io.read(size))[0]
+        for pointer, name, fmt in self._general_headers_info.headers:
+            self.descriptor.seek(pointer)
+            size = self._general_headers_info.get_num_bytes(fmt)
+            gen_headers[name] = unpack(f"{self.endianess}{fmt}", self.descriptor.read(size))[0]
 
-            self.num_bytes = file_io.seek(0, 2)
+        self.num_bytes = self.descriptor.seek(0, 2)
 
         self._general_headers = gen_headers
 
@@ -125,16 +136,15 @@ class SGY:
     def read_traces_headers(self) -> None:
         traces_headers = {}
 
-        with open(self.fname, "rb") as file_io:
-            for offset, name, fmt in self._traces_headers_info.headers:
-                size = self._traces_headers_info.get_num_bytes(fmt)
-                buffer = []
-                for idx in range(self._ntr):
-                    pointer = 3600 + (240 + self._ns * self._bps) * idx + offset
-                    file_io.seek(pointer)
-                    buffer.append(file_io.read(size))
+        for offset, name, fmt in self._traces_headers_info.headers:
+            size = self._traces_headers_info.get_num_bytes(fmt)
+            buffer = []
+            for idx in range(self._ntr):
+                pointer = 3600 + (240 + self._ns * self._bps) * idx + offset
+                self.descriptor.seek(pointer)
+                buffer.append(self.descriptor.read(size))
 
-                traces_headers[name] = unpack(f"{self.endianess}{fmt * self._ntr}", b"".join(buffer))
+            traces_headers[name] = unpack(f"{self.endianess}{fmt * self._ntr}", b"".join(buffer))
 
         self._traces_headers_df = pd.DataFrame(data=traces_headers)
 
@@ -178,13 +188,12 @@ class SGY:
         if len(ids) == 0:
             raise ValueError("The requested IDs were not found in the file")
 
-        with open(self.fname, "rb") as file_io:
-            buffer = []
+        buffer = []
 
-            for idx in ids:
-                pointer = 3600 + 240 + (240 + self._ns * self._bps) * idx + min_sample
-                file_io.seek(pointer)
-                buffer.append(file_io.read(len_slice * self._bps))
+        for idx in ids:
+            pointer = 3600 + 240 + (240 + self._ns * self._bps) * idx + min_sample
+            self.descriptor.seek(pointer)
+            buffer.append(self.descriptor.read(len_slice * self._bps))
 
         buffer_tr = b"".join(buffer)
         traces = self._read_traces_from_buffer(buffer_tr, (len_slice, len(ids)))
@@ -249,20 +258,11 @@ class SGY:
         return np.ndarray(shape, f"{self.endianess}f8", buffer, order="F")
 
     def disp_load_info(self) -> None:
-        print("\nFile path: %s" % self.fname)
         print("Number of data per trace: %s" % self._ns)
         print("dt: %s ms" % (self._dt / 1000))
         print("Number of traces: %s" % self._ntr)
         print("Trace format: %s" % self._data_fmt)
         print("Bytes per sample: %s\n" % self._bps)
-
-    @property
-    def ns(self) -> int:
-        return self._ns
-
-    @property
-    def dt(self) -> int:
-        return self._dt
 
 
 # class SGYPicks(SGY):
@@ -292,5 +292,9 @@ class SGY:
 
 
 if __name__ == "__main__":
+    from first_breaks.utils.visualizations import plotseis
     sgy = SGY(PROJECT_ROOT / "data/real_gather.sgy")
+
+    print(sgy.content_hash)
     gather = sgy.read()
+    plotseis(gather, normalizing='indiv', ampl=0.5)
