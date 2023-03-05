@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
     # technical things
     version="0.0.1",
-    packages=find_packages(),
+    packages=find_packages(exclude=['data', 'docs', 'legacy']),
     python_requires=">=3.7,<4.0",
     # general information
     name="first-breaks-picking",

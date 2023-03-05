@@ -45,6 +45,8 @@ Some receivers may have the wrong polarity, so you can specify which traces shou
 will be applied on the gathers level. For example, if you have 96 traces, `Traces per gather` = 48 and
 `List of traces to inverse` = (2, 30, 48), then traces (2, 3, 48, 50, 78, 96) will be inversed.
 
+Trace indexing starts at 1.
+
 ## Recommendations
 You can receive predictions for any file with any parameters, but to get a better result, you should comply with the 
 following guidelines:
