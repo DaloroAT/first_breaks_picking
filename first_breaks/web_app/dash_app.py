@@ -48,7 +48,7 @@ app.layout = html.Div([
     html.Div(id='id-123-print-widget'),
     dcc.Checklist(id='id-123-toogle-widget', options=['Use GL'], value=[]),
     # dcc.Graph(id='id-123-plot-widget', figure=blank_fig(), config={'staticPlot': True}),
-dcc.Graph(id='id-123-plot-widget', figure=view(SGY(DEMO_SGY), use_gl=False)),
+dcc.Graph(id='id-123-plot-widget', figure=view(SGY(DEMO_SGY), use_gl=True)),
     dcc.Store(id='id-123-store')
 ])
 

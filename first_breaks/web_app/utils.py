@@ -161,10 +161,10 @@ def view(sgy: SGY, amplification: float = 1, clip: float = 0.9, height: int = 80
     shift = 1
     print(use_gl)
     plot_func = go.Scattergl if use_gl else go.Scatter
-    # traces = np.array(sgy.read()[:50, 20][:, None], dtype=np.float32)
+    traces = np.array(sgy.read()[:50, 20][:, None], dtype=np.float32)
 
-    traces = sgy.read()
-    traces = np.array(traces, dtype=np.float32)
+    # traces = sgy.read()
+    # traces = np.array(traces, dtype=np.float32)
     traces = traces / np.mean(np.abs(traces), 0)
 
     traces[0, :] = 0
@@ -176,31 +176,31 @@ def view(sgy: SGY, amplification: float = 1, clip: float = 0.9, height: int = 80
 
     num_samples, num_traces = traces.shape
     t = np.arange(0, num_samples) * sgy.dt / 1e3
-    layout = Layout(
-        paper_bgcolor='rgb(255, 255, 255)',
-        plot_bgcolor='rgb(255, 255, 255)',
-        hovermode=False,
-        xaxis={'range': [- shift, shift * (num_traces + 1)]},
-        yaxis={'range': [t[0], t[-1]]},
-        # height=height
-    )
-    fig = go.Figure(layout=layout)
+    # layout = Layout(
+    #     paper_bgcolor='rgb(255, 255, 255)',
+    #     plot_bgcolor='rgb(255, 255, 255)',
+    #     hovermode=False,
+    #     xaxis={'range': [- shift, shift * (num_traces + 1)]},
+    #     yaxis={'range': [t[0], t[-1]]},
+    #     # height=height
+    # )
+    # fig = go.Figure(layout=layout)
     # fig = FigureResampler(go.Figure(layout=layout))
-    # fig = go.Figure()
+    fig = go.Figure()
 
     if use_wiggle:
         for idx in range(traces.shape[1]):
             trace_shifted = traces[:, idx] + idx * shift
-            # trace_shifted = np.random.normal(size=(len(t)))
-            # trace_shifted[0] = 0.0
-            # trace_shifted[-1] = 0.0
+            trace_shifted = np.random.normal(size=(len(t)))
+            trace_shifted[0] = 0.0
+            trace_shifted[-1] = 0.0
+            trace_shifted = - trace_shifted
             # t[0] = np.nan
             # t[-1] = np.nan
             fig.add_trace(
-                plot_func(fill='toself', line=dict(color='rgb(0, 0, 0)'), fillcolor='rgb(0, 0, 0)', mode='lines',
-                          x = trace_shifted, y = t,
-                          orientation='h'),
-                # hf_x=trace_shifted, hf_y=t
+                plot_func(fill='toself',
+                          # line=dict(color='rgb(0, 0, 0)'), fillcolor='rgb(0, 0, 0)', mode='lines',
+                          x = trace_shifted, y = t,),
             )
             # x = trace_shifted, y = t,
             # fig.add_trace(
@@ -218,11 +218,9 @@ def view(sgy: SGY, amplification: float = 1, clip: float = 0.9, height: int = 80
             # )
 
             fig.add_trace(
-                plot_func(line=dict(color='rgb(0, 0, 0)'), mode='lines', showlegend=False,
-                          x=trace_shifted, y=t,
-                          orientation='h'
-                          ),
-                # hf_x=trace_shifted, hf_y=t
+                plot_func(
+                    # line=dict(color='rgb(0, 0, 0)'), mode='lines', showlegend=False,
+                          x=trace_shifted, y=t,),
             )
 
     t_tick = np.repeat(np.array([t[0], t[-2], t[-2]])[:, None], num_traces, axis=1)
@@ -251,8 +249,8 @@ def view(sgy: SGY, amplification: float = 1, clip: float = 0.9, height: int = 80
     #               showlegend=False)
     # )
 
-    fig.update_traces(showlegend=False)
-    fig.update_layout(xaxis={'fixedrange': False, "range": [-shift, num_traces * shift], 'side': 'top'},
-                      yaxis={'fixedrange': False, "range": [min(t), max(t)], 'autorange': 'reversed', "title_text": "ms"},
-                      showlegend=False)
+    # fig.update_traces(showlegend=False)
+    # fig.update_layout(xaxis={'fixedrange': False, "range": [-shift, num_traces * shift], 'side': 'top'},
+    #                   yaxis={'fixedrange': False, "range": [min(t), max(t)], 'autorange': 'reversed', "title_text": "ms"},
+    #                   showlegend=False)
     return fig
