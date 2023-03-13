@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torch import cdist
@@ -5,7 +6,7 @@ from torch.optim import Adam
 from tqdm import tqdm
 
 
-def visualize_maps(x_vec, z_vec, model, x0, z0, device):
+def visualize_maps(x_vec, z_vec, model, x0, z0, device, max_vel=None):
     x_min, x_max = x_vec.min().item(), x_vec.max().item()
     z_min, z_max = z_vec.min().item(), z_vec.max().item()
     x_vec = x_vec.clone().float().to(device)
@@ -21,6 +22,8 @@ def visualize_maps(x_vec, z_vec, model, x0, z0, device):
                              receiver.clone().requires_grad_(True)).detach().squeeze().cpu().numpy()
 
     vel_map = vel.reshape((len(x_vec), len(z_vec)), order='F')
+    if max_vel:
+        vel_map = np.clip(vel_map, 0, max_vel)
 
     time = model(source.clone().requires_grad_(True),
                  receiver.clone().requires_grad_(True)).detach().squeeze().cpu().numpy()
@@ -111,7 +114,8 @@ def train(model_arg, num_grid_arg, num_epochs_arg, lr_arg, title_arg, dim_arg, d
 
         s_train_inp = s_train.clone().requires_grad_(True)
         r_train_inp = r_train.clone().requires_grad_(True)
-        weights_train_inp = weights_train.clone()
+        # weights_train_inp = weights_train.clone()
+        weights_train_inp = None
 
         loss = model_arg.loss(s_train_inp, r_train_inp, weights_train_inp)['loss']
 

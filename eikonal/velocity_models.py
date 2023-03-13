@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 
 class VelocityBase(nn.Module):
+    @torch.no_grad()
     def plot_vertical(self, z_min, z_max, n=1000):
         points = torch.zeros(n, 2)
         points[:, -1] = torch.linspace(z_min, z_max, len(points))
@@ -21,6 +22,7 @@ class VelocityConst(VelocityBase):
         super(VelocityConst, self).__init__()
         self.model = nn.Parameter(torch.tensor([v], dtype=torch.float), requires_grad=False)
 
+    @torch.no_grad()
     def forward(self, point):
         outp = self.model.repeat(len(point)).view(-1, 1)
         return outp
@@ -43,6 +45,7 @@ class VelocityVerticalLayers(VelocityBase):
             smoothing = (depth[1:] - depth[0:-1]).min() / 50
         self.smoothing = smoothing
 
+    @torch.no_grad()
     def forward(self, point):
         z = point[:, -1]
         output = []
@@ -73,6 +76,7 @@ class VelocityVerticalGrad(VelocityBase):
         self.vel_model = nn.Parameter(vel, requires_grad=False)
         self.depth_model = nn.Parameter(depth, requires_grad=False)
 
+    @torch.no_grad()
     def forward(self, point):
         z = point[:, -1]
         k = (self.vel_model[1] - self.vel_model[0]) / (self.depth_model[1] - self.depth_model[0])

@@ -44,7 +44,8 @@ class TauNew(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_inner_layers = num_inner_layers
         self.num_blocks = num_blocks
-        self.act = nn.Tanhshrink()
+        # self.act = nn.Tanhshrink()
+        self.act = nn.ELU()
         self.dropout = dropout
 
         mlp_kwargs = {"in_dim": self.dim,
