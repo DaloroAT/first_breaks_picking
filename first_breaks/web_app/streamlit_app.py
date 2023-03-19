@@ -3,7 +3,7 @@ from typing import Optional, List
 
 import pandas as pd
 
-from first_breaks.app.utils import read_markdown
+from first_breaks.web_app.utils import read_markdown
 from first_breaks.const import PROJECT_ROOT
 from first_breaks.sgy.reader import SGY
 import plotly.graph_objects as go
@@ -126,7 +126,7 @@ def app():
     sgy = SGY(PROJECT_ROOT / 'data/real_gather.sgy')
 
     with st.sidebar.expander("Visualization settings"):
-        amplification = st.number_input("Amplification", value=1., step=0.2, format="%.1f")
+        amplification = st.number_input("Amplification", value=1., step=0.5, format="%.1f")
         clip = st.number_input("Clip", value=1., min_value=0., step=0.2, format="%.1f")
         height = st.number_input("Height", format="%d", step=50, min_value=800, max_value=2000)
         grid = st.checkbox("Traces grid", value=True)
