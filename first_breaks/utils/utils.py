@@ -4,6 +4,8 @@ from itertools import islice
 from pathlib import Path
 from typing import Any, Iterable, List, Tuple, Union
 
+import requests
+
 
 def chunk_iterable(it: Iterable[Any], size: int) -> List[Tuple[Any, ...]]:
     it = iter(it)
@@ -31,3 +33,13 @@ def calc_hash(source: Union[Path, str, bytes, io.RawIOBase]) -> str:
     for chunk in iter(lambda: source.read(4096), b""):
         hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+
+def get_demo_sgy(
+        url: str = 'https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/data/real_gather.sgy'
+) -> bytes:
+    response = requests.get(url, timeout=10)
+    if response.status_code != 200:
+        response.raise_for_status()
+    else:
+        return response.content
