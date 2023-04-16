@@ -140,7 +140,7 @@ class PickerONNX:
 
         self.callback_processing_started()
 
-        for step, gather_ids in enumerate(chunk_iterable(list(range(ntr)), task.traces_per_gather)):
+        for step, gather_ids in enumerate(chunk_iterable(list(range(ntr)), task.traces_per_gather_parsed)):
             self.callback_step_started(step)
 
             amplitudes = np.array([-1 if idx in task.traces_to_inverse else 1 for idx in range(len(gather_ids))],

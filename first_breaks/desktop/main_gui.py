@@ -10,7 +10,8 @@ from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QTo
     QDesktopWidget, QProgressBar, QHBoxLayout
 
 from first_breaks.const import CKPT_HASH
-from first_breaks.desktop.extra_widgets import WarnBox
+from first_breaks.desktop.picking_widget import PickingWindow
+from first_breaks.desktop.warn_widget import WarnBox
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.threads import InitNet, PickerQRunnable
 from first_breaks.picker.picker import PickerONNX, Task
@@ -121,7 +122,12 @@ class MainWindow(QMainWindow):
 
         # graph widget
         self.graph = GraphWidget(background='w')
+        self.graph.hide()
         self.setCentralWidget(self.graph)
+
+        # picking widget
+        self.picking = PickingWindow()
+        self.picking.hide()
 
         # placeholders
         self.sgy = None
@@ -135,12 +141,6 @@ class MainWindow(QMainWindow):
         self.threadpool = QThreadPool()
         # self.threadpool.setMaxThreadCount(2)
 
-        print(
-            "Multithreading with maximum %d threads"
-            % self.threadpool.maxThreadCount()
-        )
-
-        self.graph.hide()
         self.show()
 
     def _thread_init_net(self, weights: Union[str, Path]):
