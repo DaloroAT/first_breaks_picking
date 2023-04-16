@@ -19,7 +19,7 @@ class WarnBox(QDialog):
         self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox.accepted.connect(self.accept)
         error_label = QLabel(message)
-        error_label.setTextInteractionFlags(Qt.LinksAccessibleByMouse|Qt.TextSelectableByMouse)
+        error_label.setTextInteractionFlags(Qt.LinksAccessibleByMouse | Qt.TextSelectableByMouse)
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(error_label)

@@ -1,6 +1,6 @@
 from math import ceil
 from pathlib import Path
-from typing import Sequence, Union, List, Tuple, Any
+from typing import Sequence, Union, Tuple, Any
 
 import numpy as np
 
@@ -20,25 +20,29 @@ class Task:
                  traces_per_gather: int = 24,
                  maximum_time: float = 0.0,
                  traces_to_inverse: Sequence[int] = (),
-                 minimum_traces_per_gather: int = 1):
+                 minimum_traces_per_gather: int = 1,
+                 gain: float = 1,
+                 clip: float = 1):
         self.sgy = sgy if isinstance(sgy, SGY) else SGY(sgy)
 
         self.traces_per_gather = traces_per_gather
         self.maximum_time = maximum_time
         self.traces_to_inverse = traces_to_inverse
         self.minimum_traces_per_gather = minimum_traces_per_gather
+        self.gain = gain
+        self.clip = clip
 
         self.traces_per_gather_parsed = self.validate_and_parse_traces_per_gather(traces_per_gather)
         self.maximum_time_parsed = self.validate_and_parse_maximum_time(maximum_time)
         self.traces_to_inverse_parsed = self.validate_and_parse_traces_to_inverse(traces_to_inverse)
+        self.gain_parsed = self.validate_and_parse_gain(gain)
+        self.clip_parsed = self.validate_and_parse_clip(clip)
 
-    def __hash__(self):
-        hash_value = ''
-        for val in [self.sgy, self.traces_per_gather_parsed, self.maximum_time_parsed]:
-            hash_value += str(hash(val))
-
-        hash_value += str(hash(str(self.traces_to_inverse_parsed)))
-        return hash(hash_value)
+        self.picks = None
+        self.is_ms = None
+        self.confidence = None
+        self.success = None
+        self.error_message = None
 
     def validate_and_parse_traces_per_gather(self, traces_per_gather: int) -> int:
         if not isinstance(traces_per_gather, int):
@@ -77,17 +81,33 @@ class Task:
 
         return traces_to_inverse
 
+    @staticmethod
+    def validate_and_parse_gain(gain: float) -> float:
+        if not isinstance(gain, (int, float)):
+            raise ProcessingParametersException("`gain` must be real")
+        if gain == 0:
+            raise ProcessingParametersException("`gain` must not be zero")
+        return float(gain)
+
+    @staticmethod
+    def validate_and_parse_clip(clip: float) -> float:
+        if not isinstance(clip, (int, float)):
+            raise ProcessingParametersException("`clip` must be real")
+        if clip <= 0:
+            raise ProcessingParametersException("`clip` must be positive")
+        return float(clip)
+
     @property
     def num_batches(self) -> int:
         return ceil(self.sgy.shape[1] / self.traces_per_gather_parsed)
 
 
-def preprocess_gather(data: np.ndarray) -> np.ndarray:
+def preprocess_gather(data: np.ndarray, gain: float = 1.0, clip: float = 1.0) -> np.ndarray:
     data = data.copy()
     norma = np.mean(np.abs(data), axis=0)
     norma[np.abs(norma) < 1e-9 * np.max(np.abs(norma))] = 1
-    data = data / norma
-    return np.clip(data, -1, 1)
+    data = data / norma * gain
+    return np.clip(data, -clip, clip)
 
 
 class PickerONNX:
@@ -112,7 +132,7 @@ class PickerONNX:
         outputs = self.model.run(None, {"input": gather[None, None, ...]})
         return outputs[0][0], outputs[1][0]
 
-    def process_task(self, task: Task, return_picks_in_ms: bool = False) -> Tuple[List[float], List[float]]:
+    def process_task(self, task: Task, return_picks_in_ms: bool = False) -> Task:
         ntr = task.sgy.shape[1]
 
         task_picks = []
@@ -128,7 +148,7 @@ class PickerONNX:
 
             gather = task.sgy.read_traces_by_ids(gather_ids)
 
-            gather = preprocess_gather(gather)
+            gather = preprocess_gather(gather, task.gain, task.clip)
             gather = amplitudes[None, :] * gather
             gather = gather[:task.maximum_time_parsed, :]
 
@@ -144,4 +164,9 @@ class PickerONNX:
 
         self.callback_processing_finished()
 
-        return task_picks, task_confidence
+        task.is_ms = return_picks_in_ms
+        task.success = True
+        task.picks = task_picks
+        task.confidence = task_confidence
+
+        return task
