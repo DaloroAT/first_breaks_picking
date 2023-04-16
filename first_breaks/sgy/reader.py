@@ -52,6 +52,10 @@ class SGY:
 
         self.check_headers()
 
+    def get_bytes(self) -> bytes:
+        self.descriptor.seek(0)
+        return self.descriptor.read()
+
     @property
     def content_hash(self) -> str:
         return calc_hash(self.descriptor)

@@ -32,8 +32,13 @@ class Task:
         self.maximum_time_parsed = self.validate_and_parse_maximum_time(maximum_time)
         self.traces_to_inverse_parsed = self.validate_and_parse_traces_to_inverse(traces_to_inverse)
 
-        print(self.traces_per_gather_parsed, self.maximum_time_parsed, self.traces_to_inverse_parsed)
-        print(self.num_batches)
+    def __hash__(self):
+        hash_value = ''
+        for val in [self.sgy, self.traces_per_gather_parsed, self.maximum_time_parsed]:
+            hash_value += str(hash(val))
+
+        hash_value += str(hash(str(self.traces_to_inverse_parsed)))
+        return hash(hash_value)
 
     def validate_and_parse_traces_per_gather(self, traces_per_gather: int) -> int:
         if not isinstance(traces_per_gather, int):
