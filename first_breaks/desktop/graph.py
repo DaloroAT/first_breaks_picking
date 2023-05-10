@@ -33,6 +33,7 @@ class GraphWidget(pg.PlotWidget):
         y_ax.setTickFont(font)
 
         self.sgy = None
+        self.picks_as_item = None
 
     def plotseis_sgy(self,
                      fname: Path,
@@ -100,13 +101,16 @@ class GraphWidget(pg.PlotWidget):
         self.addItem(item)
 
     def plot_picks(self, task: Task):
+        if self.picks_as_item:
+            self.removeItem(self.picks_as_item)
+
         num_traces = self.sgy.shape[1]
         picks = np.array(task.picks)
         ids = np.arange(num_traces) + 1
 
         path = pg.arrayToQPath(ids, picks, np.ones(num_traces, dtype=np.int32))
-        item = pg.QtWidgets.QGraphicsPathItem(path)
+        self.picks_as_item = pg.QtWidgets.QGraphicsPathItem(path)
 
         pen = pg.mkPen(color=(255, 0, 0), width=3)
-        item.setPen(pen)
-        self.addItem(item)
+        self.picks_as_item.setPen(pen)
+        self.addItem(self.picks_as_item)

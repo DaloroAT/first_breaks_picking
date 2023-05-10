@@ -1,4 +1,8 @@
-numpy==1.24.1
-torch==1.13.0
-matplotlib==3.6.3
-pandas==1.5.3
+# Dependencies is not fixed due to repo refactoring
+requests
+numpy
+pandas
+matplotlib
+PyQt5
+onnxruntime
+pyqtgraph

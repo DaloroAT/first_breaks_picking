@@ -2,12 +2,12 @@ import sys
 import time
 import warnings
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 
 from PyQt5.QtCore import QSize, QThreadPool
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QToolBar, QAction, QFileDialog, QLabel, \
-    QDesktopWidget, QProgressBar, QHBoxLayout
+    QDesktopWidget, QProgressBar, QHBoxLayout, QStyle
 
 from first_breaks.const import CKPT_HASH
 from first_breaks.desktop.picking_widget import PickingWindow
@@ -52,6 +52,10 @@ class MainWindow(QMainWindow):
         else:
             self.main_folder = Path(__file__).parent
 
+        self.folder_for_opening = Path(__file__).parent.parent.parent / 'data'
+
+        print(self.folder_for_opening)
+
         # main window settings
         left = 100
         top = 100
@@ -72,26 +76,32 @@ class MainWindow(QMainWindow):
         self.addToolBar(toolbar)
 
         # buttons on toolbar
-        self.button_load_nn = QAction(QIcon(str(self.main_folder / "icons" / "nn.png")), "Load model", self)
+        icon_load_nn = self.style().standardIcon(QStyle.SP_ComputerIcon)
+        # icon_load_nn = QIcon(str(self.main_folder / "icons" / "nn.png"))
+        self.button_load_nn = QAction(icon_load_nn, "Load model", self)
         self.button_load_nn.triggered.connect(self.load_nn)
         self.button_load_nn.setEnabled(True)
         toolbar.addAction(self.button_load_nn)
 
-        self.button_get_filename = QAction(QIcon(str(self.main_folder / "icons" / "sgy.png")), "Open SGY-file", self)
+        icon_get_filename = self.style().standardIcon(QStyle.SP_DirIcon)
+        # icon_get_filename = QIcon(str(self.main_folder / "icons" / "sgy.png"))
+        self.button_get_filename = QAction(icon_get_filename, "Open SGY-file", self)
         self.button_get_filename.triggered.connect(self.get_filename)
         self.button_get_filename.setEnabled(True)
         toolbar.addAction(self.button_get_filename)
 
         toolbar.addSeparator()
 
-        self.button_fb = QAction(QIcon(str(self.main_folder / "icons" / "picking.png")), "Neural network FB picking",
-                                 self)
+        icon_fb = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
+        # icon_fb = QIcon(str(self.main_folder / "icons" / "picking.png"))
+        self.button_fb = QAction(icon_fb, "Neural network FB picking", self)
         self.button_fb.triggered.connect(self.calc_fb)
         self.button_fb.setEnabled(False)
         toolbar.addAction(self.button_fb)
 
-        self.button_export = QAction(QIcon(str(self.main_folder / "icons" / "export.png")), "Export picks to file",
-                                     self)
+        icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
+        # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
+        self.button_export = QAction(icon_export, "Export picks to file", self)
         # self.button_export.triggered.connect(self.export)
         self.button_export.setEnabled(False)
         toolbar.addAction(self.button_export)
@@ -137,9 +147,14 @@ class MainWindow(QMainWindow):
         self.picker: Optional[PickerONNX] = None
         self.start_time = None
         self.end_time = None
+        self.last_task = None
+        self.settings = None
 
         self.threadpool = QThreadPool()
         # self.threadpool.setMaxThreadCount(2)
+
+        self.load_nn(str(self.folder_for_opening / 'fb.onnx'))
+        self.get_filename(str(self.folder_for_opening / 'real_gather.sgy'))
 
         self.show()
 
@@ -151,10 +166,33 @@ class MainWindow(QMainWindow):
     def init_net(self, picker: PickerONNX):
         self.picker = picker
 
+    def update_task(self, task: Task):
+        self.last_task = task
+
+    def receive_settings(self, settings: Dict[str, Any]):
+        self.settings = settings
+
     def calc_fb(self):
+        settings = PickingWindow(self.last_task)
+        settings.export_settings_signal.connect(self.receive_settings)
+        settings.exec_()
+
+        if not self.settings:
+            return
+
+        try:
+            task = Task(self.sgy, **self.settings)
+            self.process_task(task)
+            self.last_task = task
+        except Exception as e:
+            window_err = WarnBox(self,
+                                 title=e.__class__.__name__,
+                                 message=str(e))
+            window_err.exec_()
+
+    def process_task(self, task: Task):
         self.button_fb.setEnabled(False)
         self.button_get_filename.setEnabled(False)
-        task = Task(sgy=self.fn, traces_per_gather=2)
         worker = PickerQRunnable(self.picker, task)
         worker.signals.started.connect(self.start_fb)
         worker.signals.result.connect(self.result_fb)
@@ -211,9 +249,13 @@ class MainWindow(QMainWindow):
             self.button_fb.setEnabled(True)
             self.status_message.setText('Click on picking to start processing')
 
-    def load_nn(self):
-        options = QFileDialog.Options()
-        filename, _ = QFileDialog.getOpenFileName(self, "Select file with NN weights", options=options)
+    def load_nn(self, filename: Optional[str] = None):
+        if not filename:
+            options = QFileDialog.Options()
+            filename, _ = QFileDialog.getOpenFileName(self,
+                                                      "Select file with NN weights",
+                                                      directory=str(self.folder_for_opening),
+                                                      options=options)
 
         if filename:
             if FileState.get_file_state(filename, CKPT_HASH) == FileState.valid_file:
@@ -235,13 +277,18 @@ class MainWindow(QMainWindow):
                                              "Download the file according to the manual and select it.")
                 window_err.exec_()
 
-    def get_filename(self):
-        options = QFileDialog.Options()
-        filename, _ = QFileDialog.getOpenFileName(self, "Open SGY-file", "",
-                                                  "SGY-file (*.sgy)", options=options)
+    def get_filename(self, filename: Optional[str] = None):
+        if not filename:
+            options = QFileDialog.Options()
+            filename, _ = QFileDialog.getOpenFileName(self,
+                                                      "Open SGY-file",
+                                                      directory=str(self.folder_for_opening),
+                                                      filter="SGY-file (*.sgy)",
+                                                      options=options)
         if filename:
             self.fn = Path(filename)
             self.picks = None
+            self.last_task = None
             self.show_sgy()
 
             self.ready_to_process.sgy_selected = True

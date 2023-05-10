@@ -139,3 +139,5 @@ dmypy.json
 
 # Network file system cache
 .nfs*
+
+fb.onnx
