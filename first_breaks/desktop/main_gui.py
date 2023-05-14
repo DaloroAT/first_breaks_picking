@@ -4,10 +4,10 @@ import warnings
 from pathlib import Path
 from typing import Optional, Union, Dict, Any
 
-from PyQt5.QtCore import QSize, QThreadPool
+from PyQt5.QtCore import QSize, QThreadPool, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QToolBar, QAction, QFileDialog, QLabel, \
-    QDesktopWidget, QProgressBar, QHBoxLayout, QStyle
+    QDesktopWidget, QProgressBar, QHBoxLayout, QStyle, QSlider
 
 from first_breaks.const import CKPT_HASH
 from first_breaks.desktop.picking_widget import PickingWindow
@@ -42,6 +42,20 @@ class ReadyToProcess:
         return (self.sgy_selected == self.model_loaded) is True
 
 
+class SliderConverter:
+    multiplier = 10
+
+    @classmethod
+    def slider2value(cls, slider_value: int) -> float:
+        a = slider_value / cls.multiplier
+        return a
+
+    @classmethod
+    def value2slider(cls, value: float) -> int:
+        a = int(cls.multiplier * value)
+        return a
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -53,8 +67,6 @@ class MainWindow(QMainWindow):
             self.main_folder = Path(__file__).parent
 
         self.folder_for_opening = Path(__file__).parent.parent.parent / 'data'
-
-        print(self.folder_for_opening)
 
         # main window settings
         left = 100
@@ -106,14 +118,48 @@ class MainWindow(QMainWindow):
         self.button_export.setEnabled(False)
         toolbar.addAction(self.button_export)
 
+        # icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
+        # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
+        # self.button_export = QAction(icon_export, "Export picks to file", self)
+        # self.button_export.triggered.connect(self.export)
+        # self.button_export.setEnabled(False)
+
+        toolbar.addSeparator()
+
+        default_gain_value = 1
+        self.gain_value = default_gain_value
+        self.gain_label = QLabel(str(default_gain_value))
+        self.slider_gain = QSlider(Qt.Horizontal)
+        self.slider_gain.setRange(SliderConverter.value2slider(-5), SliderConverter.value2slider(5))
+        self.slider_gain.setValue(SliderConverter.value2slider(1))
+        self.slider_gain.setSingleStep(SliderConverter.value2slider(0.1))
+        self.slider_gain.wheelEvent = lambda *args: args[-1].ignore()  # block scrolling with wheel
+        self.slider_gain.setMaximumWidth(150)
+        self.slider_gain.valueChanged.connect(self.gain_changed)
+        self.slider_gain.sliderReleased.connect(self.update_plot)
+        toolbar.addWidget(self.slider_gain)
+        toolbar.addWidget(self.gain_label)
+
+        self.need_processing_region = True
+        icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
+        # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
+        self.button_processing_show = QAction(icon_processing_show, "Show processing grid", self)
+        self.button_processing_show.triggered.connect(self.processing_region_changed)
+        self.button_processing_show.setChecked(self.need_processing_region)
+        self.button_processing_show.setEnabled(True)
+        self.button_processing_show.setCheckable(True)
+        if self.need_processing_region:
+            self.button_processing_show.toggle()
+        toolbar.addAction(self.button_processing_show)
+
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         toolbar.addWidget(spacer)
 
-        self.button_git = QAction(QIcon(str(self.main_folder / "icons" / "github.png")),
-                                  "Open Github repo with project", self)
+        # self.button_git = QAction(QIcon(str(self.main_folder / "icons" / "github.png")),
+        #                           "Open Github repo with project", self)
         # self.button_git.triggered.connect(self.open_github)
-        toolbar.addAction(self.button_git)
+        # toolbar.addAction(self.button_git)
 
         self.status = self.statusBar()
         self.status_progress = QProgressBar()
@@ -158,6 +204,16 @@ class MainWindow(QMainWindow):
 
         self.show()
 
+    def gain_changed(self, gain_from_slider: int):
+        self.gain_value = SliderConverter.slider2value(gain_from_slider)
+        self.gain_label.setText(str(self.gain_value))
+        # self.gain_value = gain_from_slider / 100
+        # self.gain_label.setText(f"{gain_from_slider}%")
+
+    def update_plot(self):
+        self.graph.plotseis_sgy(self.fn, amplification=self.gain_value, negative_patch=True, refresh_view=False)
+        self.show_processing_region()
+
     def _thread_init_net(self, weights: Union[str, Path]):
         worker = InitNet(weights)
         worker.signals.finished.connect(self.init_net)
@@ -166,7 +222,7 @@ class MainWindow(QMainWindow):
     def init_net(self, picker: PickerONNX):
         self.picker = picker
 
-    def update_task(self, task: Task):
+    def store_task(self, task: Task):
         self.last_task = task
 
     def receive_settings(self, settings: Dict[str, Any]):
@@ -183,7 +239,6 @@ class MainWindow(QMainWindow):
         try:
             task = Task(self.sgy, **self.settings)
             self.process_task(task)
-            self.last_task = task
         except Exception as e:
             window_err = WarnBox(self,
                                  title=e.__class__.__name__,
@@ -216,18 +271,35 @@ class MainWindow(QMainWindow):
         self.status_progress.setValue(value)
 
     def result_fb(self, result: Task):
-        self.end_time = time.perf_counter()
-        print(self.end_time - self.start_time,
-              (self.end_time - self.start_time) / result.num_batches,
-              result.num_batches)
+        self.store_task(result)
         if result.success:
-            self.graph.plot_picks(result)
+            self.graph.plot_picks(self.last_task.picks)
+            self.run_processing_region()
         else:
             window_error = WarnBox(self, title='InternalError', message=result.error_message)
             window_error.exec_()
 
         self.button_get_filename.setEnabled(True)
         self.button_fb.setEnabled(True)
+
+    def processing_region_changed(self, toggle: bool):
+        self.need_processing_region = toggle
+        self.run_processing_region()
+
+    def run_processing_region(self):
+        if self.need_processing_region:
+            self.show_processing_region()
+        else:
+            self.hide_processing_region()
+
+    def show_processing_region(self):
+        if self.last_task and self.last_task.success:
+            self.graph.plot_processing_region(self.last_task.traces_per_gather_parsed,
+                                              self.last_task.maximum_time_parsed)
+
+    def hide_processing_region(self):
+        if self.last_task and self.last_task.success:
+            self.graph.remove_processing_region()
 
     def show_sgy(self):
         try:

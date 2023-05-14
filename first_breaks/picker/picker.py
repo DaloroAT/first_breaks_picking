@@ -10,6 +10,9 @@ from first_breaks.utils.utils import chunk_iterable
 import onnxruntime as ort
 
 
+MINIMUM_TRACES_PER_GATHER = 2
+
+
 class ProcessingParametersException(Exception):
     pass
 
@@ -20,7 +23,6 @@ class Task:
                  traces_per_gather: int = 24,
                  maximum_time: float = 0.0,
                  traces_to_inverse: Sequence[int] = (),
-                 minimum_traces_per_gather: int = 1,
                  gain: float = 1,
                  clip: float = 1):
         self.sgy = sgy if isinstance(sgy, SGY) else SGY(sgy)
@@ -28,12 +30,12 @@ class Task:
         self.traces_per_gather = traces_per_gather
         self.maximum_time = maximum_time
         self.traces_to_inverse = traces_to_inverse
-        self.minimum_traces_per_gather = minimum_traces_per_gather
         self.gain = gain
         self.clip = clip
 
         self.traces_per_gather_parsed = self.validate_and_parse_traces_per_gather(traces_per_gather)
         self.maximum_time_parsed = self.validate_and_parse_maximum_time(maximum_time)
+        self.maximum_time_index = self._convert_maximum_time_to_index()
         self.traces_to_inverse_parsed = self.validate_and_parse_traces_to_inverse(traces_to_inverse)
         self.gain_parsed = self.validate_and_parse_gain(gain)
         self.clip_parsed = self.validate_and_parse_clip(clip)
@@ -44,28 +46,24 @@ class Task:
         self.success = None
         self.error_message = None
 
-    def validate_and_parse_traces_per_gather(self, traces_per_gather: int) -> int:
+    @classmethod
+    def validate_traces_per_gather(cls, traces_per_gather: int):
         if not isinstance(traces_per_gather, int):
             raise ProcessingParametersException("`traces_per_gather` must be integer")
-        if traces_per_gather < self.minimum_traces_per_gather:
+        if traces_per_gather < MINIMUM_TRACES_PER_GATHER:
             raise ProcessingParametersException(f"`traces_per_gather` must be greater or "
-                                                f"equal to {self.minimum_traces_per_gather}")
-        ntr = self.sgy.shape[1]
-        return min(ntr, traces_per_gather)
+                                                f"equal to {MINIMUM_TRACES_PER_GATHER}")
 
-    def validate_and_parse_maximum_time(self, maximum_time: float) -> int:
+    @classmethod
+    def validate_maximum_time(cls, maximum_time: float):
         if not isinstance(maximum_time, (int, float)):
             raise ProcessingParametersException("`maximum_time` must be real")
 
         if maximum_time < 0.0:
             raise ProcessingParametersException("`maximum_time` must be positive or equal to 0")
 
-        if maximum_time > 0.0:
-            maximum_time = int(maximum_time / (self.sgy.dt * 1e-3))
-
-        return maximum_time or self.sgy.shape[0]
-
-    def validate_and_parse_traces_to_inverse(self, traces_to_inverse: Sequence[int]) -> Sequence[int]:
+    @classmethod
+    def validate_traces_to_inverse(cls, traces_to_inverse: Sequence[int]):
         if not isinstance(traces_to_inverse, (tuple, list)):
             raise ProcessingParametersException("`traces_to_inverse` must be tuple or list")
 
@@ -75,27 +73,53 @@ class Task:
         if not all(val >= 1 for val in traces_to_inverse):
             raise ProcessingParametersException("Elements of `traces_to_inverse` must be greater or equal to 1")
 
-        # to python indices
-        traces_to_inverse = [tr - 1 for tr in traces_to_inverse if tr <= self.traces_per_gather_parsed]
-        traces_to_inverse = sorted(set(traces_to_inverse))
-
-        return traces_to_inverse
-
-    @staticmethod
-    def validate_and_parse_gain(gain: float) -> float:
+    @classmethod
+    def validate_gain(cls, gain: float):
         if not isinstance(gain, (int, float)):
             raise ProcessingParametersException("`gain` must be real")
         if gain == 0:
             raise ProcessingParametersException("`gain` must not be zero")
-        return float(gain)
 
-    @staticmethod
-    def validate_and_parse_clip(clip: float) -> float:
+    @classmethod
+    def validate_clip(cls, clip: float):
         if not isinstance(clip, (int, float)):
             raise ProcessingParametersException("`clip` must be real")
         if clip <= 0:
             raise ProcessingParametersException("`clip` must be positive")
+
+    def validate_and_parse_traces_per_gather(self, traces_per_gather: int) -> int:
+        self.validate_traces_per_gather(traces_per_gather)
+        ntr = self.sgy.shape[1]
+        return min(ntr, traces_per_gather)
+
+    def validate_and_parse_maximum_time(self, maximum_time: float) -> float:
+        self.validate_maximum_time(maximum_time)
+        if maximum_time > 0.0:
+            maximum_time = min(maximum_time, self.sgy.shape[0] * self.sgy.dt * 1e-3)
+        return maximum_time
+
+    def validate_and_parse_traces_to_inverse(self, traces_to_inverse: Sequence[int]) -> Sequence[int]:
+        self.validate_traces_to_inverse(traces_to_inverse)
+        # to python indices
+        traces_to_inverse = [tr - 1 for tr in traces_to_inverse if tr <= self.traces_per_gather_parsed]
+        traces_to_inverse = sorted(set(traces_to_inverse))
+        return traces_to_inverse
+
+    @classmethod
+    def validate_and_parse_gain(cls, gain: float) -> float:
+        cls.validate_gain(gain)
+        return float(gain)
+
+    @classmethod
+    def validate_and_parse_clip(cls, clip: float) -> float:
+        cls.validate_clip(clip)
         return float(clip)
+
+    def _convert_maximum_time_to_index(self) -> int:
+        if self.maximum_time_parsed == 0.0:
+            return self.sgy.shape[0]
+        else:
+            return int(self.maximum_time_parsed / (self.sgy.dt * 1e-3))
 
     @property
     def num_batches(self) -> int:
@@ -150,7 +174,7 @@ class PickerONNX:
 
             gather = preprocess_gather(gather, task.gain, task.clip)
             gather = amplitudes[None, :] * gather
-            gather = gather[:task.maximum_time_parsed, :]
+            gather = gather[:task.maximum_time_index, :]
 
             picks, confidence = self.pick_gather(gather)
 
