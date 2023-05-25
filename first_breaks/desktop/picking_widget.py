@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QTo
     QDesktopWidget, QProgressBar, QHBoxLayout, QDialogButtonBox, QSpinBox, QCheckBox, QDialog, QGridLayout, QLineEdit
 from pyqtgraph.Qt import QtGui
 
-from first_breaks.const import CKPT_HASH
+from first_breaks.const import MODEL_ONNX_HASH
 from first_breaks.desktop.warn_widget import WarnBox
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.threads import InitNet, PickerQRunnable

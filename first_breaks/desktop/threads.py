@@ -25,13 +25,13 @@ class PickerQRunnable(QRunnable):
         self.picker.callback_step_finished = self.callback_step_finished
         self.picker.callback_processing_started = self.callback_processing_started
 
-        self.len = task.num_batches
+        self.len = task.num_gathers
 
     def callback_step_finished(self, idx_batch: int):
         progress = int(100 * (idx_batch + 1) / self.len)
         self.signals.progress.emit(progress)
 
-    def callback_processing_started(self):
+    def callback_processing_started(self, length: int):
         self.signals.progress.emit(0)
         self.signals.message.emit('Picking')
 
@@ -65,5 +65,5 @@ class InitNet(QRunnable):
 
     @pyqtSlot()
     def run(self):
-        picker = PickerONNX(self.weights)
+        picker = PickerONNX(self.weights, show_progressbar=False)
         self.signals.finished.emit(picker)

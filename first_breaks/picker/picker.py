@@ -1,11 +1,11 @@
-from math import ceil
 from pathlib import Path
-from typing import Sequence, Union, Tuple, Any
+from typing import Sequence, Union, Tuple, Any, Optional, List
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import chunk_iterable
+from first_breaks.utils.utils import chunk_iterable, download_model_onnx
 
 import onnxruntime as ort
 
@@ -121,9 +121,12 @@ class Task:
         else:
             return int(self.maximum_time_parsed / (self.sgy.dt * 1e-3))
 
+    def get_gathers_ids(self) -> List[Tuple[int]]:
+        return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather_parsed))
+
     @property
-    def num_batches(self) -> int:
-        return ceil(self.sgy.shape[1] / self.traces_per_gather_parsed)
+    def num_gathers(self) -> int:
+        return len(self.get_gathers_ids())
 
 
 def preprocess_gather(data: np.ndarray, gain: float = 1.0, clip: float = 1.0) -> np.ndarray:
@@ -135,20 +138,27 @@ def preprocess_gather(data: np.ndarray, gain: float = 1.0, clip: float = 1.0) ->
 
 
 class PickerONNX:
-    def __init__(self, onnx_path: Union[str, Path]):
+    def __init__(self, onnx_path: Optional[Union[str, Path]] = None, show_progressbar: bool = True):
+        if onnx_path is None:
+            onnx_path = download_model_onnx()
         self.model = ort.InferenceSession(onnx_path)
+        self.show_progressbar = show_progressbar
+        self.progressbar: Optional[tqdm] = None
 
-    def callback_processing_started(self) -> Any:
-        pass
+    def callback_processing_started(self, length: int) -> Any:
+        if self.show_progressbar:
+            self.progressbar = tqdm(desc='Picking', total=length)
 
     def callback_processing_finished(self) -> Any:
-        pass
+        if self.show_progressbar:
+            self.progressbar.close()
 
     def callback_step_started(self, step: int) -> Any:
         pass
 
     def callback_step_finished(self, step: int) -> Any:
-        pass
+        if self.show_progressbar:
+            self.progressbar.update(1)
 
     def pick_gather(self, gather: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         assert gather.ndim == 2
@@ -157,14 +167,12 @@ class PickerONNX:
         return outputs[0][0], outputs[1][0]
 
     def process_task(self, task: Task, return_picks_in_ms: bool = False) -> Task:
-        ntr = task.sgy.shape[1]
-
         task_picks = []
         task_confidence = []
 
-        self.callback_processing_started()
+        self.callback_processing_started(task.num_gathers)
 
-        for step, gather_ids in enumerate(chunk_iterable(list(range(ntr)), task.traces_per_gather_parsed)):
+        for step, gather_ids in enumerate(task.get_gathers_ids()):
             self.callback_step_started(step)
 
             amplitudes = np.array([-1 if idx in task.traces_to_inverse else 1 for idx in range(len(gather_ids))],

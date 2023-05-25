@@ -10,7 +10,7 @@ def plotseis(
     data: np.ndarray,
     picking: Optional[np.ndarray] = None,
     add_picking: Optional[np.ndarray] = None,
-    normalizing: Optional[Union[str, int]] = "entire",
+    normalizing: Optional[Union[str, int]] = "indiv",
     clip: float = 0.9,
     ampl: float = 1.0,
     patch: bool = True,

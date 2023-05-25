@@ -9,7 +9,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QToolBar, QAction, QFileDialog, QLabel, \
     QDesktopWidget, QProgressBar, QHBoxLayout, QStyle, QSlider
 
-from first_breaks.const import CKPT_HASH
+from first_breaks.const import MODEL_ONNX_HASH
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.warn_widget import WarnBox
 from first_breaks.desktop.graph import GraphWidget
@@ -330,7 +330,7 @@ class MainWindow(QMainWindow):
                                                       options=options)
 
         if filename:
-            if FileState.get_file_state(filename, CKPT_HASH) == FileState.valid_file:
+            if FileState.get_file_state(filename, MODEL_ONNX_HASH) == FileState.valid_file:
                 self._thread_init_net(weights=filename)
 
                 self.button_load_nn.setEnabled(False)
