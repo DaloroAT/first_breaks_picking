@@ -6,3 +6,5 @@ matplotlib
 PyQt5
 onnxruntime
 pyqtgraph
+jupyter
+tqdm

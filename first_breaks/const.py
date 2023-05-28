@@ -26,7 +26,7 @@ DEMO_SGY_HASH = '92fe2992b57d69c6f572c672f63960cf'
 
 
 MODEL_ONNX_PATH = CACHE_FOLDER / 'fb.onnx'
-MODEL_ONNX_URL = ...
+MODEL_ONNX_URL = 'https://oml.daloroserver.com/download/seis/fb.onnx'
 MODEL_ONNX_HASH = '7e39e017b01325180e36885eccaeb17a'
 
 TIMEOUT = 60

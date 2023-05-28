@@ -30,7 +30,7 @@ class PickingWindow(QDialog):
         super().__init__()
 
         self.setWindowTitle("Picking settings")
-        x, y, width, height = 500, 500, 300, 200
+        x, y, width, height = 500, 500, 500, 500
         self.setGeometry(x, y, width, height)
         self.setFixedSize(width, height)
 

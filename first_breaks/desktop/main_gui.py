@@ -71,8 +71,8 @@ class MainWindow(QMainWindow):
         # main window settings
         left = 100
         top = 100
-        width = 700
-        height = 700
+        width = 1000
+        height = 1000
         self.setGeometry(left, top, width, height)
 
         qt_rectangle = self.frameGeometry()
@@ -213,6 +213,8 @@ class MainWindow(QMainWindow):
     def update_plot(self):
         self.graph.plotseis_sgy(self.fn, amplification=self.gain_value, negative_patch=True, refresh_view=False)
         self.show_processing_region()
+        if self.last_task.success:
+            self.graph.plot_picks(self.last_task.picks)
 
     def _thread_init_net(self, weights: Union[str, Path]):
         worker = InitNet(weights)

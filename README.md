@@ -2,13 +2,17 @@
 - Specific implementations in this readme will be out of date soon.
 - The previous code has been moved to the `legacy` folder.
 
-# First break picking
-​​
+# First breaks picking
 This project is devoted to pick waves that are the first to be detected on a seismogram (first breaks, first arrivals).
 Traditionally, this procedure is performed manually. When processing field data, the number of picks reaches hundreds of
 thousands. Existing analytical methods allow you to automate picking only on high-quality data with a high
-signal / noise ratio. So it is proposed to build a neural network to pick the first breaks. PyTorch framework is used
-for machine learning.
+signal / noise ratio. 
+
+As a more robust algorithm, it is proposed to use a neural network to pick the first breaks. Since the data on adjacent
+seismic traces have similarities in the features of the wave field, **we pick first breaks on 2D seismic gather**, not 
+individual traces.
+
+![](docs/images/example.PNG)
 
 ## Introduction
 
