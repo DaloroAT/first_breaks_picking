@@ -9,6 +9,7 @@ import pandas as pd
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
 
 from first_breaks.const import PROJECT_ROOT
+from first_breaks.sgy.interface import SizeHW, InvalidSamplesSlice, ISGY
 from first_breaks.utils.utils import chunk_iterable, get_io, calc_hash
 
 
@@ -20,14 +21,7 @@ class InvalidSGY(Exception):
     pass
 
 
-class InvalidSamplesSlice(Exception):
-    pass
-
-
-SizeHW = Tuple[int, int]
-
-
-class SGY:
+class SGY(ISGY):
     def __init__(self, source: Union[str, Path, bytes]):
         self.descriptor = get_io(source, mode='rb')
 
@@ -84,16 +78,16 @@ class SGY:
             raise InvalidSGY(message)
 
     @property
-    def ns(self) -> int:
-        return self._ns
-
-    @property
     def dt(self) -> int:
         return self._dt
 
     @property
-    def shape(self) -> SizeHW:
-        return self._ns, self._ntr
+    def ns(self) -> int:
+        return self._ns
+
+    @property
+    def ntr(self) -> int:
+        return self._ntr
 
     def get_endianess(self) -> str:
         self.descriptor.seek(3224)
@@ -171,29 +165,7 @@ class SGY:
     def read_traces_by_ids(
         self, ids: Sequence[int], min_sample: Optional[int] = None, max_sample: Optional[int] = None
     ) -> np.ndarray:
-
-        if min_sample is not None:
-            if min_sample < 0 or not isinstance(min_sample, int):
-                raise InvalidSamplesSlice("Invalid minimum slice index")
-            min_sample = int(np.clip(min_sample, 0, self._ns))
-        else:
-            min_sample = 0
-
-        if max_sample is not None:
-            if max_sample < 1 or not isinstance(max_sample, int):
-                raise InvalidSamplesSlice("Invalid maximum slice index")
-            max_sample = int(np.clip(max_sample, 0, self._ns))
-        else:
-            max_sample = self._ns
-
-        if min_sample >= max_sample:
-            raise InvalidSamplesSlice("Minimum slice index is greater or equal to maximum index")
-
-        len_slice = max_sample - min_sample
-        ids = [idx for idx in ids if idx < self._ntr]
-
-        if len(ids) == 0:
-            raise ValueError("The requested IDs were not found in the file")
+        ids, min_sample, len_slice = self.parse_reading_params(ids=ids, min_sample=min_sample, max_sample=max_sample)
 
         buffer = []
 
