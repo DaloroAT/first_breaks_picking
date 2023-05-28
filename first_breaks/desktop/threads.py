@@ -41,7 +41,7 @@ class PickerQRunnable(QRunnable):
         self.signals.message.emit('Started')
 
         try:
-            self.task = self.picker.process_task(self.task, return_picks_in_ms=True)
+            self.task = self.picker.process_task(self.task)
         except Exception as e:
             self.task.success = False
             self.task.error_message = str(e)

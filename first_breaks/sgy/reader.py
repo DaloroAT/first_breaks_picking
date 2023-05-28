@@ -56,6 +56,9 @@ class SGY:
         self.descriptor.seek(0)
         return self.descriptor.read()
 
+    def close(self):
+        self.descriptor.close()
+
     @property
     def content_hash(self) -> str:
         return calc_hash(self.descriptor)

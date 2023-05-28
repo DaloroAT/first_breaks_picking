@@ -35,13 +35,13 @@ class Task:
 
         self.traces_per_gather_parsed = self.validate_and_parse_traces_per_gather(traces_per_gather)
         self.maximum_time_parsed = self.validate_and_parse_maximum_time(maximum_time)
-        self.maximum_time_index = self._convert_maximum_time_to_index()
+        self.maximum_time_sample = self._convert_maximum_time_to_index()
         self.traces_to_inverse_parsed = self.validate_and_parse_traces_to_inverse(traces_to_inverse)
         self.gain_parsed = self.validate_and_parse_gain(gain)
         self.clip_parsed = self.validate_and_parse_clip(clip)
 
-        self.picks = None
-        self.is_ms = None
+        self.picks_in_ms = None
+        self.picks_in_samples = None
         self.confidence = None
         self.success = None
         self.error_message = None
@@ -166,8 +166,8 @@ class PickerONNX:
         outputs = self.model.run(None, {"input": gather[None, None, ...]})
         return outputs[0][0], outputs[1][0]
 
-    def process_task(self, task: Task, return_picks_in_ms: bool = False) -> Task:
-        task_picks = []
+    def process_task(self, task: Task) -> Task:
+        task_picks_in_sample = []
         task_confidence = []
 
         self.callback_processing_started(task.num_gathers)
@@ -182,23 +182,20 @@ class PickerONNX:
 
             gather = preprocess_gather(gather, task.gain, task.clip)
             gather = amplitudes[None, :] * gather
-            gather = gather[:task.maximum_time_index, :]
+            gather = gather[:task.maximum_time_sample, :]
 
             picks, confidence = self.pick_gather(gather)
 
-            if return_picks_in_ms:
-                picks = picks * 1e-3 * task.sgy.dt
-
-            task_picks.extend(picks.tolist())
+            task_picks_in_sample.extend(picks.tolist())
             task_confidence.extend(confidence.tolist())
 
             self.callback_step_finished(step)
 
         self.callback_processing_finished()
 
-        task.is_ms = return_picks_in_ms
         task.success = True
-        task.picks = task_picks
+        task.picks_in_ms = [pick * 1e-3 * task.sgy.dt for pick in task_picks_in_sample]
+        task.picks_in_samples = task_picks_in_sample
         task.confidence = task_confidence
 
         return task

@@ -1,8 +1,8 @@
 # Dependencies is not fixed due to repo refactoring
-requests
-numpy
-pandas
-matplotlib
+requests==2.28.2
+numpy==1.24.2
+pandas==2.0.0
+matplotlib==
 PyQt5
 onnxruntime
 pyqtgraph

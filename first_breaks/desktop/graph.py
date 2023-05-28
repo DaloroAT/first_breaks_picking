@@ -1,10 +1,13 @@
+import warnings
 from pathlib import Path
-from typing import Union, Tuple, Sequence
+from typing import Union, Tuple, Sequence, List, Optional
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor
+from PyQt5.QtWidgets import QApplication
+from pyqtgraph.exporters import ImageExporter
 
 from first_breaks.picker.picker import Task
 from first_breaks.sgy.reader import SGY
@@ -46,7 +49,7 @@ class GraphWidget(pg.PlotWidget):
                      fname: Path,
                      normalize: bool = True,
                      clip: float = 0.9,
-                     amplification: float = 1,
+                     gain: float = 1,
                      negative_patch: bool = True,
                      refresh_view: bool = True):
         self.clear()
@@ -58,7 +61,7 @@ class GraphWidget(pg.PlotWidget):
             norm_factor[np.abs(norm_factor) < 1e-9 * np.max(np.abs(norm_factor))] = 1
             traces = traces / norm_factor
 
-        traces = amplification * traces
+        traces = gain * traces
         mask_clip = np.abs(traces) > clip
         traces[mask_clip] = clip * np.sign(traces[mask_clip])
 
@@ -174,3 +177,132 @@ class GraphWidget(pg.PlotWidget):
         pen = pg.mkPen(color=color, width=3)
         self.picks_as_item.setPen(pen)
         self.addItem(self.picks_as_item)
+
+
+class HighMemoryConsumption(Exception):
+    pass
+
+
+class UnsupportedImageSize(Exception):
+    pass
+
+
+class GraphExporter(GraphWidget):
+    @staticmethod
+    def avoid_memory_bomb(height: int,
+                          width_per_trace: int,
+                          pixels_for_headers: int,
+                          num_traces: int
+                          ):
+        height_image = height + pixels_for_headers
+        width_image = pixels_for_headers + width_per_trace * num_traces
+
+        max_height = max_width = 65000
+        max_image_pixels = 2000 * 65000
+
+        if height_image > max_height:
+            message = f'It is not possible to render a picture of the given height = {height_image}. ' \
+                      f'Max height = {max_height}. Decrease rendering parameters.'
+            raise UnsupportedImageSize(message)
+
+        if width_image > max_width:
+            message = f'It is not possible to render a picture of the given width = {width_image}. ' \
+                      f'Max width = {max_width}. Decrease rendering parameters.'
+            raise UnsupportedImageSize(message)
+
+        num_pixels = height_image * width_image
+
+        if num_pixels > max_image_pixels:
+            message = f'The size of the picture will turn out to be too large ({num_pixels} pixels) for ' \
+                      f'this SGY file. Decrease rendering parameters.'
+            raise HighMemoryConsumption(message)
+
+    def lim_time(self, time_window: List[int]):
+        self.getPlotItem().setYRange(time_window[0], time_window[1], padding=0)
+
+    def export(self,
+               export_filename: Path,
+               sgy_filename: Path,
+               height: int = 500,
+               width_per_trace: int = 20,
+               pixels_for_headers: int = 20,
+               normalize: bool = True,
+               clip: float = 0.9,
+               amplification: float = 1,
+               negative_patch: bool = True,
+               task: Optional[Task] = None
+               ):
+        warnings.filterwarnings("ignore")
+
+        self.sgy = SGY(sgy_filename)
+
+        num_traces = self.sgy.shape[1]
+        self.avoid_memory_bomb(height, width_per_trace, pixels_for_headers, num_traces)
+
+        self.plotseis_sgy(sgy_filename,
+                          normalize=normalize,
+                          clip=clip,
+                          gain=amplification,
+                          negative_patch=negative_patch)
+
+        self.plotItem.setFixedHeight(pixels_for_headers + height)
+        self.plotItem.setFixedWidth(pixels_for_headers + width_per_trace * num_traces)
+
+        exporter = ImageExporter(self.plotItem)
+        Path(export_filename).parent.mkdir(exist_ok=True, parents=True)
+        # exporter.export(str(export_filename))
+        image = exporter.export(toBytes=True)
+        image.save(str(export_filename), quality=100)
+        self.sgy.close()
+
+        warnings.resetwarnings()
+        QTimer.singleShot(0, self.close_widget)
+
+    @pyqtSlot()
+    def close_widget(self):
+        self.close()
+
+
+def export_image_with_pyqt(export_filename: Path,
+                           sgy_filename: Path,
+                           height: int = 500,
+                           width_per_trace: int = 20,
+                           pixels_for_headers: int = 30,
+                           normalize: bool = True,
+                           clip: float = 0.9,
+                           amplification: float = 1,
+                           negative_patch: bool = True,
+                           task: Optional[Task] = None):
+    app = QApplication([])
+    app.setQuitOnLastWindowClosed(True)
+    window = GraphExporter(background='w')
+    window.export(export_filename=export_filename,
+                  sgy_filename=sgy_filename,
+                  height=height,
+                  width_per_trace=width_per_trace,
+                  pixels_for_headers=pixels_for_headers,
+                  normalize=normalize,
+                  clip=clip,
+                  amplification=amplification,
+                  negative_patch=negative_patch,
+                  task=task)
+    app.exec()
+
+
+if __name__ == '__main__':
+    # task = BaseTask(Path('/home/daloro/small.sgy'), traces_per_shot=24, time_window=(0, 100), time_unit='ms')
+    # task.result.picks_samples = np.random.randint(100, 200, 96)[:45]
+    # # task.result.picks_samples[9: 15] = nn_config.not_presented_fb_value
+    #
+    # task.result.picks_samples = task.result.picks_samples.astype(int).tolist()
+    #
+    # task.result.processed_traces = list(range(96))[:45]
+    export_image_with_pyqt(export_filename=Path(r'D:\Projects\first_breaks_picking\data\export.png'),
+                           sgy_filename=Path(r'D:\Projects\first_breaks_picking\data\real_gather.sgy'),
+                           height=600,
+                           width_per_trace=25,
+                           # task=task,
+                           amplification=1,
+                           clip=1)
+
+

@@ -211,10 +211,10 @@ class MainWindow(QMainWindow):
         # self.gain_label.setText(f"{gain_from_slider}%")
 
     def update_plot(self):
-        self.graph.plotseis_sgy(self.fn, amplification=self.gain_value, negative_patch=True, refresh_view=False)
+        self.graph.plotseis_sgy(self.fn, gain=self.gain_value, negative_patch=True, refresh_view=False)
         self.show_processing_region()
         if self.last_task.success:
-            self.graph.plot_picks(self.last_task.picks)
+            self.graph.plot_picks(self.last_task.picks_in_ms)
 
     def _thread_init_net(self, weights: Union[str, Path]):
         worker = InitNet(weights)
@@ -275,7 +275,7 @@ class MainWindow(QMainWindow):
     def result_fb(self, result: Task):
         self.store_task(result)
         if result.success:
-            self.graph.plot_picks(self.last_task.picks)
+            self.graph.plot_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
         else:
             window_error = WarnBox(self, title='InternalError', message=result.error_message)
