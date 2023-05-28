@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 
 
 class InvalidHeaders(Exception):
@@ -11,7 +11,7 @@ THeadersAttr = List[Tuple[int, str, str]]
 class Headers:
     # headers in format [(offset_1, header_name_1, format_1), (offset_2, header_name_2, format_2), ...]
     # offset started from 0
-    headers: THeadersAttr
+    headers_schema: THeadersAttr
     format2size: Dict[str, int] = {
         "c": 1,
         "b": 1,
@@ -42,37 +42,42 @@ class Headers:
         return self.format2size[tp] * num  # type: ignore
 
     def validate(self) -> None:
-        headers_names = [header_info[1] for header_info in self.headers]
+        headers_names = [header_info[1] for header_info in self.headers_schema]
         if not all(isinstance(name, str) for name in headers_names):
             raise InvalidHeaders("Header names must be strings")
         if not len(set(headers_names)) == len(headers_names):
             raise InvalidHeaders("Header names must be unique")
         available_formats = self.format2size.keys()
-        if not all(header_info[2][-1] in available_formats for header_info in self.headers):
+        if not all(header_info[2][-1] in available_formats for header_info in self.headers_schema):
             raise InvalidHeaders("Some of headers have unavailable formats")
 
     def fill_offsets_if_empty(self) -> THeadersAttr:
-        offsets_is_none = [header_info[0] is None for header_info in self.headers]
+        offsets_is_none = [header_info[0] is None for header_info in self.headers_schema]
         if all(offsets_is_none):
             upd_headers = []
             offset = 0
-            for header in self.headers:
+            for header in self.headers_schema:
                 upd_header = (offset, header[1], header[2])
                 upd_headers.append(upd_header)
                 offset += self.get_num_bytes(header[2])
             return upd_headers
         elif any(offsets_is_none) and not all(offsets_is_none):
             raise InvalidHeaders("To fill offsets, they must all be either empty or filled (no modification)")
-        return self.headers
+        return self.headers_schema
+
+    def get_template(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
 
 
 class FileHeaders(Headers):
     dt_name = "dt"
+    dt_name_orig = "dt_orig"
     ns_name = "ns"
+    ns_name_orig = "ns_orig"
     data_sample_format_name = "data_sample_format"
 
     def __init__(self) -> None:
-        self.headers = [
+        self.headers_schema = [
             (0, "textual_file_header", "3200s"),
             (3200, "job", "i"),
             (3204, "line", "i"),
@@ -80,9 +85,9 @@ class FileHeaders(Headers):
             (3212, "data_trace_per_ensemble", "H"),
             (3214, "auxiliary_trace_per_ensemble", "H"),
             (3216, self.dt_name, "H"),
-            (3218, f"{self.dt_name}_orig", "H"),
+            (3218, self.dt_name_orig, "H"),
             (3220, self.ns_name, "H"),
-            (3222, f"{self.ns_name}_orig", "H"),
+            (3222, self.ns_name_orig, "H"),
             (3224, self.data_sample_format_name, "H"),
             (3226, "ensemble_fold", "H"),
             (3228, "trace_sorting", "h"),
@@ -112,7 +117,7 @@ class FileHeaders(Headers):
 
 class TraceHeaders(Headers):
     def __init__(self) -> None:
-        self.headers = [
+        self.headers_schema = [
             (0, "TRACENO", "i"),
             (4, "trace_sequence_file", "i"),
             (8, "FFID", "i"),
