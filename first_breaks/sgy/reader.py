@@ -93,9 +93,9 @@ class SGY:
         self._traces_headers_schema: TraceHeaders = traces_headers_schema
 
         # other
-        self.descriptor: Optional[Union[io.BytesIO, io.FileIO]] = None
+        self._descriptor: Optional[Union[io.BytesIO, io.FileIO]] = None
         self._is_source_ndarray: Optional[bool] = None
-        self.endianess: Optional[str] = None
+        self._endianess: Optional[str] = None
         self._bps: Optional[int] = None
         self._data_fmt: Optional[int] = None
         self._initialized = False
@@ -103,7 +103,23 @@ class SGY:
         if not use_delayed_init:
             self._delayed_init()
 
-    def _delayed_init(self):
+    def __getattribute__(self, item: str) -> Any:
+        _initialized_name = '_initialized'
+        _delayed_init_name = '_delayed_init'
+        _initialized_value = super().__getattribute__(_initialized_name)
+
+        # We run `_delayed_init` if
+        # 1. Try to get any attr with another name
+        # 2. Not initialized yet
+        if item not in (_initialized_name, _delayed_init_name) and not _initialized_value:
+            self._delayed_init()
+        return super().__getattribute__(item)
+
+    def _delayed_init(self) -> None:
+        if self._initialized:
+            return
+        self._initialized = True
+
         if isinstance(self.source, (str, Path, bytes)):
             if self.dt_mcs_input is not None:
                 raise SGYInitParamsError("Argument 'dt_mcs' must be empty if SGY created from external sources")
@@ -116,7 +132,6 @@ class SGY:
             self._is_source_ndarray = True
         else:
             raise SGYInitParamsError(f'Only `str, Path, bytes, np.ndarray` types are available as input')
-        self._initialized = True
 
     def _init_from_numpy(self) -> None:
         assert self.source.ndim == 1 or self.source.ndim == 2, 'Only arrays are available'
@@ -131,33 +146,35 @@ class SGY:
         self._dt = self.dt_mcs_input
         self._ns = self.source.shape[0]
 
-        self.endianess = '>'
-
-    def _init_from_external(self):
-        self.descriptor = get_io(self.source, mode='rb')
+    def _init_from_external(self) -> None:
+        self._descriptor = get_io(self.source, mode='rb')
         self._read_endianess()
         self._read_general_headers()
         self._read_traces_headers()
-        self.descriptor.close()
+        self._descriptor.close()
 
-    def _read_endianess(self) -> str:
-        self.descriptor.seek(3224)
-        value = self.descriptor.read(2)
+    def _read_endianess(self) -> None:
+        num_bytes = self._descriptor.seek(0, 2)
+        if num_bytes < 3600 + 240 + 1:  # at least general headers, 1 trace headers block and byte for 1 sample
+            raise InvalidSGY("Invalid structure of SGY file. File is small")
+
+        self._descriptor.seek(3224)
+        value = self._descriptor.read(2)
 
         big = struct.unpack(">H", value)[0]
         little = struct.unpack("<H", value)[0]
 
         if 1 <= big <= 16 or 1 <= little <= 16:
-            return ">" if 1 <= big <= 16 else "<"
+            self._endianess = ">" if 1 <= big <= 16 else "<"
         else:
-            raise InvalidSGY("Invalid structure of SGY file")
+            raise InvalidSGY("Invalid endianess of SGY file")
 
     def _read_general_headers(self) -> None:
         gen_headers = {}
         for pointer, name, fmt in self._general_headers_schema.headers_schema:
-            self.descriptor.seek(pointer)
+            self._descriptor.seek(pointer)
             size = self._general_headers_schema.get_num_bytes(fmt)
-            gen_headers[name] = struct.unpack(f"{self.endianess}{fmt}", self.descriptor.read(size))[0]
+            gen_headers[name] = struct.unpack(f"{self._endianess}{fmt}", self._descriptor.read(size))[0]
         self._general_headers = gen_headers
 
         self._ns = self._general_headers[self._general_headers_schema.ns_name]
@@ -168,15 +185,15 @@ class SGY:
         if self._dt < 0:
             raise InvalidSGY("Invalid time discretization")
 
-        num_bytes = self.descriptor.seek(0, 2)
-        if num_bytes != (3600 + (240 + self._ns * self._bps) * self._ntr):
-            raise InvalidSGY('Invalid number of bytes')
-        self._ntr = int((num_bytes - 3600) / (240 + self._ns * self._bps))
-
         self._data_fmt = self._general_headers[self._general_headers_schema.data_sample_format_name]
         if self._data_fmt < 1 or self._data_fmt > 6:
             raise NotImplementedReader(f"Not supported samples format '{self._data_fmt}'")
         self._bps = self.fmt2bps[self._data_fmt]
+
+        num_bytes = self._descriptor.seek(0, 2)
+        self._ntr = int((num_bytes - 3600) / (240 + self._ns * self._bps))
+        if num_bytes != (3600 + (240 + self._ns * self._bps) * self._ntr):
+            raise InvalidSGY('Invalid number of bytes')
 
     def _read_traces_headers(self) -> None:
         traces_headers = {}
@@ -186,10 +203,10 @@ class SGY:
             buffer = []
             for idx in range(self._ntr):
                 pointer = 3600 + (240 + self._ns * self._bps) * idx + offset
-                self.descriptor.seek(pointer)
-                buffer.append(self.descriptor.read(size))
+                self._descriptor.seek(pointer)
+                buffer.append(self._descriptor.read(size))
 
-            traces_headers[name] = struct.unpack(f"{self.endianess}{fmt * self._ntr}", b"".join(buffer))
+            traces_headers[name] = struct.unpack(f"{self._endianess}{fmt * self._ntr}", b"".join(buffer))
 
         self._traces_headers = pd.DataFrame(data=traces_headers)
 
@@ -235,7 +252,7 @@ class SGY:
         if len(ids) == 0:
             raise ValueError("The requested IDs were not found in the file")
 
-        if self._is_source_ndarray or self._traces:
+        if self._is_source_ndarray or (self._traces is not None and self._traces.shape == self.shape):
             return self._read_block_ndarray(ids, min_sample, len_slice)
         else:
             return self._read_block_external(ids, min_sample, len_slice)
@@ -246,12 +263,12 @@ class SGY:
     def _read_block_external(self, ids: Sequence[int], min_sample: int, length_slice: int) -> np.ndarray:
         buffer = []
 
-        self.descriptor = get_io(self.source, mode='rb')
+        self._descriptor = get_io(self.source, mode='rb')
         for idx in ids:
             pointer = 3600 + 240 + (240 + self._ns * self._bps) * idx + min_sample
-            self.descriptor.seek(pointer)
-            buffer.append(self.descriptor.read(length_slice * self._bps))
-        self.descriptor.close()
+            self._descriptor.seek(pointer)
+            buffer.append(self._descriptor.read(length_slice * self._bps))
+        self._descriptor.close()
 
         buffer_tr = b"".join(buffer)
         traces = self._read_traces_from_buffer(buffer_tr, (length_slice, len(ids)))
@@ -292,7 +309,7 @@ class SGY:
 
     def _read_traces_ibm(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
         reader = np.vectorize(self._read_ibm)
-        array = np.ndarray(shape, f"{self.endianess}u4", buffer, order="F")
+        array = np.ndarray(shape, f"{self._endianess}u4", buffer, order="F")
         return reader(array)
 
     @staticmethod
@@ -301,16 +318,16 @@ class SGY:
 
     def _read_traces_4b_compl_int(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
         reader = np.vectorize(self._read_compl_int)
-        array = np.ndarray(shape, f"{self.endianess}u4", buffer, order="F")
+        array = np.ndarray(shape, f"{self._endianess}u4", buffer, order="F")
         return reader(array, 32)
 
     def _read_traces_2b_compl_int(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
         reader = np.vectorize(self._read_compl_int)
-        array = np.ndarray(shape, f"{self.endianess}u2", buffer, order="F")
+        array = np.ndarray(shape, f"{self._endianess}u2", buffer, order="F")
         return reader(array, 16)
 
     def _read_traces_float(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
-        return np.ndarray(shape, f"{self.endianess}f4", buffer, order="F")
+        return np.ndarray(shape, f"{self._endianess}f4", buffer, order="F")
 
     def _read_traces_double(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
-        return np.ndarray(shape, f"{self.endianess}f8", buffer, order="F")
+        return np.ndarray(shape, f"{self._endianess}f8", buffer, order="F")
