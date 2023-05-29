@@ -15,7 +15,8 @@ from first_breaks.const import MODEL_ONNX_HASH
 from first_breaks.desktop.warn_widget import WarnBox
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.threads import InitNet, PickerQRunnable
-from first_breaks.picker.picker import PickerONNX, Task
+from first_breaks.picking.picker import PickerONNX
+from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import calc_hash
 

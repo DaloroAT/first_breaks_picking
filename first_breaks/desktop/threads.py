@@ -2,7 +2,8 @@ from pathlib import Path
 
 from PyQt5.QtCore import QObject, pyqtSignal, QRunnable, pyqtSlot
 
-from first_breaks.picker.picker import PickerONNX, Task
+from first_breaks.picking.picker import PickerONNX
+from first_breaks.picking.task import Task
 
 
 class PickerSignals(QObject):

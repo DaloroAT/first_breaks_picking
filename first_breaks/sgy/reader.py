@@ -76,7 +76,7 @@ class SGY:
                  use_delayed_init: bool = False
                  ):
         self.source = source
-        self.dt_mcs_input = dt_mcs
+        self._dt_mcs_input = dt_mcs
 
         # data
         self._traces: Optional[np.ndarray] = None
@@ -121,12 +121,12 @@ class SGY:
         self._initialized = True
 
         if isinstance(self.source, (str, Path, bytes)):
-            if self.dt_mcs_input is not None:
+            if self._dt_mcs_input is not None:
                 raise SGYInitParamsError("Argument 'dt_mcs' must be empty if SGY created from external sources")
             self._init_from_external()
             self._is_source_ndarray = False
         elif isinstance(self.source, np.ndarray):
-            if self.dt_mcs_input is None:
+            if self._dt_mcs_input is None:
                 raise SGYInitParamsError("Argument 'dt_mcs' is required if nd.array is used as input")
             self._init_from_numpy()
             self._is_source_ndarray = True
@@ -143,7 +143,7 @@ class SGY:
             raise ValueError('Only 1D or 2D arrays are available')
 
         self._traces = self.source
-        self._dt = self.dt_mcs_input
+        self._dt = self._dt_mcs_input
         self._ns = self.source.shape[0]
 
     def _init_from_external(self) -> None:

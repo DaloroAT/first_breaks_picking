@@ -9,7 +9,7 @@ from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph.exporters import ImageExporter
 
-from first_breaks.picker.picker import Task
+from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 
 

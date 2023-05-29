@@ -10,7 +10,7 @@ from first_breaks.const import DEMO_SGY_URL, DEMO_SGY_PATH, TIMEOUT, DEMO_SGY_HA
     MODEL_ONNX_PATH
 
 
-class InvalidFile(Exception):
+class InvalidHash(Exception):
     pass
 
 
@@ -62,7 +62,7 @@ def download_and_validate_file(url: str,
         download_by_url(url=url, fname=fname, timeout=timeout)
     md5_last = calc_hash(fname)
     if md5_last != md5:
-        raise InvalidFile(f'Hash for file {Path(fname).resolve()} in invalid. Got {md5_last}, expected {md5}')
+        raise InvalidHash(f'Hash for file {Path(fname).resolve()} in invalid. Got {md5_last}, expected {md5}')
     return fname
 
 
