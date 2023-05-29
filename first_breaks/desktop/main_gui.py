@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         icon_fb = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
         # icon_fb = QIcon(str(self.main_folder / "icons" / "picking.png"))
         self.button_fb = QAction(icon_fb, "Neural network FB picking", self)
-        self.button_fb.triggered.connect(self.calc_fb)
+        self.button_fb.triggered.connect(self.pick_fb)
         self.button_fb.setEnabled(False)
         toolbar.addAction(self.button_fb)
 
@@ -198,7 +198,6 @@ class MainWindow(QMainWindow):
         self.settings = None
 
         self.threadpool = QThreadPool()
-        # self.threadpool.setMaxThreadCount(2)
 
         self.load_nn(str(self.folder_for_opening / 'fb.onnx'))
         self.get_filename(str(self.folder_for_opening / 'real_gather.sgy'))
@@ -208,14 +207,6 @@ class MainWindow(QMainWindow):
     def gain_changed(self, gain_from_slider: int):
         self.gain_value = SliderConverter.slider2value(gain_from_slider)
         self.gain_label.setText(str(self.gain_value))
-        # self.gain_value = gain_from_slider / 100
-        # self.gain_label.setText(f"{gain_from_slider}%")
-
-    def update_plot(self):
-        self.graph.plotseis_sgy(self.fn, gain=self.gain_value, negative_patch=True, refresh_view=False)
-        self.show_processing_region()
-        if self.last_task.success:
-            self.graph.plot_picks(self.last_task.picks_in_ms)
 
     def _thread_init_net(self, weights: Union[str, Path]):
         worker = InitNet(weights)
@@ -225,13 +216,10 @@ class MainWindow(QMainWindow):
     def init_net(self, picker: PickerONNX):
         self.picker = picker
 
-    def store_task(self, task: Task):
-        self.last_task = task
-
     def receive_settings(self, settings: Dict[str, Any]):
         self.settings = settings
 
-    def calc_fb(self):
+    def pick_fb(self):
         settings = PickingWindow(self.last_task)
         settings.export_settings_signal.connect(self.receive_settings)
         settings.exec_()
@@ -252,28 +240,31 @@ class MainWindow(QMainWindow):
         self.button_fb.setEnabled(False)
         self.button_get_filename.setEnabled(False)
         worker = PickerQRunnable(self.picker, task)
-        worker.signals.started.connect(self.start_fb)
-        worker.signals.result.connect(self.result_fb)
-        worker.signals.progress.connect(self.progress_fb)
-        worker.signals.message.connect(self.message_fb)
-        worker.signals.finished.connect(self.finish_fb)
+        worker.signals.started.connect(self.on_start_task)
+        worker.signals.result.connect(self.on_result_task)
+        worker.signals.progress.connect(self.on_progressbar_task)
+        worker.signals.message.connect(self.on_message_task)
+        worker.signals.finished.connect(self.on_finish_task)
         self.threadpool.start(worker)
         self.start_time = time.perf_counter()
 
-    def start_fb(self):
+    def store_task(self, task: Task):
+        self.last_task = task
+
+    def on_start_task(self):
         self.status_progress.show()
 
-    def message_fb(self, message: str):
+    def on_message_task(self, message: str):
         self.status_message.setText(message)
 
-    def finish_fb(self):
+    def on_finish_task(self):
         self.status_progress.hide()
         self.button_fb.setEnabled(True)
 
-    def progress_fb(self, value: int):
+    def on_progressbar_task(self, value: int):
         self.status_progress.setValue(value)
 
-    def result_fb(self, result: Task):
+    def on_result_task(self, result: Task):
         self.store_task(result)
         if result.success:
             self.graph.plot_picks(self.last_task.picks_in_ms)
@@ -304,20 +295,14 @@ class MainWindow(QMainWindow):
         if self.last_task and self.last_task.success:
             self.graph.remove_processing_region()
 
-    def show_sgy(self):
-        try:
-            self.sgy = SGY(self.fn)
-            self.graph.clear()
-            self.graph.plotseis_sgy(self.fn, negative_patch=True)
-            self.graph.show()
+    def show_picks(self):
+        if self.last_task and self.last_task.success:
+            self.graph.plot_picks(self.last_task.picks_in_ms)
 
-        except Exception as e:
-            window_err = WarnBox(self,
-                                 title=e.__class__.__name__,
-                                 message=str(e))
-            window_err.exec_()
-        finally:
-            self.button_get_filename.setEnabled(True)
+    def update_plot(self, refresh_view: bool = False):
+        self.graph.plotseis(self.sgy, gain=self.gain_value, refresh_view=refresh_view)
+        self.show_processing_region()
+        self.show_picks()
 
     def unlock_pickng_if_ready(self):
         if self.ready_to_process.is_ready():
@@ -361,18 +346,30 @@ class MainWindow(QMainWindow):
                                                       filter="SGY-file (*.sgy)",
                                                       options=options)
         if filename:
-            self.fn = Path(filename)
-            self.picks = None
-            self.last_task = None
-            self.show_sgy()
+            try:
+                self.fn = Path(filename)
+                self.picks = None
+                self.last_task = None
+                self.sgy = SGY(self.fn, use_delayed_init=False)
 
-            self.ready_to_process.sgy_selected = True
+                self.graph.clear()
+                self.update_plot(refresh_view=True)
+                self.graph.show()
 
-            if not self.ready_to_process.model_loaded:
-                status_message = "Load model to start picking"
-                self.status_message.setText(status_message)
+                self.button_get_filename.setEnabled(True)
+                self.ready_to_process.sgy_selected = True
 
-            self.unlock_pickng_if_ready()
+                if not self.ready_to_process.model_loaded:
+                    status_message = "Load model to start picking"
+                    self.status_message.setText(status_message)
+
+                self.unlock_pickng_if_ready()
+
+            except Exception as e:
+                window_err = WarnBox(self,
+                                     title=e.__class__.__name__,
+                                     message=str(e))
+                window_err.exec_()
 
 
 if __name__ == '__main__':

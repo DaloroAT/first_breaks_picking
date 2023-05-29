@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Union, Sequence, List, Tuple
+from typing import Union, Sequence, List, Tuple, Optional
 
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import chunk_iterable
+from first_breaks.utils.utils import chunk_iterable, sample2ms
 
 MINIMUM_TRACES_PER_GATHER = 2
 
@@ -34,7 +34,7 @@ class Task:
         self.gain_parsed = self.validate_and_parse_gain(gain)
         self.clip_parsed = self.validate_and_parse_clip(clip)
 
-        self.picks_in_ms = None
+        self._picks_in_ms = None
         self.picks_in_samples = None
         self.confidence = None
         self.success = None
@@ -89,7 +89,7 @@ class Task:
     def validate_and_parse_maximum_time(self, maximum_time: float) -> float:
         self.validate_maximum_time(maximum_time)
         if maximum_time > 0.0:
-            maximum_time = min(maximum_time, self.sgy.shape[0] * self.sgy.dt * 1e-3)
+            maximum_time = min(maximum_time, self.sgy.shape[0] * self.sgy.dt_ms)
         return maximum_time
 
     def validate_and_parse_traces_to_inverse(self, traces_to_inverse: Sequence[int]) -> Sequence[int]:
@@ -113,7 +113,7 @@ class Task:
         if self.maximum_time_parsed == 0.0:
             return self.sgy.shape[0]
         else:
-            return int(self.maximum_time_parsed / (self.sgy.dt * 1e-3))
+            return int(self.maximum_time_parsed / (self.sgy.dt_ms))
 
     def get_gathers_ids(self) -> List[Tuple[int]]:
         return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather_parsed))
@@ -121,3 +121,13 @@ class Task:
     @property
     def num_gathers(self) -> int:
         return len(self.get_gathers_ids())
+
+    @property
+    def picks_in_ms(self) -> Optional[List[float]]:
+        if self._picks_in_ms:
+            return self._picks_in_ms
+        elif self.picks_in_samples is not None:
+            self._picks_in_ms = sample2ms(self.picks_in_samples, self.sgy.dt_ms)
+            return self._picks_in_ms
+        else:
+            return None

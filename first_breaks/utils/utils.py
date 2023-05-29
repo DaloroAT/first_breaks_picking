@@ -4,10 +4,15 @@ from itertools import islice
 from pathlib import Path
 from typing import Any, Iterable, List, Tuple, Union, Optional
 
+import numpy as np
 import requests
 
 from first_breaks.const import DEMO_SGY_URL, DEMO_SGY_PATH, TIMEOUT, DEMO_SGY_HASH, MODEL_ONNX_URL, MODEL_ONNX_HASH, \
     MODEL_ONNX_PATH
+
+
+TScalar = Union[int, float, np.number]
+TTimeType = Union[TScalar, List[TScalar], Tuple[TScalar, ...], np.ndarray]
 
 
 class InvalidHash(Exception):
@@ -78,4 +83,12 @@ def download_model_onnx(url: str = MODEL_ONNX_URL,
     return download_and_validate_file(url, md5, fname)
 
 
-
+def sample2ms(sample: TTimeType, dt_ms: float) -> TTimeType:
+    if isinstance(sample, (int, float, (np.number, np.ndarray))):
+        return sample * dt_ms
+    elif isinstance(sample, list):
+        return list(sample2ms(val, dt_ms) for val in sample)
+    elif isinstance(sample, tuple):
+        return tuple(sample2ms(val, dt_ms) for val in sample)
+    else:
+        raise TypeError('Invalid type for samples')

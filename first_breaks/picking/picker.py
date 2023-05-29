@@ -68,7 +68,6 @@ class PickerONNX:
         self.callback_processing_finished()
 
         task.success = True
-        task.picks_in_ms = [pick * task.sgy.dt_ms for pick in task_picks_in_sample]
         task.picks_in_samples = task_picks_in_sample
         task.confidence = task_confidence
 
