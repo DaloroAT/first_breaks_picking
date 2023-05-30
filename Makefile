@@ -1,3 +1,15 @@
 .PHONY: run_precommit
 run_precommit:
 	pre-commit install && pre-commit run -a
+
+.PHONY: build_wheel
+build_wheel:
+	python -m pip install --upgrade pip
+	python3 -m pip install --upgrade twine
+	pip install --upgrade pip setuptools wheel
+	rm -rf dist build first_breaks_picking.egg-info
+	python3 setup.py sdist bdist_wheel
+
+.PHONY: upload_to_pip
+upload_to_pip: build_wheel
+	twine upload dist/*
