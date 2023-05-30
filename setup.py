@@ -34,7 +34,7 @@ setup(
     ],
     classifiers=[
             "Environment :: Console",
-            "Environment :: X11 Applications :: Qt"
+            "Environment :: X11 Applications :: Qt",
             "Operating System :: OS Independent",
             "License :: OSI Approved :: Apache Software License",
             "Intended Audience :: Developers",
