@@ -12,7 +12,7 @@ def load_requirements(filename: str) -> List[str]:
 
 setup(
     # technical things
-    version="0.0.1",
+    version="0.0.2",
     packages=find_packages(exclude=['data', 'docs', 'legacy']),
     python_requires=">=3.7,<4.0",
     install_requires=load_requirements("requirements.txt"),
