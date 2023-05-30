@@ -34,7 +34,7 @@ class GraphWidget(pg.PlotWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.getPlotItem().disableAutoRange()
-        self.setAntialiasing(False)
+        self.setAntialiasing(True)
         self.getPlotItem().setClipToView(True)
         self.getPlotItem().setDownsampling(mode='peak')
 
@@ -96,7 +96,8 @@ class GraphWidget(pg.PlotWidget):
 
         item = pg.QtWidgets.QGraphicsPathItem(path)
         pen = QPen(Qt.black, 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
-        pen.setWidthF(0.1)
+        # pen.setWidthF(0.01)
+        pen.setWidth(0.1)
         item.setPen(pen)
         item.setBrush(Qt.white)
         self.addItem(item)
@@ -109,9 +110,9 @@ class GraphWidget(pg.PlotWidget):
         patch = path.intersected(rect)
         item = pg.QtWidgets.QGraphicsPathItem(patch)
 
-        pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine,
-                            Qt.FlatCap, Qt.MiterJoin)
-        pen.setWidthF(0.1)
+        pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
+        # pen.setWidthF(0.01)
+        pen.setWidth(0.1)
         item.setPen(pen)
         item.setBrush(Qt.black)
         self.addItem(item)

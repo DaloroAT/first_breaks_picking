@@ -8,7 +8,7 @@ As a more robust algorithm, it is proposed to use a neural network to pick the f
 seismic traces have similarities in the features of the wave field, **we pick first breaks on 2D seismic gather**, not 
 individual traces.
 
-![](docs/images/example.PNG)
+![](docs/images/intro_small.PNG)
 
 # Installation
 
