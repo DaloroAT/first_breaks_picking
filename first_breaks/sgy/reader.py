@@ -41,7 +41,7 @@ class SGY:
     }
 
     @property
-    def dt(self) -> int:
+    def dt(self) -> Union[int, float]:
         return self._dt
 
     @property
@@ -51,6 +51,10 @@ class SGY:
     @property
     def ntr(self) -> int:
         return self._ntr
+
+    @property
+    def dt_mcs(self) -> float:
+        return self.dt
 
     @property
     def dt_ms(self) -> float:
@@ -70,7 +74,7 @@ class SGY:
 
     def __init__(self,
                  source: Union[str, Path, bytes, np.ndarray],
-                 dt_mcs: Optional[int] = None,
+                 dt_mcs: Optional[Union[int, float]] = None,
                  general_headers_schema: FileHeaders = FileHeaders(),
                  traces_headers_schema: TraceHeaders = TraceHeaders(),
                  use_delayed_init: bool = False
@@ -85,11 +89,11 @@ class SGY:
         self._ntr: Optional[int] = None
 
         # headers for file
-        self._general_headers: Optional[Dict[str, Any]] = None
+        self.general_headers: Optional[Dict[str, Any]] = None
         self._general_headers_schema: FileHeaders = general_headers_schema
 
         # headers for traces
-        self._traces_headers: Optional[pd.DataFrame] = None
+        self.traces_headers: Optional[pd.DataFrame] = None
         self._traces_headers_schema: TraceHeaders = traces_headers_schema
 
         # other
@@ -175,17 +179,17 @@ class SGY:
             self._descriptor.seek(pointer)
             size = self._general_headers_schema.get_num_bytes(fmt)
             gen_headers[name] = struct.unpack(f"{self._endianess}{fmt}", self._descriptor.read(size))[0]
-        self._general_headers = gen_headers
+        self.general_headers = gen_headers
 
-        self._ns = self._general_headers[self._general_headers_schema.ns_name]
+        self._ns = self.general_headers[self._general_headers_schema.ns_name]
         if self._ns < 1:
             raise InvalidSGY("Invalid number of samples")
 
-        self._dt = self._general_headers[self._general_headers_schema.dt_name]
+        self._dt = self.general_headers[self._general_headers_schema.dt_name]
         if self._dt < 0:
             raise InvalidSGY("Invalid time discretization")
 
-        self._data_fmt = self._general_headers[self._general_headers_schema.data_sample_format_name]
+        self._data_fmt = self.general_headers[self._general_headers_schema.data_sample_format_name]
         if self._data_fmt < 1 or self._data_fmt > 6:
             raise NotImplementedReader(f"Not supported samples format '{self._data_fmt}'")
         self._bps = self.fmt2bps[self._data_fmt]
@@ -208,12 +212,16 @@ class SGY:
 
             traces_headers[name] = struct.unpack(f"{self._endianess}{fmt * self._ntr}", b"".join(buffer))
 
-        self._traces_headers = pd.DataFrame(data=traces_headers)
+        self.traces_headers = pd.DataFrame(data=traces_headers)
+
+    def replace_traces(self, traces: np.ndarray) -> None:
+        if traces.shape == self.shape:
+            self._traces = traces
 
     def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
         ids = list(range(self.num_traces))
         traces = self.read_traces_by_ids(ids, min_sample, max_sample)
-        self._traces = traces
+        self.replace_traces(traces)
         return traces
 
     def get_chunked_reader(

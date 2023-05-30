@@ -303,9 +303,10 @@ class GraphExporter(GraphWidget):
         self.close()
 
 
-def export_image(sgy: SGY,
+def export_image(source: Union[str, Path, bytes, SGY],
                  image_filename: Optional[Union[str, Path]],
                  *args,
+                 dt_mcs: float = 1e3,
                  clip: float = GraphDefaults.clip,
                  gain: float = GraphDefaults.gain,
                  normalize: bool = GraphDefaults.normalize,
@@ -326,9 +327,19 @@ def export_image(sgy: SGY,
     if args:
         raise need_kwargs_exception
 
+    if isinstance(source, (str, Path, bytes)):
+        sgy = SGY(source)
+    elif isinstance(source, np.ndarray):
+        sgy = SGY(source, dt_mcs=dt_mcs)
+    elif isinstance(source, SGY):
+        sgy = source
+    else:
+        raise TypeError("Unsupported type for 'source'")
+
     app = QApplication([])
     app.setQuitOnLastWindowClosed(True)
     window = GraphExporter(background='w')
+    window.hide()
     window.export(sgy=sgy,
                   image_filename=image_filename,
                   clip=clip,
@@ -361,17 +372,19 @@ if __name__ == '__main__':
     # task.result.processed_traces = list(range(96))[:45]
     import numpy as np
     import time
+    from first_breaks.const import PROJECT_ROOT, DEMO_SGY_PATH
 
-    # sgy = SGY(Path(r'D:\Projects\first_breaks_picking\data\real_gather.sgy'))
-    sgy = SGY(np.random.uniform(-2, 2, (1000, 200)), dt_mcs=1e3)
+    sgy = SGY(DEMO_SGY_PATH)
+    # sgy = SGY(np.random.uniform(-2, 2, (1000, 200)), dt_mcs=1e3)
+    print(sgy.traces_headers.head())
     task = Task(sgy, maximum_time=100)
     task.picks_in_samples = np.random.uniform(0, 100, sgy.num_traces)
 
     st = time.perf_counter()
-    export_image(image_filename=Path(r'D:\Projects\first_breaks_picking\data\export.jpg'),
-                 sgy=sgy,
+    export_image(image_filename=PROJECT_ROOT / 'data/export.jpg',
+                 source=sgy,
                  height=600,
-                 width_per_trace=5,
+                 width_per_trace=20,
                  pixels_for_headers=10,
                  task=task,
                  # time_window=(0, 100),
