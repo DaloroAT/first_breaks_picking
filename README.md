@@ -8,7 +8,7 @@ As a more robust algorithm, it is proposed to use a neural network to pick the f
 seismic traces have similarities in the features of the wave field, **we pick first breaks on 2D seismic gather**, not 
 individual traces.
 
-![](https://github.com/DaloroAT/first_breaks_picking/blob/main/docs/images/intro_small.PNG)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
 
 # Installation
 
@@ -158,19 +158,18 @@ print(task.confidence)
 Neural network process file as series of **images**. There is why **the traces should not be random**,
 since we are using information about adjacent traces.
 
-
 To obtain the first breaks we do the following steps:
 1) Read all traces in the file.
-![All traces](docs/images/full.png)
+![All traces](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/full.png)
 2) Limit time range by `Maximum time`. 
-![Limited by time](docs/images/tm_100.png)
+![Limited by time](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100.png)
 3) Split the sequence of traces into independent gathers of lengths `Traces per gather` each. 
-![Splitted file](docs/images/tm_100_tr_24_24_24_24.png)
+![Splitted file](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_24_24_24_24.png)
 4) Apply trace modification on the gathers level if necessary (`Gain`, `Clip`, etc). 
 5) Calculate first breaks for individual gathers independently.
-![Picked shots](docs/images/tm_100_tr_24_24_24_24_picks.png)
+![Picked shots](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_24_24_24_24_picks.png)
 6) Join the first breaks of individual gathers.
-![Picked file](docs/images/tm_100_picks.png)
+![Picked file](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_picks.png)
 
 To achieve the best result, you need to modify the picking parameters.
 
@@ -182,12 +181,12 @@ traces into individual gathers.
 Suppose we need to process a file with 96 traces. Depending on the value of `Traces per gather` parameter, we will 
 process it as follows:
 - `Traces per gather` = 24. We will process 4 gathers with 24 traces each. 
-![4 full shots](docs/images/tm_100_tr_24_24_24_24.png)
+![4 full shots](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_24_24_24_24.png)
 - `Traces per gather` = 48. We will process 2 gathers with 48 traces each.
-![2 full shots](docs/images/tm_100_tr_48_48.png)
+![2 full shots](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_48_48.png)
 - `Traces per gather` = 40. We will process 2 gathers with 40 traces each and 1 gather with the remaining 16 traces. 
 The last gather will be interpolated from 16 to 40 traces. 
-![2 full + 1 interpolated shots](docs/images/tm_100_tr_40_40_16.png)
+![2 full + 1 interpolated shots](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_40_40_16.png)
 
 ### Maximum time
 
