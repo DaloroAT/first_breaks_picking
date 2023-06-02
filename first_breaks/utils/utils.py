@@ -59,9 +59,9 @@ def download_by_url(url: str, fname: Optional[Union[str, Path]], timeout: float 
         return response.content
 
 
-def download_and_validate_file(url: str,
+def download_and_validate_file(fname: Union[str, Path],
+                               url: str,
                                md5: str,
-                               fname: Union[str, Path],
                                timeout: float = TIMEOUT) -> Union[str, Path]:
     if not (Path(fname).exists() and calc_hash(fname) == md5):
         download_by_url(url=url, fname=fname, timeout=timeout)
@@ -71,16 +71,16 @@ def download_and_validate_file(url: str,
     return fname
 
 
-def download_demo_sgy(url: str = DEMO_SGY_URL,
-                      md5: str = DEMO_SGY_HASH,
-                      fname: Union[str, Path] = DEMO_SGY_PATH) -> Path:
-    return download_and_validate_file(url, md5, fname)
+def download_demo_sgy(fname: Union[str, Path] = DEMO_SGY_PATH,
+                      url: str = DEMO_SGY_URL,
+                      md5: str = DEMO_SGY_HASH) -> Path:
+    return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def download_model_onnx(url: str = MODEL_ONNX_URL,
-                        md5: str = MODEL_ONNX_HASH,
-                        fname: Union[str, Path] = MODEL_ONNX_PATH) -> Path:
-    return download_and_validate_file(url, md5, fname)
+def download_model_onnx(fname: Union[str, Path] = MODEL_ONNX_PATH,
+                        url: str = MODEL_ONNX_URL,
+                        md5: str = MODEL_ONNX_HASH) -> Path:
+    return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
 def sample2ms(sample: TTimeType, dt_ms: float) -> TTimeType:

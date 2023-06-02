@@ -1,25 +1,13 @@
-import sys
-import time
-import typing
 import warnings
-from pathlib import Path
-from typing import Optional, Union, Dict
+from typing import Optional
 
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QSize, QThreadPool, pyqtSignal, Qt
-from PyQt5.QtGui import QIcon, QIntValidator, QDoubleValidator, QValidator
-from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QToolBar, QAction, QFileDialog, QLabel, \
-    QDesktopWidget, QProgressBar, QHBoxLayout, QDialogButtonBox, QSpinBox, QCheckBox, QDialog, QGridLayout, QLineEdit
-from pyqtgraph.Qt import QtGui
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QDoubleValidator
+from PyQt5.QtWidgets import QApplication, QLabel, QDialogButtonBox, QSpinBox, QDialog, QGridLayout, QLineEdit
 
-from first_breaks.const import MODEL_ONNX_HASH, HIGH_DPI
+from first_breaks.const import HIGH_DPI
 from first_breaks.desktop.warn_widget import WarnBox
-from first_breaks.desktop.graph import GraphWidget
-from first_breaks.desktop.threads import InitNet, PickerQRunnable
-from first_breaks.picking.picker import PickerONNX
 from first_breaks.picking.task import Task
-from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import calc_hash
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -36,7 +24,6 @@ class PickingWindow(QDialog):
         super().__init__()
 
         self.setWindowTitle("Picking settings")
-        # x, y, width, height = 500, 500, 500, 500
         h, w = self.screen().size().height(), self.screen().size().width()
         left = int(0.4 * w)
         top = int(0.4 * h)
