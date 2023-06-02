@@ -9,25 +9,12 @@ seismic traces have similarities in the features of the wave field, **we pick fi
 individual traces.
 
 ![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
- <table>
-  <tr>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-    <td><img src="docs/images/intro_small.PNG" width=270 height=480></td>
-  </tr>
- </table>
 
-[//]: # ()
-[//]: # (| <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         |)
 
-[//]: # (|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|)
 
-[//]: # (| ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; | ![]&#40;docs/images/intro_small.PNG&#41; |)
+| <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         |
+|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|
+| ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) |
 
 
 # Installation
