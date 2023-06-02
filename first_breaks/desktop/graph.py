@@ -4,6 +4,7 @@ from typing import Union, Tuple, Sequence, List, Optional
 
 import numpy as np
 import pyqtgraph as pg
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor
 from PyQt5.QtWidgets import QApplication
@@ -12,6 +13,11 @@ from pyqtgraph.exporters import ImageExporter
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
+from first_breaks.const import HIGH_DPI
+
+if HIGH_DPI:
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 
 TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
@@ -28,13 +34,12 @@ class GraphDefaults:
     region_poly_color: TColor = (100, 100, 100, 50)
 
 
-
 class GraphWidget(pg.PlotWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.getPlotItem().disableAutoRange()
-        self.setAntialiasing(True)
+        self.setAntialiasing(False)
         self.getPlotItem().setClipToView(True)
         self.getPlotItem().setDownsampling(mode='peak')
 
@@ -71,7 +76,7 @@ class GraphWidget(pg.PlotWidget):
 
         traces = preprocess_gather(traces, gain=gain, clip=clip, normalize=normalize, copy=True)
 
-        self.remove_traces()
+        self.clear()
         num_sample, num_traces = self.sgy.shape
         t = np.arange(num_sample) * self.sgy.dt_ms
 
@@ -304,7 +309,7 @@ class GraphExporter(GraphWidget):
         self.close()
 
 
-def export_image(source: Union[str, Path, bytes, SGY],
+def export_image(source: Union[str, Path, bytes, SGY, Task],
                  image_filename: Optional[Union[str, Path]],
                  *args,
                  dt_mcs: float = 1e3,
@@ -315,7 +320,6 @@ def export_image(source: Union[str, Path, bytes, SGY],
                  time_window: Optional[Tuple[float, float]] = None,
                  traces_window: Optional[Tuple[float, float]] = None,
                  picks_ms: Optional[Sequence[float]] = None,
-                 task: Optional[Task] = None,
                  show_processing_region: bool = True,
                  picks_color: TColor = GraphDefaults.picks_color,
                  contour_color: TColor = GraphDefaults.region_contour_color,
@@ -334,9 +338,12 @@ def export_image(source: Union[str, Path, bytes, SGY],
         sgy = SGY(source, dt_mcs=dt_mcs)
     elif isinstance(source, SGY):
         sgy = source
+    elif isinstance(source, Task):
+        sgy = source.sgy
     else:
         raise TypeError("Unsupported type for 'source'")
 
+    warnings.filterwarnings("ignore")
     app = QApplication([])
     app.setQuitOnLastWindowClosed(True)
     window = GraphExporter(background='w')
@@ -361,6 +368,7 @@ def export_image(source: Union[str, Path, bytes, SGY],
                   pixels_for_headers=pixels_for_headers
                   )
     app.exec()
+    warnings.resetwarnings()
 
 
 if __name__ == '__main__':
@@ -373,7 +381,7 @@ if __name__ == '__main__':
     # task.result.processed_traces = list(range(96))[:45]
     import numpy as np
     import time
-    from first_breaks.const import PROJECT_ROOT, DEMO_SGY_PATH
+    from first_breaks.const import PROJECT_ROOT, DEMO_SGY_PATH, HIGH_DPI
 
     sgy = SGY(DEMO_SGY_PATH)
     # sgy = SGY(np.random.uniform(-2, 2, (1000, 200)), dt_mcs=1e3)
@@ -382,17 +390,19 @@ if __name__ == '__main__':
     task.picks_in_samples = np.random.uniform(0, 100, sgy.num_traces)
 
     st = time.perf_counter()
-    export_image(image_filename=PROJECT_ROOT / 'data/export.jpg',
-                 source=sgy,
+    export_image(image_filename=PROJECT_ROOT / 'data/export.png',
+                 source=task,
                  height=600,
                  width_per_trace=20,
                  pixels_for_headers=10,
-                 task=task,
                  # time_window=(0, 100),
                  # traces_window=(10, 20),
                  show_processing_region=True,
                  gain=1,
-                 clip=1)
+                 clip=1,
+                 fill_black_left=False)
     print(time.perf_counter() - st)
+
+    task.export_result(PROJECT_ROOT / 'data/picks.txt', as_plain=True)
 
 

@@ -8,8 +8,9 @@ from PyQt5.QtCore import QSize, QThreadPool, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QToolBar, QAction, QFileDialog, QLabel, \
     QDesktopWidget, QProgressBar, QHBoxLayout, QStyle, QSlider
+from PyQt5.uic.properties import QtWidgets
 
-from first_breaks.const import MODEL_ONNX_HASH
+from first_breaks.const import MODEL_ONNX_HASH, HIGH_DPI, MODEL_ONNX_PATH, DEMO_SGY_PATH
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.warn_widget import WarnBox
 from first_breaks.desktop.graph import GraphWidget
@@ -20,6 +21,10 @@ from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import calc_hash
 
 warnings.filterwarnings("ignore")
+
+if HIGH_DPI:
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 
 class FileState:
@@ -67,13 +72,12 @@ class MainWindow(QMainWindow):
         else:
             self.main_folder = Path(__file__).parent
 
-        self.folder_for_opening = Path(__file__).parent.parent.parent / 'data'
-
         # main window settings
-        left = 100
-        top = 100
-        width = 1000
-        height = 1000
+        h, w = self.screen().size().height(), self.screen().size().width()
+        left = int(0.2 * w)
+        top = int(0.2 * h)
+        width = int(0.6 * w)
+        height = int(0.6 * h)
         self.setGeometry(left, top, width, height)
 
         qt_rectangle = self.frameGeometry()
@@ -199,8 +203,8 @@ class MainWindow(QMainWindow):
 
         self.threadpool = QThreadPool()
 
-        self.load_nn(str(self.folder_for_opening / 'fb.onnx'))
-        self.get_filename(str(self.folder_for_opening / 'real_gather.sgy'))
+        self.load_nn(str(MODEL_ONNX_PATH))
+        self.get_filename(str(DEMO_SGY_PATH))
 
         self.show()
 
@@ -314,13 +318,12 @@ class MainWindow(QMainWindow):
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(self,
                                                       "Select file with NN weights",
-                                                      directory=str(self.folder_for_opening),
+                                                      directory=str(Path.home()),
                                                       options=options)
 
         if filename:
             if FileState.get_file_state(filename, MODEL_ONNX_HASH) == FileState.valid_file:
                 self._thread_init_net(weights=filename)
-
                 self.button_load_nn.setEnabled(False)
                 self.ready_to_process.model_loaded = True
 
@@ -342,7 +345,7 @@ class MainWindow(QMainWindow):
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(self,
                                                       "Open SGY-file",
-                                                      directory=str(self.folder_for_opening),
+                                                      directory=str(Path.home()),
                                                       filter="SGY-file (*.sgy)",
                                                       options=options)
         if filename:
@@ -372,7 +375,11 @@ class MainWindow(QMainWindow):
                 window_err.exec_()
 
 
-if __name__ == '__main__':
+def run_app():
     app = QApplication([])
-    window = MainWindow()
+    _ = MainWindow()
     app.exec_()
+
+
+if __name__ == '__main__':
+    run_app()

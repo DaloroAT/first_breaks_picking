@@ -18,6 +18,11 @@ setup(
     install_requires=load_requirements("requirements.txt"),
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
+    entry_points={
+            "console_scripts": [
+                "first-breaks-picking=first_breaks.cli:cli_commands"
+            ],
+        },
     # general information
     name="first-breaks-picking",
     description="Tool for picking first breaks in seismic gather",

@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.utils import download_model_onnx
+from first_breaks.utils.utils import download_model_onnx, calc_hash
 
 import onnxruntime as ort
 
@@ -15,6 +15,8 @@ class PickerONNX:
     def __init__(self, onnx_path: Optional[Union[str, Path]] = None, show_progressbar: bool = True):
         if onnx_path is None:
             onnx_path = download_model_onnx()
+        self.onnx_path = onnx_path
+        self.model_hash = calc_hash(self.onnx_path)
         self.model = ort.InferenceSession(onnx_path)
         self.show_progressbar = show_progressbar
         self.progressbar: Optional[tqdm] = None
@@ -70,5 +72,6 @@ class PickerONNX:
         task.success = True
         task.picks_in_samples = task_picks_in_sample
         task.confidence = task_confidence
+        task.model_hash = self.model_hash
 
         return task

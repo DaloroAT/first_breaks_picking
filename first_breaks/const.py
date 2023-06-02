@@ -1,3 +1,4 @@
+import os
 from os import environ
 from sys import platform
 from pathlib import Path
@@ -30,3 +31,5 @@ MODEL_ONNX_URL = 'https://oml.daloroserver.com/download/seis/fb.onnx'
 MODEL_ONNX_HASH = '7e39e017b01325180e36885eccaeb17a'
 
 TIMEOUT = 60
+
+HIGH_DPI = os.getenv('HIGH_DPI', True)

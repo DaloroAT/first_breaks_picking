@@ -5,3 +5,4 @@ PyQt5==5.15.9
 onnxruntime==1.14.1
 pyqtgraph==0.13.3
 tqdm==4.65.0
+click==8.1.3

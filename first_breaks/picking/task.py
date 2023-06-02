@@ -1,5 +1,9 @@
+import json
 from pathlib import Path
 from typing import Union, Sequence, List, Tuple, Optional
+
+import numpy as np
+import pandas as pd
 
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import chunk_iterable, sample2ms
@@ -34,11 +38,11 @@ class Task:
         self.gain_parsed = self.validate_and_parse_gain(gain)
         self.clip_parsed = self.validate_and_parse_clip(clip)
 
-        self._picks_in_ms = None
         self.picks_in_samples = None
         self.confidence = None
         self.success = None
         self.error_message = None
+        self.model_hash = None
 
     @classmethod
     def validate_traces_per_gather(cls, traces_per_gather: int):
@@ -124,10 +128,55 @@ class Task:
 
     @property
     def picks_in_ms(self) -> Optional[List[float]]:
-        if self._picks_in_ms:
-            return self._picks_in_ms
-        elif self.picks_in_samples is not None:
-            self._picks_in_ms = sample2ms(self.picks_in_samples, self.sgy.dt_ms)
-            return self._picks_in_ms
+        if self.picks_in_samples is not None:
+            return sample2ms(self.picks_in_samples, self.sgy.dt_ms)
         else:
             return None
+
+    def export_result(self, filename: Union[str, Path], as_plain: bool = False) -> None:
+        if self.picks_in_samples is None:
+            raise RuntimeError('There are no picks. Put them manually or process the task first')
+
+        if isinstance(self.picks_in_samples, (tuple, list)):
+            picks_in_samples = self.picks_in_samples
+        elif isinstance(self.picks_in_samples, np.ndarray):
+            picks_in_samples = self.picks_in_samples.tolist()
+        else:
+            raise TypeError("Only 1D sequence can be saved")
+        picks_in_ms = sample2ms(picks_in_samples, dt_ms=self.sgy.dt_ms)
+        confidence = self.confidence
+
+        is_source_file = isinstance(self.sgy.source, (str, Path))
+        if is_source_file:
+            source_filename = str(Path(self.sgy.source).name)
+            source_full_name = str(Path(self.sgy.source).resolve())
+        else:
+            source_filename = None
+            source_full_name = None
+
+        meta = {"is_source_file": is_source_file,
+                "is_source_ndarray": self.sgy.is_source_ndarray,
+                "filename": source_filename,
+                "full_name": source_full_name,
+                "hash": self.sgy.get_hash(),
+                "dt_ms": self.sgy.dt_ms,
+                "is_picked_with_model": bool(self.success),
+                "model_hash": self.model_hash,
+                "traces_per_gather": self.traces_per_gather_parsed,
+                "maximum_time": self.maximum_time_parsed,
+                "traces_to_inverse": self.traces_to_inverse_parsed,
+                "gain": self.gain_parsed,
+                "clip": self.clip_parsed}
+        data = {"picks_in_samples": picks_in_samples, "picks_in_ms": picks_in_ms, "confidence": confidence}
+
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+
+        with open(filename, 'w') as fout:
+            if as_plain:
+                content = [f"{k}={v}" for k, v in meta.items()]
+                data = pd.DataFrame(data).to_string(index=False, justify='right')
+                content.append(data)
+                content = '\n'.join(content)
+                fout.write(content)
+            else:
+                json.dump({**meta, **data}, fout)

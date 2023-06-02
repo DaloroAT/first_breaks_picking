@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
-from first_breaks.utils.utils import get_io, chunk_iterable
+from first_breaks.utils.utils import get_io, chunk_iterable, calc_hash
 
 SizeHW = Tuple[int, int]
 
@@ -98,14 +98,25 @@ class SGY:
 
         # other
         self._descriptor: Optional[Union[io.BytesIO, io.FileIO]] = None
-        self._is_source_ndarray: Optional[bool] = None
+        self.is_source_ndarray: Optional[bool] = None
         self._endianess: Optional[str] = None
         self._bps: Optional[int] = None
         self._data_fmt: Optional[int] = None
         self._initialized = False
+        self._hash_value: Optional[str] = None
 
         if not use_delayed_init:
             self._delayed_init()
+
+    def get_hash(self) -> Optional[str]:
+        if self.is_source_ndarray:
+            return None
+        else:
+            if self._hash_value is None:
+                self._descriptor = get_io(self.source, mode='rb')
+                self._hash_value = calc_hash(self._descriptor)
+                self._descriptor.close()
+            return self._hash_value
 
     def __getattribute__(self, item: str) -> Any:
         _initialized_name = '_initialized'
@@ -128,12 +139,12 @@ class SGY:
             if self._dt_mcs_input is not None:
                 raise SGYInitParamsError("Argument 'dt_mcs' must be empty if SGY created from external sources")
             self._init_from_external()
-            self._is_source_ndarray = False
+            self.is_source_ndarray = False
         elif isinstance(self.source, np.ndarray):
             if self._dt_mcs_input is None:
                 raise SGYInitParamsError("Argument 'dt_mcs' is required if nd.array is used as input")
             self._init_from_numpy()
-            self._is_source_ndarray = True
+            self.is_source_ndarray = True
         else:
             raise SGYInitParamsError(f'Only `str, Path, bytes, np.ndarray` types are available as input')
 
@@ -260,7 +271,7 @@ class SGY:
         if len(ids) == 0:
             raise ValueError("The requested IDs were not found in the file")
 
-        if self._is_source_ndarray or (self._traces is not None and self._traces.shape == self.shape):
+        if self.is_source_ndarray or (self._traces is not None and self._traces.shape == self.shape):
             return self._read_block_ndarray(ids, min_sample, len_slice)
         else:
             return self._read_block_external(ids, min_sample, len_slice)

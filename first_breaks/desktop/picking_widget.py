@@ -5,13 +5,14 @@ import warnings
 from pathlib import Path
 from typing import Optional, Union, Dict
 
-from PyQt5.QtCore import QSize, QThreadPool, pyqtSignal
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QSize, QThreadPool, pyqtSignal, Qt
 from PyQt5.QtGui import QIcon, QIntValidator, QDoubleValidator, QValidator
 from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QToolBar, QAction, QFileDialog, QLabel, \
     QDesktopWidget, QProgressBar, QHBoxLayout, QDialogButtonBox, QSpinBox, QCheckBox, QDialog, QGridLayout, QLineEdit
 from pyqtgraph.Qt import QtGui
 
-from first_breaks.const import MODEL_ONNX_HASH
+from first_breaks.const import MODEL_ONNX_HASH, HIGH_DPI
 from first_breaks.desktop.warn_widget import WarnBox
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.threads import InitNet, PickerQRunnable
@@ -19,6 +20,10 @@ from first_breaks.picking.picker import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import calc_hash
+
+if HIGH_DPI:
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 warnings.filterwarnings("ignore")
 
@@ -31,8 +36,13 @@ class PickingWindow(QDialog):
         super().__init__()
 
         self.setWindowTitle("Picking settings")
-        x, y, width, height = 500, 500, 500, 500
-        self.setGeometry(x, y, width, height)
+        # x, y, width, height = 500, 500, 500, 500
+        h, w = self.screen().size().height(), self.screen().size().width()
+        left = int(0.4 * w)
+        top = int(0.4 * h)
+        width = int(0.2 * w)
+        height = int(0.2 * h)
+        self.setGeometry(left, top, width, height)
         self.setFixedSize(width, height)
 
         self.label2widget = {}
@@ -79,24 +89,6 @@ class PickingWindow(QDialog):
         self.clip.setText(str(value_clip))
         layout.addWidget(self.clip_label, 3, 0)
         layout.addWidget(self.clip, 3, 1)
-
-        # labels = ["Keep aspect ratio", "Autosave", "Extend borders"]
-        #
-        # self.box_keep_aspect = QCheckBox()
-        # layout.addWidget(QLabel(labels[0]), 0, 0)
-        # layout.addWidget(self.box_keep_aspect, 0, 1)
-        #
-        # self.box_autosave = QCheckBox()
-        # self.box_autosave.setEnabled(False)
-        # self.label_save = QLabel(labels[1])
-        # self.label_save.setEnabled(False)
-        # layout.addWidget(self.label_save, 1, 0)
-        # layout.addWidget(self.box_autosave, 1, 1)
-        #
-        # self.spin_extend = QSpinBox()
-        # self.spin_extend.setRange(0, 50)
-        # layout.addWidget(QLabel(labels[2]), 2, 0)
-        # layout.addWidget(self.spin_extend, 2, 1)
 
         self.buttonBox = QDialogButtonBox()
         self.buttonBox.addButton("Run picking", QDialogButtonBox.AcceptRole)

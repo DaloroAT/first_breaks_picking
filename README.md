@@ -40,10 +40,12 @@ download_model_onnx(model_filename)
 
 # How to use it
 
-The library can be used in Python, or you can use the desktop application. The former has more flexibility for 
-building your own picking scenario and processing multiple files. The difference between the latter is that it 
-allows you to work interactively with only one file and has better performance in visualization.
+The library can be used in Python, or you can use the desktop application. 
 
+## Python
+
+Programmatic way has more flexibility for building your own picking scenario and processing multiple files.
+In this subsection, we show various code snippets using Python.
 
 ### Create SGY
 We provide several ways to create `SGY` object: from file, `bytes` or `numpy` array. 
@@ -140,18 +142,151 @@ task: Task = ...  # put here previously created task
 picker = PickerONNX()
 task = picker.process_task(task)
 
-# we can see results of picking
+# you can see results of picking
 print(task.picks_in_samples)
 print(task.picks_in_ms)
 print(task.confidence)
+
+# you can export picks to file as plain text
+task.export_result('result.txt', as_plain=True)
+# or save as json file
+task.export_result('result.json', as_plain=False)
 ```
 
+### Visualizations
 
+You can save the seismogram and picks as an image. We use Qt backend for visualizations. Here we describe some usage 
+scenarios. 
 
+We've added named arguments to various scenarios for demonstration purposes, but in practice you can 
+use them all. See the function arguments for more visualization options.
 
+Plot `SGY` only:
+```python
+from first_breaks.sgy.reader import SGY
+from first_breaks.desktop.graph import export_image
 
+sgy_filename = 'data.sgy'
+image_filename = 'image.png'
 
-[//]: # (- We can create it from `numpy` array.)
+sgy = SGY(sgy_filename)
+export_image(sgy, image_filename, 
+             normalize=False,
+             traces_window=(5, 10),
+             time_window=(0, 200),
+             height=300,
+             width_per_trace=30)
+```
+
+Plot `numpy` traces:
+```python
+import numpy as np
+from first_breaks.sgy.reader import SGY
+from first_breaks.desktop.graph import export_image
+
+image_filename = 'image.png'
+num_traces = 48
+num_samples = 1000
+dt_mcs = 1e3
+
+traces = np.random.random((num_samples, num_traces))
+export_image(traces, image_filename, 
+             dt_mcs=dt_mcs,
+             clip=0.5)
+
+# or create SGY as discussed before
+sgy = SGY(traces, dt_mcs=dt_mcs)
+export_image(sgy, image_filename,
+             gain=2)
+```
+
+Plot `SGY` with custom picks:
+```python
+import numpy as np
+from first_breaks.sgy.reader import SGY
+from first_breaks.desktop.graph import export_image
+
+sgy_filename = 'data.sgy'
+image_filename = 'image.png'
+
+sgy = SGY(sgy_filename)
+picks_ms = np.random.uniform(low=0, 
+                             high=sgy.ns * sgy.dt_ms, 
+                             size=sgy.ntr)
+export_image(sgy, image_filename,
+             picks_ms=picks_ms,
+             picks_color=(0, 100, 100))
+```
+
+Plot result of picking:
+```python
+from first_breaks.picking.task import Task
+from first_breaks.desktop.graph import export_image
+
+image_filename = 'image.png'
+
+task: Task = ...  # put here previously created task
+# if the task was not finished, then picks will not be drawn
+
+export_image(task, image_filename,
+             show_processing_region=False,
+             fill_black_left=False)
+```
+
+## Desktop application
+
+Desktop application allows you to work interactively with only one file and has better performance in visualization.
+You can use application as SGY viewer, as well as visually evaluate the optimal values of the picking 
+parameters for your data.
+
+### Launch app
+
+Enter command to launch the application
+```shell
+first-breaks-picking app
+```
+or
+```shell
+first-breaks-picking desktop
+```
+
+### Select and view SGY file
+
+Click on button ![Open SGY-file](sdf) to select SGY. After successful reading you can analyze SGY file. 
+
+The following mouse interactions are available:
+- Left button drag / Middle button drag: Pan the scene.
+- Right button drag: Scales the scene. Dragging left/right scales horizontally; dragging up/down scales vertically.
+- Right button click: Open dialog with extra options, such as limit by X/Y axes and export.
+- Wheel spin: Zooms the scene in and out.
+
+You can also use slider in toolbar to change gain of traces. **The gain value for the slider is only used for 
+visualization, it is not used in picking process**.
+
+### Load model
+
+To use picker in desktop app you have to download model. See the `Installation` section for instructions 
+on how to download the model.
+
+Click on ![Load NN](sdf) and select file with model. 
+After successfully loading the model, access to the pick will open.
+
+### Run picking
+
+Click on ![Picking](sdf) to open window with picking parameters. A detailed description of the parameters can be found 
+in the following chapters. Then run picking process. After some time, a line will appear connecting the first arrivals.
+
+Run again with different parameters to achieve optimal values of the picking parameters for your data.
+
+### Processing grid
+
+Click on ![Show processing grid](dfg) button to toggle the display of the processing grid on or off. Horizontal line
+shows `Maximum time` and vertical lines are drawn at intervals equal to `Traces per gather`. The neural network 
+processes blocks independently, as separate images.
+
+### Save results
+
+Click on ![Save picks](asd) button to save picks and info about SGY file into 
 
 # Picking process
 
@@ -167,7 +302,7 @@ To obtain the first breaks we do the following steps:
 ![Splitted file](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_24_24_24_24.png)
 4) Apply trace modification on the gathers level if necessary (`Gain`, `Clip`, etc). 
 5) Calculate first breaks for individual gathers independently.
-![Picked shots](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_24_24_24_24_picks.png)
+![Picked gathers](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_tr_24_24_24_24_picks.png)
 6) Join the first breaks of individual gathers.
 ![Picked file](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/tm_100_picks.png)
 
