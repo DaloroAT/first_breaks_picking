@@ -11,10 +11,17 @@ individual traces.
 ![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
 
 
-
-| <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         | <!-- -->                         |
-|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|----------------------------------|
-| ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) | ![](docs/images/intro_small.PNG) |
+<div style="overflow-x: scroll;">
+  <div style="white-space: nowrap;">
+    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 1">
+    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 2">
+    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
+    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
+    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
+    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
+    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
+  </div>
+</div>
 
 
 # Installation
@@ -77,7 +84,7 @@ with open(sgy_filename, 'rb') as fin:
 sgy = SGY(sgy_bytes)
 ```
 
-From `numpy` array:
+If you want to create from `numpy` array, extra argument `dt_mcs` is required:
 ```python
 import numpy as np
 from first_breaks.sgy.reader import SGY
@@ -90,7 +97,7 @@ traces = np.random.random((num_samples, num_traces))
 sgy = SGY(traces, dt_mcs=dt_mcs)
 ```
 
-#### Content of SGY 
+### Content of SGY 
 
 Created `SGY` allows you to read traces, get observation parameters and view headers (empty if created from `numpy`)
 
@@ -237,7 +244,29 @@ task: Task = ...  # put here previously created task
 
 export_image(task, image_filename,
              show_processing_region=False,
-             fill_black_left=False)
+             fill_black_left=False,
+             width=1000)
+```
+
+### *Limit processing region
+
+Unfortunately, processing of a part of a file is not currently supported natively. We will add this functionality soon!
+
+However, you can use the following workaround to do this:
+
+```python
+from first_breaks.sgy.reader import SGY
+
+sgy_filename = 'data.sgy'
+
+sgy = SGY(sgy_filename)
+
+interesting_traces = sgy.read_traces_by_ids(ids=list(range(20, 40)),
+                                            min_sample=100,
+                                            max_sample=200)
+
+# we create new SGY based on region of interests
+sgy = SGY(interesting_traces, dt_mcs=sgy.dt_mcs)
 ```
 
 ## Desktop application

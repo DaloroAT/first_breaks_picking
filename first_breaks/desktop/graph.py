@@ -207,13 +207,9 @@ class GraphExporter(GraphWidget):
 
     @classmethod
     def avoid_memory_bomb(cls,
-                          height: int,
-                          width_per_trace: int,
-                          pixels_for_headers: int,
-                          num_traces: int
+                          height_image: int,
+                          width_image: int,
                           ):
-        height_image = height + pixels_for_headers
-        width_image = pixels_for_headers + width_per_trace * num_traces
 
         if height_image > cls.MAX_SIDE_SIZE:
             message = f'It is not possible to render a picture of the given height = {height_image}. ' \
@@ -250,6 +246,7 @@ class GraphExporter(GraphWidget):
                poly_color: TColor = GraphDefaults.region_poly_color,
                contour_width: float = GraphDefaults.region_contour_width,
                height: int = 500,
+               width: Optional[int] = None,
                width_per_trace: int = 20,
                pixels_for_headers: int = 20,
                ):
@@ -260,7 +257,13 @@ class GraphExporter(GraphWidget):
             raise ValueError("'picks_ms' and 'task' are mutually exclusive. Use only one of them or none")
 
         num_traces = sgy.num_traces
-        self.avoid_memory_bomb(height, width_per_trace, pixels_for_headers, num_traces)
+        if width is None:
+            width = width_per_trace * num_traces
+
+        width += pixels_for_headers
+        height += pixels_for_headers
+
+        self.avoid_memory_bomb(height, width)
 
         self.clear()
         self.plotseis(sgy,
@@ -287,8 +290,8 @@ class GraphExporter(GraphWidget):
                                         poly_color=poly_color,
                                         contour_width=contour_width)
 
-        self.plotItem.setFixedHeight(pixels_for_headers + height)
-        self.plotItem.setFixedWidth(pixels_for_headers + width_per_trace * num_traces)
+        self.plotItem.setFixedHeight(height)
+        self.plotItem.setFixedWidth(width)
 
         if time_window:
             self.getPlotItem().setYRange(time_window[0], time_window[1], padding=0)
@@ -326,6 +329,7 @@ def export_image(source: Union[str, Path, bytes, SGY, Task],
                  poly_color: TColor = GraphDefaults.region_poly_color,
                  contour_width: float = GraphDefaults.region_contour_width,
                  height: int = 500,
+                 width: Optional[int] = None,
                  width_per_trace: int = 20,
                  pixels_for_headers: int = 20
                  ):
@@ -364,6 +368,7 @@ def export_image(source: Union[str, Path, bytes, SGY, Task],
                   poly_color=poly_color,
                   contour_width=contour_width,
                   height=height,
+                  width=width,
                   width_per_trace=width_per_trace,
                   pixels_for_headers=pixels_for_headers
                   )
@@ -393,7 +398,8 @@ if __name__ == '__main__':
     export_image(image_filename=PROJECT_ROOT / 'data/export.png',
                  source=task,
                  height=600,
-                 width_per_trace=20,
+                 # width=200,
+                 # width_per_trace=20,
                  pixels_for_headers=10,
                  # time_window=(0, 100),
                  # traces_window=(10, 20),
