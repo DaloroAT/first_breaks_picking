@@ -101,11 +101,12 @@ export_image(task, image_filename,
 
 For a better understanding of the steps taken, expand and read the next section.
 
+### Detailed examples
+
 <details>
 
-<summary style="font-size: 20px;font-weight: bold">Detailed examples</summary>
+<summary>Show examples</summary>
 <br>
-In this subsection, we show various code snippets using Python.
 
 ### Create SGY
 We provide several ways to create `SGY` object: from file, `bytes` or `numpy` array. 
