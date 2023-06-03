@@ -11,17 +11,8 @@ individual traces.
 ![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
 
 
-<div style="overflow-x: scroll;">
-  <div style="white-space: nowrap;">
-    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 1">
-    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 2">
-    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
-    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
-    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
-    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
-    <img src="docs/images/intro_small.PNG" style="display: inline-block; width: 500px;" alt="Image 3">
-  </div>
-</div>
+| ![Image 1](docs/images/intro_small.PNG) | ![Image 2](docs/images/intro_small.PNG) | ![Image 3](docs/images/intro_small.PNG) |
+|-----------------------|-----------------------|-----------------------|
 
 
 # Installation

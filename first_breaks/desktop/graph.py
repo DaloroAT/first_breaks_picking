@@ -378,7 +378,7 @@ def export_image(source: Union[str, Path, bytes, SGY, Task],
 
 if __name__ == '__main__':
     # task = BaseTask(Path('/home/daloro/small.sgy'), traces_per_shot=24, time_window=(0, 100), time_unit='ms')
-    # task.result.picks_samples = np.random.randint(100, 200, 96)[:45]
+    # task.result.picks_samples = np.other.txt.randint(100, 200, 96)[:45]
     # # task.result.picks_samples[9: 15] = nn_config.not_presented_fb_value
     #
     # task.result.picks_samples = task.result.picks_samples.astype(int).tolist()
@@ -389,7 +389,7 @@ if __name__ == '__main__':
     from first_breaks.const import PROJECT_ROOT, DEMO_SGY_PATH, HIGH_DPI
 
     sgy = SGY(DEMO_SGY_PATH)
-    # sgy = SGY(np.random.uniform(-2, 2, (1000, 200)), dt_mcs=1e3)
+    # sgy = SGY(np.other.txt.uniform(-2, 2, (1000, 200)), dt_mcs=1e3)
     print(sgy.traces_headers.head())
     task = Task(sgy, maximum_time=100)
     task.picks_in_samples = np.random.uniform(0, 100, sgy.num_traces)
