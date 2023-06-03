@@ -442,5 +442,5 @@ but the requirements listed above must be met.
 
 <img src="https://geodevice.co/local/templates/geodevice_15_07_2019/assets/images/logo_geodevice.png?1" style="width: 200px;" alt="Geodevice">
 
-We would like to thank GeoDevice LLC for providing field data from land and borehole seismic surveys with annotated first breaks for model training.
+We would like to thank [GEODEVICE](https://geodevice.co/) for providing field data from land and borehole seismic surveys with annotated first breaks for model training.
 
