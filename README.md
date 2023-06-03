@@ -8,7 +8,9 @@ As a more robust algorithm, it is proposed to use a neural network to pick the f
 seismic traces have similarities in the features of the wave field, **we pick first breaks on 2D seismic gather**, not 
 individual traces.
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/images/project_preview.png)
+<p align="center">
+<img src="https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/images/project_preview.png" />
+</p>
 
 # Examples
 
@@ -16,15 +18,7 @@ individual traces.
 
 <summary style="font-size: 25px;font-weight: bold">Show more examples</summary>
 
-### You can add a header
-
-You can add text within a collapsed section. 
-
-You can add an image or a code block, too.
-
-```ruby
-   puts "Hello World"
-```
+IN PROGRESS
 
 </details>
 
@@ -110,7 +104,7 @@ For a better understanding of the steps taken, expand and read the next section.
 <details>
 
 <summary style="font-size: 20px;font-weight: bold">Detailed examples</summary>
-
+<br>
 In this subsection, we show various code snippets using Python.
 
 ### Create SGY
@@ -183,7 +177,7 @@ print(sgy.traces_headers.head())
 
 Next, we create a task for picking and pass the picking parameters to it. They have default values, but for the 
 best quality, they must be matched to specific data. You can use the desktop application to evaluate the parameters.
-A detailed description of the parameters can be found  in the following chapters.
+A detailed description of the parameters can be found  in the `Picking process` chapter.
 
 ```python
 from first_breaks.sgy.reader import SGY
@@ -364,7 +358,8 @@ After successfully loading the model, access to the pick will open.
 ### Run picking
 
 Click on ![Picking](sdf) to open window with picking parameters. A detailed description of the parameters can be found 
-in the following chapters. Then run picking process. After some time, a line will appear connecting the first arrivals.
+in the `Picking process` chapter. Then run picking process. After some time, a line will appear connecting the first
+arrivals.
 
 Run again with different parameters to achieve optimal values of the picking parameters for your data.
 
@@ -376,7 +371,7 @@ processes blocks independently, as separate images.
 
 ### Save results
 
-Click on ![Save picks](asd) button to save picks and info about SGY file into 
+Click on ![Save picks](asd) button to save picks, picking parameters and info about SGY file into plain `.txt` file.
 
 # Picking process
 
@@ -442,3 +437,10 @@ value to 48, 24, or 12.
 - We don't sort your file (CMP, CRP, CSP, etc), so you should send us files with traces sorted by yourself. 
 - You can process a file with independent seismograms obtained from different polygons, under different conditions, etc., 
 but the requirements listed above must be met.
+
+# Acknowledgments
+
+<img src="https://geodevice.co/local/templates/geodevice_15_07_2019/assets/images/logo_geodevice.png?1" style="width: 200px;" alt="Geodevice">
+
+We would like to thank GeoDevice LLC for providing field data from land and borehole seismic surveys with annotated first breaks for model training.
+
