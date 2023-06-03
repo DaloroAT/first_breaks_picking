@@ -11,8 +11,8 @@ individual traces.
 ![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
 
 
-| ![Image 1](docs/images/intro_small.PNG) | ![Image 2](docs/images/intro_small.PNG) | ![Image 3](docs/images/intro_small.PNG) |
-|-----------------------|-----------------------|-----------------------|
+| <img src="docs/images/intro_small.PNG" width="600" alt="Image 1"> | <img src="docs/images/intro_small.PNG" width="600" alt="Image 1"> | <img src="docs/images/intro_small.PNG" width="600" alt="Image 1"> |
+|-------------------------------------------------------------------|-----------------------|-----------------------|
 
 
 # Installation
