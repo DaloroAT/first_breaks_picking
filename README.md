@@ -106,7 +106,6 @@ For a better understanding of the steps taken, expand and read the next section.
 <details>
 
 <summary>Show examples</summary>
-<br>
 
 ### Create SGY
 We provide several ways to create `SGY` object: from file, `bytes` or `numpy` array. 
