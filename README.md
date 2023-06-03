@@ -11,8 +11,11 @@ individual traces.
 ![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
 
 
-| <img src="docs/images/intro_small.PNG" width="600" alt="Image 1"> | <img src="docs/images/intro_small.PNG" width="600" alt="Image 1"> | <img src="docs/images/intro_small.PNG" width="600" alt="Image 1"> |
-|-------------------------------------------------------------------|-----------------------|-----------------------|
+<div class="image-gallery">
+  <img src="docs/images/intro_small.PNG" alt="Image 1">
+  <img src="docs/images/intro_small.PNG" alt="Image 2">
+  <img src="docs/images/intro_small.PNG" alt="Image 3">
+</div>
 
 
 # Installation
