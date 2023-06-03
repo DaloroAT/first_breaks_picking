@@ -6,8 +6,8 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
-from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor, QPicture, QPainter
+from PyQt5.QtWidgets import QApplication, QStyle
 from pyqtgraph.exporters import ImageExporter
 
 from first_breaks.picking.task import Task
@@ -18,7 +18,6 @@ from first_breaks.const import HIGH_DPI
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-
 
 TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
 
@@ -46,16 +45,16 @@ class GraphWidget(pg.PlotWidget):
         self.getPlotItem().invertY(True)
         self.getPlotItem().showAxis('top', True)
         self.getPlotItem().showAxis('bottom', False)
-        x_ax = self.getPlotItem().getAxis('top')
-        y_ax = self.getPlotItem().getAxis('left')
+        self.x_ax = self.getPlotItem().getAxis('top')
+        self.y_ax = self.getPlotItem().getAxis('left')
         text_size = 12
         labelstyle = {'font-size': f'{text_size}pt'}
         font = QFont()
         font.setPointSize(text_size)
-        x_ax.setLabel('trace', **labelstyle)
-        y_ax.setLabel('t, ms', **labelstyle)
-        x_ax.setTickFont(font)
-        y_ax.setTickFont(font)
+        self.x_ax.setLabel('trace', **labelstyle)
+        self.y_ax.setLabel('t, ms', **labelstyle)
+        self.x_ax.setTickFont(font)
+        self.y_ax.setTickFont(font)
         self.plotItem.ctrlMenu = None
 
         self.sgy = None
@@ -232,6 +231,7 @@ class GraphExporter(GraphWidget):
                sgy: SGY,
                image_filename: Optional[Union[str, Path]],
                *args,
+               # content parameters
                clip: float = GraphDefaults.clip,
                gain: float = GraphDefaults.gain,
                normalize: bool = GraphDefaults.normalize,
@@ -245,10 +245,15 @@ class GraphExporter(GraphWidget):
                contour_color: TColor = GraphDefaults.region_contour_color,
                poly_color: TColor = GraphDefaults.region_poly_color,
                contour_width: float = GraphDefaults.region_contour_width,
+               # rendering parameters
                height: int = 500,
                width: Optional[int] = None,
                width_per_trace: int = 20,
-               pixels_for_headers: int = 20,
+               headers_total_pixels: int = 50,
+               headers_font_pixels: Optional[int] = None,
+               time_spacing: Optional[int] = None,
+               traces_spacing: Optional[int] = None,
+               hide_traces_axis: bool = False
                ):
         if args:
             raise need_kwargs_exception
@@ -256,12 +261,12 @@ class GraphExporter(GraphWidget):
         if picks_ms is not None and task is not None:
             raise ValueError("'picks_ms' and 'task' are mutually exclusive. Use only one of them or none")
 
-        num_traces = sgy.num_traces
         if width is None:
-            width = width_per_trace * num_traces
-
-        width += pixels_for_headers
-        height += pixels_for_headers
+            if traces_window is None:
+                num_traces = sgy.num_traces
+                width = width_per_trace * num_traces + headers_total_pixels
+            else:
+                width = width_per_trace * (traces_window[1] - traces_window[0]) + headers_total_pixels
 
         self.avoid_memory_bomb(height, width)
 
@@ -290,14 +295,34 @@ class GraphExporter(GraphWidget):
                                         poly_color=poly_color,
                                         contour_width=contour_width)
 
-        self.plotItem.setFixedHeight(height)
-        self.plotItem.setFixedWidth(width)
-
         if time_window:
             self.getPlotItem().setYRange(time_window[0], time_window[1], padding=0)
-
         if traces_window:
             self.getPlotItem().setXRange(traces_window[0], traces_window[1], padding=0)
+
+        headers_font_pixels = headers_font_pixels or int(0.35 * headers_total_pixels)
+        labelstyle = {'font-size': f'{headers_font_pixels}px'}
+        tickfont = QFont()
+        tickfont.setPixelSize(max(int(0.9 * headers_font_pixels), 1))
+        self.x_ax.setLabel('trace', **labelstyle)
+        self.y_ax.setLabel('t, ms', **labelstyle)
+        self.x_ax.setTickFont(tickfont)
+        self.y_ax.setTickFont(tickfont)
+
+        self.x_ax.setHeight(headers_total_pixels)
+        self.y_ax.setWidth(headers_total_pixels)
+
+        if time_spacing:
+            self.y_ax.setTickSpacing(time_spacing, time_spacing)
+        if traces_spacing:
+            self.x_ax.setTickSpacing(traces_spacing, time_spacing)
+
+        if hide_traces_axis:
+            self.x_ax.showLabel(False)
+            self.x_ax.setTicks([])
+
+        self.plotItem.setFixedHeight(height)
+        self.plotItem.setFixedWidth(width)
 
         image = ImageExporter(self.plotItem).export(toBytes=True)
 
@@ -328,22 +353,31 @@ def export_image(source: Union[str, Path, bytes, SGY, Task],
                  contour_color: TColor = GraphDefaults.region_contour_color,
                  poly_color: TColor = GraphDefaults.region_poly_color,
                  contour_width: float = GraphDefaults.region_contour_width,
+                 # rendering parameters
                  height: int = 500,
                  width: Optional[int] = None,
                  width_per_trace: int = 20,
-                 pixels_for_headers: int = 20
+                 headers_total_pixels: int = 50,
+                 headers_font_pixels: Optional[int] = None,
+                 time_spacing: Optional[int] = None,
+                 traces_spacing: Optional[int] = None,
+                 hide_traces_axis: bool = False
                  ):
     if args:
         raise need_kwargs_exception
 
     if isinstance(source, (str, Path, bytes)):
         sgy = SGY(source)
+        task = None
     elif isinstance(source, np.ndarray):
         sgy = SGY(source, dt_mcs=dt_mcs)
+        task = None
     elif isinstance(source, SGY):
         sgy = source
+        task = None
     elif isinstance(source, Task):
         sgy = source.sgy
+        task = source
     else:
         raise TypeError("Unsupported type for 'source'")
 
@@ -352,6 +386,7 @@ def export_image(source: Union[str, Path, bytes, SGY, Task],
     app.setQuitOnLastWindowClosed(True)
     window = GraphExporter(background='w')
     window.hide()
+    window.setAntialiasing(True)
     window.export(sgy=sgy,
                   image_filename=image_filename,
                   clip=clip,
@@ -370,7 +405,11 @@ def export_image(source: Union[str, Path, bytes, SGY, Task],
                   height=height,
                   width=width,
                   width_per_trace=width_per_trace,
-                  pixels_for_headers=pixels_for_headers
+                  headers_total_pixels=headers_total_pixels,
+                  headers_font_pixels=headers_font_pixels,
+                  time_spacing=time_spacing,
+                  traces_spacing=traces_spacing,
+                  hide_traces_axis=hide_traces_axis
                   )
     app.exec()
     warnings.resetwarnings()
@@ -400,7 +439,7 @@ if __name__ == '__main__':
                  height=600,
                  # width=200,
                  # width_per_trace=20,
-                 pixels_for_headers=10,
+                 headers_total_pixels=10,
                  # time_window=(0, 100),
                  # traces_window=(10, 20),
                  show_processing_region=True,
@@ -410,5 +449,3 @@ if __name__ == '__main__':
     print(time.perf_counter() - st)
 
     task.export_result(PROJECT_ROOT / 'data/picks.txt', as_plain=True)
-
-

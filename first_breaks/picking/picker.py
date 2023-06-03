@@ -17,7 +17,7 @@ class PickerONNX:
             onnx_path = download_model_onnx()
         self.onnx_path = onnx_path
         self.model_hash = calc_hash(self.onnx_path)
-        self.model = ort.InferenceSession(onnx_path)
+        self.model = ort.InferenceSession(str(onnx_path))
         self.show_progressbar = show_progressbar
         self.progressbar: Optional[tqdm] = None
 

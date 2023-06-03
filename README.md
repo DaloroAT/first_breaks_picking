@@ -11,11 +11,22 @@ individual traces.
 ![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
 
 
-<div class="image-gallery">
-  <img src="docs/images/intro_small.PNG" alt="Image 1">
-  <img src="docs/images/intro_small.PNG" alt="Image 2">
-  <img src="docs/images/intro_small.PNG" alt="Image 3">
-</div>
+<details>
+
+<summary style="font-size: 25px;font-weight: bold">Show more examples</summary>
+
+### You can add a header
+
+You can add text within a collapsed section. 
+
+You can add an image or a code block, too.
+
+```ruby
+   puts "Hello World"
+```
+
+</details>
+
 
 
 # Installation
@@ -53,6 +64,48 @@ The library can be used in Python, or you can use the desktop application.
 ## Python
 
 Programmatic way has more flexibility for building your own picking scenario and processing multiple files.
+
+<summary style="font-size: 20px;font-weight: bold">Minimal example</summary>
+
+```python
+from first_breaks.utils.utils import download_demo_sgy
+from first_breaks.sgy.reader import SGY
+from first_breaks.picking.task import Task
+from first_breaks.picking.picker import PickerONNX
+from first_breaks.desktop.graph import export_image
+
+sgy_filename = 'data.sgy'
+download_demo_sgy(fname=sgy_filename)
+sgy = SGY(sgy_filename)
+
+task = Task(sgy_filename,
+            traces_per_gather=12,
+            maximum_time=100,
+            gain=2)
+picker = PickerONNX()
+task = picker.process_task(task)
+
+image_filename = 'image.png'
+export_image(task, image_filename)
+
+# to create image from project preview
+image_filename = 'preview.png'
+export_image(task, image_filename,
+             time_window=(0, 60),
+             traces_window=(79.5, 90.5),
+             show_processing_region=False,
+             headers_total_pixels=80,
+             height=500,
+             width=700,
+             hide_traces_axis=True)
+```
+
+
+
+[//]: # (<details>)
+
+<summary style="font-size: 20px;font-weight: bold">Detailed explanation</summary>
+
 In this subsection, we show various code snippets using Python.
 
 ### Create SGY
@@ -262,6 +315,8 @@ interesting_traces = sgy.read_traces_by_ids(ids=list(range(20, 40)),
 # we create new SGY based on region of interests
 sgy = SGY(interesting_traces, dt_mcs=sgy.dt_mcs)
 ```
+
+[//]: # (</details>)
 
 ## Desktop application
 
