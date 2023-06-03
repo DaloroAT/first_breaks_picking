@@ -310,16 +310,20 @@ class GraphExporter(GraphWidget):
         self.y_ax.setTickFont(tickfont)
 
         self.x_ax.setHeight(headers_total_pixels)
-        self.y_ax.setWidth(headers_total_pixels)
+
 
         if time_spacing:
             self.y_ax.setTickSpacing(time_spacing, time_spacing)
         if traces_spacing:
             self.x_ax.setTickSpacing(traces_spacing, time_spacing)
 
+        self.y_ax.setWidth(headers_total_pixels)
         if hide_traces_axis:
             self.x_ax.showLabel(False)
             self.x_ax.setTicks([])
+            self.x_ax.setHeight(0)
+        else:
+            self.x_ax.setHeight(headers_total_pixels)
 
         self.plotItem.setFixedHeight(height)
         self.plotItem.setFixedWidth(width)
