@@ -10,6 +10,7 @@ individual traces.
 
 ![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/images/intro_small.PNG)
 
+# Examples
 
 <details>
 
@@ -65,7 +66,10 @@ The library can be used in Python, or you can use the desktop application.
 
 Programmatic way has more flexibility for building your own picking scenario and processing multiple files.
 
-<summary style="font-size: 20px;font-weight: bold">Minimal example</summary>
+### Minimal example
+
+The following snippet implements the picking process of the demo file. As a result, you can get an image from 
+the project preview.
 
 ```python
 from first_breaks.utils.utils import download_demo_sgy
@@ -85,11 +89,12 @@ task = Task(sgy_filename,
 picker = PickerONNX()
 task = picker.process_task(task)
 
-image_filename = 'image.png'
+# create an image with default parameters
+image_filename = 'default_view.png'
 export_image(task, image_filename)
 
-# to create image from project preview
-image_filename = 'preview.png'
+# create an image from the project preview
+image_filename = 'project_preview.png'
 export_image(task, image_filename,
              time_window=(0, 60),
              traces_window=(79.5, 90.5),
@@ -100,11 +105,11 @@ export_image(task, image_filename,
              hide_traces_axis=True)
 ```
 
+For a better understanding of the steps taken, expand and read the next section.
 
+<details>
 
-[//]: # (<details>)
-
-<summary style="font-size: 20px;font-weight: bold">Detailed explanation</summary>
+<summary style="font-size: 20px;font-weight: bold">Detailed examples</summary>
 
 In this subsection, we show various code snippets using Python.
 
@@ -316,7 +321,7 @@ interesting_traces = sgy.read_traces_by_ids(ids=list(range(20, 40)),
 sgy = SGY(interesting_traces, dt_mcs=sgy.dt_mcs)
 ```
 
-[//]: # (</details>)
+</details>
 
 ## Desktop application
 
