@@ -14,15 +14,64 @@ individual traces.
 
 # Examples
 
+In the drop-down menus below you will find examples of our model picking on good quality data as well as noisy ones.
+
+It is difficult to validate the quality of the model on noisy data, but they show the robustness of the model to
+various types of noise.
+
 <details>
+<summary>Good quality data</summary>
 
-<summary style="font-size: 25px;font-weight: bold">Show more examples</summary>
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_0.png)
 
-IN PROGRESS
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_1.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_2.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_3.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_4.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_5.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_6.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_7.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_8.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_9.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_10.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_11.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_12.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_13.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_14.png)
 
 </details>
 
+<details>
+<summary>Noisy data</summary>
 
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_0.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_1.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_2.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_3.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_4.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_5.png)
+
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_6.png)
+
+</details>
 
 # Installation
 
