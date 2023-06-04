@@ -75,7 +75,7 @@ various types of noise.
 
 # Installation
 
-Library is available in PyPI:
+Library is available in [PyPI](https://pypi.org/project/first-breaks-picking/):
 ```shell
 pip install -U first-breaks-picking
 ```
