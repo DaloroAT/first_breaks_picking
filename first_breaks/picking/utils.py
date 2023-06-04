@@ -1,11 +1,9 @@
 import numpy as np
 
 
-def preprocess_gather(data: np.ndarray,
-                      gain: float = 1.0,
-                      clip: float = 1.0,
-                      normalize: bool = True,
-                      copy: bool = True) -> np.ndarray:
+def preprocess_gather(
+    data: np.ndarray, gain: float = 1.0, clip: float = 1.0, normalize: bool = True, copy: bool = True
+) -> np.ndarray:
     if copy:
         data = data.copy()
     if normalize:
