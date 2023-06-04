@@ -22,54 +22,54 @@ various types of noise.
 <details>
 <summary>Good quality data</summary>
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_0.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_0.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_1.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_1.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_2.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_2.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_3.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_3.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_4.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_4.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_5.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_5.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_6.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_6.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_7.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_7.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_8.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_8.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_9.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_9.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_10.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_10.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_11.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_11.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_12.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_12.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_13.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_13.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/normal/normal_14.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/normal/normal_14.png)
 
 </details>
 
 <details>
 <summary>Noisy data</summary>
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_0.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/noisy/noisy_0.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_1.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/noisy/noisy_1.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_2.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/noisy/noisy_2.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_3.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/noisy/noisy_3.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_4.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/noisy/noisy_4.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_5.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/noisy/noisy_5.png)
 
-![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/examples/noisy/noisy_6.png)
+![](https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/examples/noisy/noisy_6.png)
 
 </details>
 
@@ -368,6 +368,8 @@ sgy = SGY(interesting_traces, dt_mcs=sgy.dt_mcs)
 
 ## Desktop application
 
+***Application under development***
+
 Desktop application allows you to work interactively with only one file and has better performance in visualization.
 You can use application as SGY viewer, as well as visually evaluate the optimal values of the picking 
 parameters for your data.
@@ -385,7 +387,7 @@ first-breaks-picking desktop
 
 ### Select and view SGY file
 
-Click on button ![Open SGY-file](sdf) to select SGY. After successful reading you can analyze SGY file. 
+Click on 2 button to select SGY. After successful reading you can analyze SGY file. 
 
 The following mouse interactions are available:
 - Left button drag / Middle button drag: Pan the scene.
@@ -401,12 +403,12 @@ visualization, it is not used in picking process**.
 To use picker in desktop app you have to download model. See the `Installation` section for instructions 
 on how to download the model.
 
-Click on ![Load NN](sdf) and select file with model. 
+Click on 1 button and select file with model. 
 After successfully loading the model, access to the pick will open.
 
 ### Run picking
 
-Click on ![Picking](sdf) to open window with picking parameters. A detailed description of the parameters can be found 
+Click on 3 button to open window with picking parameters. A detailed description of the parameters can be found 
 in the `Picking process` chapter. Then run picking process. After some time, a line will appear connecting the first
 arrivals.
 
@@ -414,13 +416,13 @@ Run again with different parameters to achieve optimal values of the picking par
 
 ### Processing grid
 
-Click on ![Show processing grid](dfg) button to toggle the display of the processing grid on or off. Horizontal line
+Click on 4 button to toggle the display of the processing grid on or off. Horizontal line
 shows `Maximum time` and vertical lines are drawn at intervals equal to `Traces per gather`. The neural network 
 processes blocks independently, as separate images.
 
 ### Save results
 
-Click on ![Save picks](asd) button to save picks, picking parameters and info about SGY file into plain `.txt` file.
+Click on 5 button to save picks, picking parameters and info about SGY file into plain `.txt` file.
 
 # Picking process
 

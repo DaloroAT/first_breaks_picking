@@ -116,18 +116,17 @@ class MainWindow(QMainWindow):
         self.button_fb.setEnabled(False)
         toolbar.addAction(self.button_fb)
 
-        icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
+        self.need_processing_region = True
+        icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        self.button_export = QAction(icon_export, "Export picks to file", self)
-        # self.button_export.triggered.connect(self.export)
-        self.button_export.setEnabled(False)
-        toolbar.addAction(self.button_export)
-
-        # icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
-        # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        # self.button_export = QAction(icon_export, "Export picks to file", self)
-        # self.button_export.triggered.connect(self.export)
-        # self.button_export.setEnabled(False)
+        self.button_processing_show = QAction(icon_processing_show, "Show processing grid", self)
+        self.button_processing_show.triggered.connect(self.processing_region_changed)
+        self.button_processing_show.setChecked(self.need_processing_region)
+        self.button_processing_show.setEnabled(True)
+        self.button_processing_show.setCheckable(True)
+        if self.need_processing_region:
+            self.button_processing_show.toggle()
+        toolbar.addAction(self.button_processing_show)
 
         toolbar.addSeparator()
 
@@ -145,26 +144,16 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.slider_gain)
         toolbar.addWidget(self.gain_label)
 
-        self.need_processing_region = True
-        icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
+        icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        self.button_processing_show = QAction(icon_processing_show, "Show processing grid", self)
-        self.button_processing_show.triggered.connect(self.processing_region_changed)
-        self.button_processing_show.setChecked(self.need_processing_region)
-        self.button_processing_show.setEnabled(True)
-        self.button_processing_show.setCheckable(True)
-        if self.need_processing_region:
-            self.button_processing_show.toggle()
-        toolbar.addAction(self.button_processing_show)
+        self.button_export = QAction(icon_export, "Export picks to file", self)
+        self.button_export.triggered.connect(self.export)
+        self.button_export.setEnabled(False)
+        toolbar.addAction(self.button_export)
 
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         toolbar.addWidget(spacer)
-
-        # self.button_git = QAction(QIcon(str(self.main_folder / "icons" / "github.png")),
-        #                           "Open Github repo with project", self)
-        # self.button_git.triggered.connect(self.open_github)
-        # toolbar.addAction(self.button_git)
 
         self.status = self.statusBar()
         self.status_progress = QProgressBar()
@@ -198,13 +187,10 @@ class MainWindow(QMainWindow):
         self.picker: Optional[PickerONNX] = None
         self.start_time = None
         self.end_time = None
-        self.last_task = None
+        self.last_task: Optional[Task] = None
         self.settings = None
 
         self.threadpool = QThreadPool()
-
-        self.load_nn(str(MODEL_ONNX_PATH))
-        self.get_filename(str(DEMO_SGY_PATH))
 
         self.show()
 
@@ -273,6 +259,7 @@ class MainWindow(QMainWindow):
         if result.success:
             self.graph.plot_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
+            self.button_export.setEnabled(True)
         else:
             window_error = WarnBox(self, title='InternalError', message=result.error_message)
             window_error.exec_()
@@ -358,6 +345,7 @@ class MainWindow(QMainWindow):
                 self.graph.clear()
                 self.update_plot(refresh_view=True)
                 self.graph.show()
+                self.button_export.setEnabled(False)
 
                 self.button_get_filename.setEnabled(True)
                 self.ready_to_process.sgy_selected = True
@@ -373,6 +361,19 @@ class MainWindow(QMainWindow):
                                      title=e.__class__.__name__,
                                      message=str(e))
                 window_err.exec_()
+
+    def export(self):
+        options = QFileDialog.Options()
+        filename, _ = QFileDialog.getSaveFileName(self,
+                                                  "Save result",
+                                                  directory=str(Path.home()),
+                                                  filter="TXT (*.txt)",
+                                                  options=options)
+
+        if filename:
+            if self.last_task is not None and self.last_task.success:
+                Path(filename).parent.mkdir(parents=True, exist_ok=True)
+                self.last_task.export_result(str(Path(filename).resolve()), as_plain=True)
 
 
 def run_app():
