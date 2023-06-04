@@ -4,17 +4,14 @@ from first_breaks.desktop.main_gui import run_app
 
 cli_commands = click.Group()
 
-help_desktop_app = f"Launch desktop application for picking. 'app' and 'desktop' are aliases"
+help_desktop_app = "Launch desktop application for picking. 'app' and 'desktop' are aliases"
 
 
 @cli_commands.command(help=help_desktop_app)
-def app():
+def app() -> None:
     run_app()
 
 
 @cli_commands.command(help=help_desktop_app)
-def desktop():
+def desktop() -> None:
     run_app()
-
-
-

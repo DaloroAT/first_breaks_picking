@@ -1,11 +1,11 @@
 import warnings
 from pathlib import Path
-from typing import Union, Tuple, Sequence, Optional
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
-from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor
+from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph.exporters import ImageExporter
 
@@ -33,41 +33,42 @@ class GraphDefaults:
 
 
 class GraphWidget(pg.PlotWidget):
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.getPlotItem().disableAutoRange()
         self.setAntialiasing(False)
         self.getPlotItem().setClipToView(True)
-        self.getPlotItem().setDownsampling(mode='peak')
+        self.getPlotItem().setDownsampling(mode="peak")
 
         self.getPlotItem().invertY(True)
-        self.getPlotItem().showAxis('top', True)
-        self.getPlotItem().showAxis('bottom', False)
-        self.x_ax = self.getPlotItem().getAxis('top')
-        self.y_ax = self.getPlotItem().getAxis('left')
+        self.getPlotItem().showAxis("top", True)
+        self.getPlotItem().showAxis("bottom", False)
+        self.x_ax = self.getPlotItem().getAxis("top")
+        self.y_ax = self.getPlotItem().getAxis("left")
         text_size = 12
-        labelstyle = {'font-size': f'{text_size}pt'}
+        labelstyle = {"font-size": f"{text_size}pt"}
         font = QFont()
         font.setPointSize(text_size)
-        self.x_ax.setLabel('trace', **labelstyle)
-        self.y_ax.setLabel('t, ms', **labelstyle)
+        self.x_ax.setLabel("trace", **labelstyle)
+        self.y_ax.setLabel("t, ms", **labelstyle)
         self.x_ax.setTickFont(font)
         self.y_ax.setTickFont(font)
         self.plotItem.ctrlMenu = None
 
-        self.sgy = None
-        self.picks_as_item = None
-        self.processing_region_as_items = []
-        self.traces_as_items = []
+        self.sgy: Optional[SGY] = None
+        self.picks_as_item: Optional[pg.QtWidgets.QGraphicsPathItem] = None
+        self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
+        self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
 
-    def plotseis(self,
-                 sgy: SGY,
-                 clip: float = GraphDefaults.clip,
-                 gain: float = GraphDefaults.gain,
-                 normalize: bool = GraphDefaults.normalize,
-                 fill_black_left: bool = GraphDefaults.fill_black_left,
-                 refresh_view: bool = True):
+    def plotseis(
+        self,
+        sgy: SGY,
+        clip: float = GraphDefaults.clip,
+        gain: float = GraphDefaults.gain,
+        normalize: bool = GraphDefaults.normalize,
+        fill_black_left: bool = GraphDefaults.fill_black_left,
+        refresh_view: bool = True,
+    ) -> None:
 
         self.sgy = sgy
         traces = self.sgy.read()
@@ -87,7 +88,7 @@ class GraphWidget(pg.PlotWidget):
         for idx in range(num_traces):
             self._plot_trace_fast(traces[:, idx], t, idx + 1, fill_black_left)
 
-    def _plot_trace_fast(self, trace: np.ndarray, t: np.ndarray, shift: int, fill_black_left: bool):
+    def _plot_trace_fast(self, trace: np.ndarray, t: np.ndarray, shift: int, fill_black_left: bool) -> None:
         connect = np.ones(len(t), dtype=np.int32)
         connect[-1] = 0
 
@@ -121,27 +122,28 @@ class GraphWidget(pg.PlotWidget):
         self.addItem(item)
         self.traces_as_items.append(item)
 
-    def remove_picks(self):
+    def remove_picks(self) -> None:
         if self.picks_as_item:
             self.removeItem(self.picks_as_item)
 
-    def remove_processing_region(self):
+    def remove_processing_region(self) -> None:
         if self.processing_region_as_items:
             for item in self.processing_region_as_items:
                 self.removeItem(item)
 
-    def remove_traces(self):
+    def remove_traces(self) -> None:
         if self.traces_as_items:
             for item in self.traces_as_items:
                 self.removeItem(item)
 
-    def plot_processing_region(self,
-                               traces_per_gather: int,
-                               maximum_time: float,
-                               contour_color: TColor = GraphDefaults.region_contour_color,
-                               poly_color: TColor = GraphDefaults.region_poly_color,
-                               contour_width: float = GraphDefaults.region_contour_width
-                               ):
+    def plot_processing_region(
+        self,
+        traces_per_gather: int,
+        maximum_time: float,
+        contour_color: TColor = GraphDefaults.region_contour_color,
+        poly_color: TColor = GraphDefaults.region_poly_color,
+        contour_width: float = GraphDefaults.region_contour_width,
+    ) -> None:
         self.remove_processing_region()
 
         num_sample, num_traces = self.sgy.shape
@@ -171,7 +173,7 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items.append(poly_item)
         self.addItem(poly_item)
 
-    def plot_picks(self, picks_ms: Sequence[float], color: TColor = GraphDefaults.picks_color):
+    def plot_picks(self, picks_ms: Sequence[float], color: TColor = GraphDefaults.picks_color) -> None:
         self.remove_picks()
 
         num_traces = self.sgy.shape[1]
@@ -194,9 +196,11 @@ class UnsupportedImageSize(Exception):
     pass
 
 
-need_kwargs_exception = ValueError("Please, use named arguments instead of ordered for visualizations parameters. "
-                                   "E.g. instead of `export(sgy, 'gather.png', 1.5)` use"
-                                   " `export(sgy, 'gather.png', clip=1.5)`")
+need_kwargs_exception = ValueError(
+    "Please, use named arguments instead of ordered for visualizations parameters. "
+    "E.g. instead of `export(sgy, 'gather.png', 1.5)` use"
+    " `export(sgy, 'gather.png', clip=1.5)`"
+)
 
 
 class GraphExporter(GraphWidget):
@@ -204,56 +208,64 @@ class GraphExporter(GraphWidget):
     MAX_NUM_PIXELS = MAX_SIDE_SIZE * 2000
 
     @classmethod
-    def avoid_memory_bomb(cls,
-                          height_image: int,
-                          width_image: int,
-                          ):
+    def avoid_memory_bomb(
+        cls,
+        height_image: int,
+        width_image: int,
+    ) -> None:
 
         if height_image > cls.MAX_SIDE_SIZE:
-            message = f'It is not possible to render a picture of the given height = {height_image}. ' \
-                      f'Max height = {cls.MAX_SIDE_SIZE}. Decrease rendering parameters.'
+            message = (
+                f"It is not possible to render a picture of the given height = {height_image}. "
+                f"Max height = {cls.MAX_SIDE_SIZE}. Decrease rendering parameters."
+            )
             raise UnsupportedImageSize(message)
 
         if width_image > cls.MAX_SIDE_SIZE:
-            message = f'It is not possible to render a picture of the given width = {width_image}. ' \
-                      f'Max width = {cls.MAX_SIDE_SIZE}. Decrease rendering parameters.'
+            message = (
+                f"It is not possible to render a picture of the given width = {width_image}. "
+                f"Max width = {cls.MAX_SIDE_SIZE}. Decrease rendering parameters."
+            )
             raise UnsupportedImageSize(message)
 
         num_pixels = height_image * width_image
 
         if num_pixels > cls.MAX_NUM_PIXELS:
-            message = f'The size of the picture will turn out to be too large ({num_pixels} pixels) for ' \
-                      f'this SGY file. Decrease rendering parameters.'
+            message = (
+                f"The size of the picture will turn out to be too large ({num_pixels} pixels) for "
+                f"this SGY file. Decrease rendering parameters."
+            )
             raise HighMemoryConsumption(message)
 
-    def export(self,
-               sgy: SGY,
-               image_filename: Optional[Union[str, Path]],
-               *args,
-               # content parameters
-               clip: float = GraphDefaults.clip,
-               gain: float = GraphDefaults.gain,
-               normalize: bool = GraphDefaults.normalize,
-               fill_black_left: bool = GraphDefaults.fill_black_left,
-               time_window: Optional[Tuple[float, float]] = None,
-               traces_window: Optional[Tuple[float, float]] = None,
-               picks_ms: Optional[Sequence[float]] = None,
-               task: Optional[Task] = None,
-               show_processing_region: bool = True,
-               picks_color: TColor = GraphDefaults.picks_color,
-               contour_color: TColor = GraphDefaults.region_contour_color,
-               poly_color: TColor = GraphDefaults.region_poly_color,
-               contour_width: float = GraphDefaults.region_contour_width,
-               # rendering parameters
-               height: int = 500,
-               width: Optional[int] = None,
-               width_per_trace: int = 20,
-               headers_total_pixels: int = 50,
-               headers_font_pixels: Optional[int] = None,
-               time_spacing: Optional[int] = None,
-               traces_spacing: Optional[int] = None,
-               hide_traces_axis: bool = False
-               ):
+    def export(
+        self,
+        sgy: SGY,
+        image_filename: Optional[Union[str, Path]],
+        *args: Any,
+        # content parameters
+        clip: float = GraphDefaults.clip,
+        gain: float = GraphDefaults.gain,
+        normalize: bool = GraphDefaults.normalize,
+        fill_black_left: bool = GraphDefaults.fill_black_left,
+        time_window: Optional[Tuple[float, float]] = None,
+        traces_window: Optional[Tuple[float, float]] = None,
+        picks_ms: Optional[Sequence[float]] = None,
+        task: Optional[Task] = None,
+        show_processing_region: bool = True,
+        picks_color: TColor = GraphDefaults.picks_color,
+        contour_color: TColor = GraphDefaults.region_contour_color,
+        poly_color: TColor = GraphDefaults.region_poly_color,
+        contour_width: float = GraphDefaults.region_contour_width,
+        # rendering parameters
+        height: int = 500,
+        width: Optional[int] = None,
+        width_per_trace: int = 20,
+        headers_total_pixels: int = 50,
+        headers_font_pixels: Optional[int] = None,
+        time_spacing: Optional[int] = None,
+        traces_spacing: Optional[int] = None,
+        hide_traces_axis: bool = False,
+    ) -> None:
         if args:
             raise need_kwargs_exception
 
@@ -263,36 +275,35 @@ class GraphExporter(GraphWidget):
         if width is None:
             if traces_window is None:
                 num_traces = sgy.num_traces
-                width = width_per_trace * num_traces + headers_total_pixels
+                width = int(width_per_trace * num_traces) + headers_total_pixels
             else:
-                width = width_per_trace * (traces_window[1] - traces_window[0]) + headers_total_pixels
+                width = int(width_per_trace * (traces_window[1] - traces_window[0])) + headers_total_pixels
 
         self.avoid_memory_bomb(height, width)
 
         self.clear()
-        self.plotseis(sgy,
-                      normalize=normalize,
-                      clip=clip,
-                      gain=gain,
-                      fill_black_left=fill_black_left,
-                      refresh_view=True)
+        self.plotseis(
+            sgy, normalize=normalize, clip=clip, gain=gain, fill_black_left=fill_black_left, refresh_view=True
+        )
 
         if task:
-            picks_to_plot = task.picks_in_ms
+            picks_to_plot = task.picks_in_ms  # type: ignore
         elif picks_ms:
-            picks_to_plot = picks_ms
+            picks_to_plot = picks_ms  # type: ignore
         else:
-            picks_to_plot = None
+            picks_to_plot = None  # type: ignore
 
         if picks_to_plot is not None:
             self.plot_picks(picks_to_plot, color=picks_color)
 
         if task is not None and show_processing_region:
-            self.plot_processing_region(maximum_time=task.maximum_time_parsed,
-                                        traces_per_gather=task.traces_per_gather_parsed,
-                                        contour_color=contour_color,
-                                        poly_color=poly_color,
-                                        contour_width=contour_width)
+            self.plot_processing_region(
+                maximum_time=task.maximum_time_parsed,
+                traces_per_gather=task.traces_per_gather_parsed,
+                contour_color=contour_color,
+                poly_color=poly_color,
+                contour_width=contour_width,
+            )
 
         if time_window:
             self.getPlotItem().setYRange(time_window[0], time_window[1], padding=0)
@@ -300,16 +311,15 @@ class GraphExporter(GraphWidget):
             self.getPlotItem().setXRange(traces_window[0], traces_window[1], padding=0)
 
         headers_font_pixels = headers_font_pixels or int(0.35 * headers_total_pixels)
-        labelstyle = {'font-size': f'{headers_font_pixels}px'}
+        labelstyle = {"font-size": f"{headers_font_pixels}px"}
         tickfont = QFont()
         tickfont.setPixelSize(max(int(0.9 * headers_font_pixels), 1))
-        self.x_ax.setLabel('trace', **labelstyle)
-        self.y_ax.setLabel('t, ms', **labelstyle)
+        self.x_ax.setLabel("trace", **labelstyle)
+        self.y_ax.setLabel("t, ms", **labelstyle)
         self.x_ax.setTickFont(tickfont)
         self.y_ax.setTickFont(tickfont)
 
         self.x_ax.setHeight(headers_total_pixels)
-
 
         if time_spacing:
             self.y_ax.setTickSpacing(time_spacing, time_spacing)
@@ -336,36 +346,37 @@ class GraphExporter(GraphWidget):
         QTimer.singleShot(0, self.close_widget)
 
     @pyqtSlot()
-    def close_widget(self):
+    def close_widget(self) -> None:
         self.close()
 
 
-def export_image(source: Union[str, Path, bytes, np.ndarray, SGY, Task],
-                 image_filename: Optional[Union[str, Path]],
-                 *args,
-                 dt_mcs: float = 1e3,
-                 clip: float = GraphDefaults.clip,
-                 gain: float = GraphDefaults.gain,
-                 normalize: bool = GraphDefaults.normalize,
-                 fill_black_left: bool = GraphDefaults.fill_black_left,
-                 time_window: Optional[Tuple[float, float]] = None,
-                 traces_window: Optional[Tuple[float, float]] = None,
-                 picks_ms: Optional[Sequence[float]] = None,
-                 show_processing_region: bool = True,
-                 picks_color: TColor = GraphDefaults.picks_color,
-                 contour_color: TColor = GraphDefaults.region_contour_color,
-                 poly_color: TColor = GraphDefaults.region_poly_color,
-                 contour_width: float = GraphDefaults.region_contour_width,
-                 # rendering parameters
-                 height: int = 500,
-                 width: Optional[int] = None,
-                 width_per_trace: int = 20,
-                 headers_total_pixels: int = 50,
-                 headers_font_pixels: Optional[int] = None,
-                 time_spacing: Optional[int] = None,
-                 traces_spacing: Optional[int] = None,
-                 hide_traces_axis: bool = False
-                 ):
+def export_image(
+    source: Union[str, Path, bytes, np.ndarray, SGY, Task],
+    image_filename: Optional[Union[str, Path]],
+    *args: Any,
+    dt_mcs: float = 1e3,
+    clip: float = GraphDefaults.clip,
+    gain: float = GraphDefaults.gain,
+    normalize: bool = GraphDefaults.normalize,
+    fill_black_left: bool = GraphDefaults.fill_black_left,
+    time_window: Optional[Tuple[float, float]] = None,
+    traces_window: Optional[Tuple[float, float]] = None,
+    picks_ms: Optional[Sequence[float]] = None,
+    show_processing_region: bool = True,
+    picks_color: TColor = GraphDefaults.picks_color,
+    contour_color: TColor = GraphDefaults.region_contour_color,
+    poly_color: TColor = GraphDefaults.region_poly_color,
+    contour_width: float = GraphDefaults.region_contour_width,
+    # rendering parameters
+    height: int = 500,
+    width: Optional[int] = None,
+    width_per_trace: int = 20,
+    headers_total_pixels: int = 50,
+    headers_font_pixels: Optional[int] = None,
+    time_spacing: Optional[int] = None,
+    traces_spacing: Optional[int] = None,
+    hide_traces_axis: bool = False,
+) -> None:
     if args:
         raise need_kwargs_exception
 
@@ -387,68 +398,33 @@ def export_image(source: Union[str, Path, bytes, np.ndarray, SGY, Task],
     warnings.filterwarnings("ignore")
     app = QApplication([])
     app.setQuitOnLastWindowClosed(True)
-    window = GraphExporter(background='w')
+    window = GraphExporter(background="w")
     window.hide()
     window.setAntialiasing(True)
-    window.export(sgy=sgy,
-                  image_filename=image_filename,
-                  clip=clip,
-                  gain=gain,
-                  normalize=normalize,
-                  fill_black_left=fill_black_left,
-                  time_window=time_window,
-                  traces_window=traces_window,
-                  picks_ms=picks_ms,
-                  task=task,
-                  show_processing_region=show_processing_region,
-                  picks_color=picks_color,
-                  contour_color=contour_color,
-                  poly_color=poly_color,
-                  contour_width=contour_width,
-                  height=height,
-                  width=width,
-                  width_per_trace=width_per_trace,
-                  headers_total_pixels=headers_total_pixels,
-                  headers_font_pixels=headers_font_pixels,
-                  time_spacing=time_spacing,
-                  traces_spacing=traces_spacing,
-                  hide_traces_axis=hide_traces_axis
-                  )
+    window.export(
+        sgy=sgy,
+        image_filename=image_filename,
+        clip=clip,
+        gain=gain,
+        normalize=normalize,
+        fill_black_left=fill_black_left,
+        time_window=time_window,
+        traces_window=traces_window,
+        picks_ms=picks_ms,
+        task=task,
+        show_processing_region=show_processing_region,
+        picks_color=picks_color,
+        contour_color=contour_color,
+        poly_color=poly_color,
+        contour_width=contour_width,
+        height=height,
+        width=width,
+        width_per_trace=width_per_trace,
+        headers_total_pixels=headers_total_pixels,
+        headers_font_pixels=headers_font_pixels,
+        time_spacing=time_spacing,
+        traces_spacing=traces_spacing,
+        hide_traces_axis=hide_traces_axis,
+    )
     app.exec()
     warnings.resetwarnings()
-
-
-if __name__ == '__main__':
-    # task = BaseTask(Path('/home/daloro/small.sgy'), traces_per_shot=24, time_window=(0, 100), time_unit='ms')
-    # task.result.picks_samples = np.other.txt.randint(100, 200, 96)[:45]
-    # # task.result.picks_samples[9: 15] = nn_config.not_presented_fb_value
-    #
-    # task.result.picks_samples = task.result.picks_samples.astype(int).tolist()
-    #
-    # task.result.processed_traces = list(range(96))[:45]
-    import numpy as np
-    import time
-    from first_breaks.const import PROJECT_ROOT, DEMO_SGY_PATH, HIGH_DPI
-
-    sgy = SGY(DEMO_SGY_PATH)
-    # sgy = SGY(np.other.txt.uniform(-2, 2, (1000, 200)), dt_mcs=1e3)
-    print(sgy.traces_headers.head())
-    task = Task(sgy, maximum_time=100)
-    task.picks_in_samples = np.random.uniform(0, 100, sgy.num_traces)
-
-    st = time.perf_counter()
-    export_image(image_filename=PROJECT_ROOT / 'data/export.png',
-                 source=task,
-                 height=600,
-                 # width=200,
-                 # width_per_trace=20,
-                 headers_total_pixels=10,
-                 # time_window=(0, 100),
-                 # traces_window=(10, 20),
-                 show_processing_region=True,
-                 gain=1,
-                 clip=1,
-                 fill_black_left=False)
-    print(time.perf_counter() - st)
-
-    task.export_result(PROJECT_ROOT / 'data/picks.txt', as_plain=True)

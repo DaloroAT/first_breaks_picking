@@ -1,10 +1,15 @@
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QLabel, QDialog, QDialogButtonBox, QDesktopWidget, QVBoxLayout
+from PyQt5.QtWidgets import (
+    QDesktopWidget,
+    QDialog,
+    QDialogButtonBox,
+    QLabel,
+    QVBoxLayout,
+)
 
 
 class WarnBox(QDialog):
-
-    def __init__(self, parent, title='Error', message='Error'):
+    def __init__(self, parent, title="Error", message="Error"):  # type: ignore
         super().__init__(parent=parent)
 
         self.setWindowTitle(title)

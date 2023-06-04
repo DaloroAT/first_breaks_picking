@@ -3,13 +3,13 @@ from __future__ import annotations
 import io
 import struct
 from pathlib import Path
-from typing import Union, Optional, Dict, Any, Tuple, Generator, Sequence
+from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
-from first_breaks.utils.utils import get_io, chunk_iterable, calc_hash
+from first_breaks.utils.utils import calc_hash, chunk_iterable, get_io
 
 SizeHW = Tuple[int, int]
 
@@ -72,13 +72,14 @@ class SGY:
     def shape(self) -> SizeHW:
         return self.ns, self.ntr
 
-    def __init__(self,
-                 source: Union[str, Path, bytes, np.ndarray],
-                 dt_mcs: Optional[Union[int, float]] = None,
-                 general_headers_schema: FileHeaders = FileHeaders(),
-                 traces_headers_schema: TraceHeaders = TraceHeaders(),
-                 use_delayed_init: bool = False
-                 ):
+    def __init__(
+        self,
+        source: Union[str, Path, bytes, np.ndarray],
+        dt_mcs: Optional[Union[int, float]] = None,
+        general_headers_schema: FileHeaders = FileHeaders(),
+        traces_headers_schema: TraceHeaders = TraceHeaders(),
+        use_delayed_init: bool = False,
+    ):
         self.source = source
         self._dt_mcs_input = dt_mcs
 
@@ -113,14 +114,14 @@ class SGY:
             return None
         else:
             if self._hash_value is None:
-                self._descriptor = get_io(self.source, mode='rb')
+                self._descriptor = get_io(self.source, mode="rb")
                 self._hash_value = calc_hash(self._descriptor)
                 self._descriptor.close()
             return self._hash_value
 
     def __getattribute__(self, item: str) -> Any:
-        _initialized_name = '_initialized'
-        _delayed_init_name = '_delayed_init'
+        _initialized_name = "_initialized"
+        _delayed_init_name = "_delayed_init"
         _initialized_value = super().__getattribute__(_initialized_name)
 
         # We run `_delayed_init` if
@@ -146,23 +147,23 @@ class SGY:
             self._init_from_numpy()
             self.is_source_ndarray = True
         else:
-            raise SGYInitParamsError(f'Only `str, Path, bytes, np.ndarray` types are available as input')
+            raise SGYInitParamsError("Only `str, Path, bytes, np.ndarray` types are available as input")
 
     def _init_from_numpy(self) -> None:
-        assert self.source.ndim == 1 or self.source.ndim == 2, 'Only arrays are available'
-        if self.source.ndim == 1:
+        assert self.source.ndim == 1 or self.source.ndim == 2, "Only arrays are available"  # type: ignore
+        if self.source.ndim == 1:  # type: ignore
             self._ntr = 1
-        elif self.source.ndim == 2:
-            self._ntr = self.source.shape[1]
+        elif self.source.ndim == 2:  # type: ignore
+            self._ntr = self.source.shape[1]  # type: ignore
         else:
-            raise ValueError('Only 1D or 2D arrays are available')
+            raise ValueError("Only 1D or 2D arrays are available")
 
-        self._traces = self.source
-        self._dt = self._dt_mcs_input
-        self._ns = self.source.shape[0]
+        self._traces = self.source  # type: ignore
+        self._dt = self._dt_mcs_input  # type: ignore
+        self._ns = self.source.shape[0]  # type: ignore
 
     def _init_from_external(self) -> None:
-        self._descriptor = get_io(self.source, mode='rb')
+        self._descriptor = get_io(self.source, mode="rb")
         self._read_endianess()
         self._read_general_headers()
         self._read_traces_headers()
@@ -208,7 +209,7 @@ class SGY:
         num_bytes = self._descriptor.seek(0, 2)
         self._ntr = int((num_bytes - 3600) / (240 + self._ns * self._bps))
         if num_bytes != (3600 + (240 + self._ns * self._bps) * self._ntr):
-            raise InvalidSGY('Invalid number of bytes')
+            raise InvalidSGY("Invalid number of bytes")
 
     def _read_traces_headers(self) -> None:
         traces_headers = {}
@@ -236,7 +237,7 @@ class SGY:
         return traces
 
     def get_chunked_reader(
-            self, chunk_size: int, min_sample: Optional[int] = None, max_sample: Optional[int] = None
+        self, chunk_size: int, min_sample: Optional[int] = None, max_sample: Optional[int] = None
     ) -> Generator[np.ndarray, None, None]:
         chunk_size = min(chunk_size, self.num_traces)
         all_ids = list(range(self.num_traces))
@@ -245,7 +246,7 @@ class SGY:
             yield self.read_traces_by_ids(ids, min_sample, max_sample)
 
     def read_traces_by_ids(
-            self, ids: Sequence[int], min_sample: Optional[int] = None, max_sample: Optional[int] = None
+        self, ids: Sequence[int], min_sample: Optional[int] = None, max_sample: Optional[int] = None
     ) -> np.ndarray:
 
         if min_sample is not None:
@@ -277,12 +278,12 @@ class SGY:
             return self._read_block_external(ids, min_sample, len_slice)
 
     def _read_block_ndarray(self, ids: Sequence[int], min_sample: int, length_slice: int) -> np.ndarray:
-        return self._traces[min_sample:min_sample + length_slice, ids]
+        return self._traces[min_sample : min_sample + length_slice, ids]
 
     def _read_block_external(self, ids: Sequence[int], min_sample: int, length_slice: int) -> np.ndarray:
         buffer = []
 
-        self._descriptor = get_io(self.source, mode='rb')
+        self._descriptor = get_io(self.source, mode="rb")
         for idx in ids:
             pointer = 3600 + 240 + (240 + self._ns * self._bps) * idx + min_sample
             self._descriptor.seek(pointer)
@@ -333,7 +334,7 @@ class SGY:
 
     @staticmethod
     def _read_compl_int(value: int, num_bits: int) -> int:
-        return value - int((value << 1) & 2 ** num_bits)
+        return value - int((value << 1) & 2**num_bits)
 
     def _read_traces_4b_compl_int(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
         reader = np.vectorize(self._read_compl_int)

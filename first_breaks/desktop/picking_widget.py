@@ -1,9 +1,17 @@
 import warnings
 from typing import Optional
 
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtWidgets import QApplication, QLabel, QDialogButtonBox, QSpinBox, QDialog, QGridLayout, QLineEdit
+from PyQt5.QtWidgets import (
+    QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QGridLayout,
+    QLabel,
+    QLineEdit,
+    QSpinBox,
+)
 
 from first_breaks.const import HIGH_DPI
 from first_breaks.desktop.warn_widget import WarnBox
@@ -36,7 +44,7 @@ class PickingWindow(QDialog):
         layout = QGridLayout()
         self.setLayout(layout)
 
-        self.traces_per_gather_label = QLabel('Traces per gather')
+        self.traces_per_gather_label = QLabel("Traces per gather")
         self.traces_per_gather = QSpinBox()
         self.label2widget[self.traces_per_gather_label] = self.traces_per_gather
         self.traces_per_gather.setRange(2, 999)
@@ -45,7 +53,7 @@ class PickingWindow(QDialog):
         layout.addWidget(self.traces_per_gather_label, 0, 0)
         layout.addWidget(self.traces_per_gather, 0, 1)
 
-        self.maximum_time_label = QLabel('Maximum time, ms')
+        self.maximum_time_label = QLabel("Maximum time, ms")
         self.maximum_time = QLineEdit()
         self.label2widget[self.maximum_time_label] = self.maximum_time
         maximum_time_validator = QDoubleValidator()
@@ -56,7 +64,7 @@ class PickingWindow(QDialog):
         layout.addWidget(self.maximum_time_label, 1, 0)
         layout.addWidget(self.maximum_time, 1, 1)
 
-        self.gain_label = QLabel('Gain')
+        self.gain_label = QLabel("Gain")
         self.gain = QLineEdit()
         self.label2widget[self.gain_label] = self.gain
         gain_validator = QDoubleValidator()
@@ -66,7 +74,7 @@ class PickingWindow(QDialog):
         layout.addWidget(self.gain_label, 2, 0)
         layout.addWidget(self.gain, 2, 1)
 
-        self.clip_label = QLabel('Clip')
+        self.clip_label = QLabel("Clip")
         self.clip = QLineEdit()
         self.label2widget[self.clip_label] = self.clip
         clip_validator = QDoubleValidator()
@@ -86,7 +94,7 @@ class PickingWindow(QDialog):
         layout.addWidget(self.buttonBox)
         self.show()
 
-    def mark_as_invalid_if_empty(self, edit: QLineEdit, label: str):
+    def mark_as_invalid_if_empty(self, edit: QLineEdit, label: str) -> None:
         if edit.text().strip():
             if label in self.invalid_fields:
                 self.invalid_fields.remove(label)
@@ -94,20 +102,23 @@ class PickingWindow(QDialog):
             self.invalid_fields.add(label)
 
     def accept(self) -> None:
-        invalid_fields = [label.text().split(',')[0] for label, widget in self.label2widget.items()
-                          if not widget.text().strip()]
+        invalid_fields = [
+            label.text().split(",")[0] for label, widget in self.label2widget.items() if not widget.text().strip()
+        ]
 
         if invalid_fields:
             template = "Fields" if len(invalid_fields) > 1 else "Field"
             template += " {} must be filled"
-            invalid_fields = ','.join(invalid_fields)
-            window_error = WarnBox(self, title='Input error', message=template.format(invalid_fields))
+            invalid_fields_str = ",".join(invalid_fields)
+            window_error = WarnBox(self, title="Input error", message=template.format(invalid_fields_str))
             window_error.exec_()
         else:
-            settings = {'traces_per_gather': self.traces_per_gather.value(),
-                        'maximum_time': float(self.maximum_time.text()),
-                        'gain': float(self.gain.text()),
-                        'clip': float(self.clip.text())}
+            settings = {
+                "traces_per_gather": self.traces_per_gather.value(),
+                "maximum_time": float(self.maximum_time.text()),
+                "gain": float(self.gain.text()),
+                "clip": float(self.clip.text()),
+            }
             self.export_settings_signal.emit(settings)
             super().accept()
 
@@ -116,7 +127,7 @@ class PickingWindow(QDialog):
         super().reject()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication([])
     window = PickingWindow()
     app.exec_()

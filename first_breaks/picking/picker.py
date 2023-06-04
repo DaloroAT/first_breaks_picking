@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Tuple, Any, Optional
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 import onnxruntime as ort
@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.utils import download_model_onnx, calc_hash
+from first_breaks.utils.utils import calc_hash, download_model_onnx
 
 
 class PickerONNX:
@@ -22,7 +22,7 @@ class PickerONNX:
 
     def callback_processing_started(self, length: int) -> Any:
         if self.show_progressbar:
-            self.progressbar = tqdm(desc='Picking', total=length)
+            self.progressbar = tqdm(desc="Picking", total=length)
 
     def callback_processing_finished(self) -> Any:
         if self.show_progressbar:
@@ -50,14 +50,15 @@ class PickerONNX:
         for step, gather_ids in enumerate(task.get_gathers_ids()):
             self.callback_step_started(step)
 
-            amplitudes = np.array([-1 if idx in task.traces_to_inverse else 1 for idx in range(len(gather_ids))],
-                                  dtype=np.float32)
+            amplitudes = np.array(
+                [-1 if idx in task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
+            )
 
             gather = task.sgy.read_traces_by_ids(gather_ids)
 
             gather = preprocess_gather(gather, task.gain, task.clip)
             gather = amplitudes[None, :] * gather
-            gather = gather[:task.maximum_time_sample, :]
+            gather = gather[: task.maximum_time_sample, :]
 
             picks, confidence = self.pick_gather(gather)
 

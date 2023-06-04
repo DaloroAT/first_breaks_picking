@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Union, Sequence, List, Tuple, Optional
+from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,13 +16,15 @@ class ProcessingParametersException(Exception):
 
 
 class Task:
-    def __init__(self,
-                 sgy: Union[SGY, str, Path, bytes],
-                 traces_per_gather: int = 24,
-                 maximum_time: float = 0.0,
-                 traces_to_inverse: Sequence[int] = (),
-                 gain: float = 1,
-                 clip: float = 1):
+    def __init__(
+        self,
+        sgy: Union[SGY, str, Path, bytes],
+        traces_per_gather: int = 24,
+        maximum_time: float = 0.0,
+        traces_to_inverse: Sequence[int] = (),
+        gain: float = 1,
+        clip: float = 1,
+    ) -> None:
         self.sgy = sgy if isinstance(sgy, SGY) else SGY(sgy)
 
         self.traces_per_gather = traces_per_gather
@@ -38,22 +40,23 @@ class Task:
         self.gain_parsed = self.validate_and_parse_gain(gain)
         self.clip_parsed = self.validate_and_parse_clip(clip)
 
-        self.picks_in_samples = None
-        self.confidence = None
-        self.success = None
-        self.error_message = None
-        self.model_hash = None
+        self.picks_in_samples: Optional[Union[Sequence[float], np.ndarray]] = None
+        self.confidence: Optional[Union[Sequence[float], np.ndarray]] = None
+        self.success: Optional[bool] = None
+        self.error_message: Optional[str] = None
+        self.model_hash: Optional[str] = None
 
     @classmethod
-    def validate_traces_per_gather(cls, traces_per_gather: int):
+    def validate_traces_per_gather(cls, traces_per_gather: int) -> None:
         if not isinstance(traces_per_gather, int):
             raise ProcessingParametersException("`traces_per_gather` must be integer")
         if traces_per_gather < MINIMUM_TRACES_PER_GATHER:
-            raise ProcessingParametersException(f"`traces_per_gather` must be greater or "
-                                                f"equal to {MINIMUM_TRACES_PER_GATHER}")
+            raise ProcessingParametersException(
+                f"`traces_per_gather` must be greater or " f"equal to {MINIMUM_TRACES_PER_GATHER}"
+            )
 
     @classmethod
-    def validate_maximum_time(cls, maximum_time: float):
+    def validate_maximum_time(cls, maximum_time: float) -> None:
         if not isinstance(maximum_time, (int, float)):
             raise ProcessingParametersException("`maximum_time` must be real")
 
@@ -61,7 +64,7 @@ class Task:
             raise ProcessingParametersException("`maximum_time` must be positive or equal to 0")
 
     @classmethod
-    def validate_traces_to_inverse(cls, traces_to_inverse: Sequence[int]):
+    def validate_traces_to_inverse(cls, traces_to_inverse: Sequence[int]) -> None:
         if not isinstance(traces_to_inverse, (tuple, list)):
             raise ProcessingParametersException("`traces_to_inverse` must be tuple or list")
 
@@ -72,14 +75,14 @@ class Task:
             raise ProcessingParametersException("Elements of `traces_to_inverse` must be greater or equal to 1")
 
     @classmethod
-    def validate_gain(cls, gain: float):
+    def validate_gain(cls, gain: float) -> None:
         if not isinstance(gain, (int, float)):
             raise ProcessingParametersException("`gain` must be real")
         if gain == 0:
             raise ProcessingParametersException("`gain` must not be zero")
 
     @classmethod
-    def validate_clip(cls, clip: float):
+    def validate_clip(cls, clip: float) -> None:
         if not isinstance(clip, (int, float)):
             raise ProcessingParametersException("`clip` must be real")
         if clip <= 0:
@@ -120,7 +123,7 @@ class Task:
             return int(self.maximum_time_parsed / (self.sgy.dt_ms))
 
     def get_gathers_ids(self) -> List[Tuple[int]]:
-        return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather_parsed))
+        return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather_parsed))  # type: ignore
 
     @property
     def num_gathers(self) -> int:
@@ -129,13 +132,13 @@ class Task:
     @property
     def picks_in_ms(self) -> Optional[List[float]]:
         if self.picks_in_samples is not None:
-            return sample2ms(self.picks_in_samples, self.sgy.dt_ms)
+            return sample2ms(self.picks_in_samples, self.sgy.dt_ms)  # type: ignore
         else:
             return None
 
     def export_result(self, filename: Union[str, Path], as_plain: bool = False) -> None:
         if self.picks_in_samples is None:
-            raise RuntimeError('There are no picks. Put them manually or process the task first')
+            raise RuntimeError("There are no picks. Put them manually or process the task first")
 
         if isinstance(self.picks_in_samples, (tuple, list)):
             picks_in_samples = self.picks_in_samples
@@ -148,35 +151,37 @@ class Task:
 
         is_source_file = isinstance(self.sgy.source, (str, Path))
         if is_source_file:
-            source_filename = str(Path(self.sgy.source).name)
-            source_full_name = str(Path(self.sgy.source).resolve())
+            source_filename = str(Path(self.sgy.source).name)  # type: ignore
+            source_full_name = str(Path(self.sgy.source).resolve())  # type: ignore
         else:
             source_filename = None
             source_full_name = None
 
-        meta = {"is_source_file": is_source_file,
-                "is_source_ndarray": self.sgy.is_source_ndarray,
-                "filename": source_filename,
-                "full_name": source_full_name,
-                "hash": self.sgy.get_hash(),
-                "dt_ms": self.sgy.dt_ms,
-                "is_picked_with_model": bool(self.success),
-                "model_hash": self.model_hash,
-                "traces_per_gather": self.traces_per_gather_parsed,
-                "maximum_time": self.maximum_time_parsed,
-                "traces_to_inverse": self.traces_to_inverse_parsed,
-                "gain": self.gain_parsed,
-                "clip": self.clip_parsed}
+        meta = {
+            "is_source_file": is_source_file,
+            "is_source_ndarray": self.sgy.is_source_ndarray,
+            "filename": source_filename,
+            "full_name": source_full_name,
+            "hash": self.sgy.get_hash(),
+            "dt_ms": self.sgy.dt_ms,
+            "is_picked_with_model": bool(self.success),
+            "model_hash": self.model_hash,
+            "traces_per_gather": self.traces_per_gather_parsed,
+            "maximum_time": self.maximum_time_parsed,
+            "traces_to_inverse": self.traces_to_inverse_parsed,
+            "gain": self.gain_parsed,
+            "clip": self.clip_parsed,
+        }
         data = {"picks_in_samples": picks_in_samples, "picks_in_ms": picks_in_ms, "confidence": confidence}
 
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
-        with open(filename, 'w') as fout:
+        with open(filename, "w") as fout:
             if as_plain:
                 content = [f"{k}={v}" for k, v in meta.items()]
-                data = pd.DataFrame(data).to_string(index=False, justify='right')
-                content.append(data)
-                content = '\n'.join(content)
+                data_str = pd.DataFrame(data).to_string(index=False, justify="right")
+                content.append(data_str)
+                content = "\n".join(content)
                 fout.write(content)
             else:
                 json.dump({**meta, **data}, fout)
