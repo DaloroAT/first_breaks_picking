@@ -10,7 +10,6 @@ import requests
 from first_breaks.const import DEMO_SGY_URL, DEMO_SGY_PATH, TIMEOUT, DEMO_SGY_HASH, MODEL_ONNX_URL, MODEL_ONNX_HASH, \
     MODEL_ONNX_PATH
 
-
 TScalar = Union[int, float, np.number]
 TTimeType = Union[TScalar, List[TScalar], Tuple[TScalar, ...], np.ndarray]
 

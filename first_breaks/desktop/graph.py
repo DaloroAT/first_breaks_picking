@@ -1,19 +1,18 @@
 import warnings
 from pathlib import Path
-from typing import Union, Tuple, Sequence, List, Optional
+from typing import Union, Tuple, Sequence, Optional
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
-from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor, QPicture, QPainter
-from PyQt5.QtWidgets import QApplication, QStyle
+from PyQt5.QtGui import QFont, QPen, QPainterPath, QColor
+from PyQt5.QtWidgets import QApplication
 from pyqtgraph.exporters import ImageExporter
 
+from first_breaks.const import HIGH_DPI
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
-from first_breaks.const import HIGH_DPI
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)

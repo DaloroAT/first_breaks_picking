@@ -1,20 +1,17 @@
 import sys
-import time
 import warnings
 from pathlib import Path
-from typing import Optional, Union, Dict, Any, List
+from typing import Optional, Union, Dict, Any
 
 from PyQt5.QtCore import QSize, QThreadPool, Qt
-from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QSizePolicy, QApplication, QMainWindow, QToolBar, QAction, QFileDialog, QLabel, \
     QDesktopWidget, QProgressBar, QHBoxLayout, QStyle, QSlider
-from PyQt5.uic.properties import QtWidgets
 
-from first_breaks.const import MODEL_ONNX_HASH, HIGH_DPI, MODEL_ONNX_PATH, DEMO_SGY_PATH
-from first_breaks.desktop.picking_widget import PickingWindow
-from first_breaks.desktop.warn_widget import WarnBox
+from first_breaks.const import MODEL_ONNX_HASH, HIGH_DPI
 from first_breaks.desktop.graph import GraphWidget
+from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import InitNet, PickerQRunnable
+from first_breaks.desktop.warn_widget import WarnBox
 from first_breaks.picking.picker import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY

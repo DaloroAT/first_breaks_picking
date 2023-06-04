@@ -2,13 +2,12 @@ from pathlib import Path
 from typing import Union, Tuple, Any, Optional
 
 import numpy as np
+import onnxruntime as ort
 from tqdm.auto import tqdm
 
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.utils.utils import download_model_onnx, calc_hash
-
-import onnxruntime as ort
 
 
 class PickerONNX:

@@ -1,7 +1,7 @@
 import os
 from os import environ
-from sys import platform
 from pathlib import Path
+from sys import platform
 
 
 def get_cache_folder() -> Path:
