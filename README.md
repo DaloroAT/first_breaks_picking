@@ -9,7 +9,7 @@ seismic traces have similarities in the features of the wave field, **we pick fi
 individual traces.
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/develop/docs/readme_images/project_preview.png" />
+<img src="https://raw.githubusercontent.com/DaloroAT/first_breaks_picking/main/docs/readme_images/project_preview.png" />
 </p>
 
 # Examples
