@@ -2,7 +2,7 @@ import sys
 import time
 import warnings
 from pathlib import Path
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, List
 
 from PyQt5.QtCore import QSize, QThreadPool, Qt
 from PyQt5.QtGui import QIcon
@@ -180,19 +180,33 @@ class MainWindow(QMainWindow):
         self.picking.hide()
 
         # placeholders
-        self.sgy = None
-        self.fn = None
-        self.picks = None
+        self.sgy: Optional[SGY] = None
+        self.fn_sgy: Optional[Union[str, Path]] = None
         self.ready_to_process = ReadyToProcess()
         self.picker: Optional[PickerONNX] = None
-        self.start_time = None
-        self.end_time = None
         self.last_task: Optional[Task] = None
-        self.settings = None
+        self.settings: Optional[Dict[str, Any]] = None
+        self.last_folder: Optional[Union[str, Path]] = None
 
         self.threadpool = QThreadPool()
 
         self.show()
+
+    def get_last_folder(self) -> str:
+        if self.last_folder is None:
+            return str(Path.home())
+        else:
+            if Path(self.last_folder).exists():
+                return str(Path(self.last_folder).resolve())
+            else:
+                return str(Path.home())
+
+    def set_last_folder_based_on_file(self, file: Union[str, Path]) -> None:
+        file = Path(file)
+        if file.exists():
+            self.last_folder = str(file.parent)
+        else:
+            self.last_folder = None
 
     def gain_changed(self, gain_from_slider: int):
         self.gain_value = SliderConverter.slider2value(gain_from_slider)
@@ -236,7 +250,6 @@ class MainWindow(QMainWindow):
         worker.signals.message.connect(self.on_message_task)
         worker.signals.finished.connect(self.on_finish_task)
         self.threadpool.start(worker)
-        self.start_time = time.perf_counter()
 
     def store_task(self, task: Task):
         self.last_task = task
@@ -305,7 +318,7 @@ class MainWindow(QMainWindow):
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(self,
                                                       "Select file with NN weights",
-                                                      directory=str(Path.home()),
+                                                      directory=self.get_last_folder(),
                                                       options=options)
 
         if filename:
@@ -320,6 +333,7 @@ class MainWindow(QMainWindow):
                 self.status_message.setText(status_message)
 
                 self.unlock_pickng_if_ready()
+                self.set_last_folder_based_on_file(filename)
             else:
                 window_err = WarnBox(self,
                                      title="Model loading error",
@@ -332,15 +346,14 @@ class MainWindow(QMainWindow):
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(self,
                                                       "Open SGY-file",
-                                                      directory=str(Path.home()),
+                                                      directory=self.get_last_folder(),
                                                       filter="SGY-file (*.sgy)",
                                                       options=options)
         if filename:
             try:
-                self.fn = Path(filename)
-                self.picks = None
+                self.fn_sgy = Path(filename)
                 self.last_task = None
-                self.sgy = SGY(self.fn, use_delayed_init=False)
+                self.sgy = SGY(self.fn_sgy, use_delayed_init=False)
 
                 self.graph.clear()
                 self.update_plot(refresh_view=True)
@@ -355,6 +368,7 @@ class MainWindow(QMainWindow):
                     self.status_message.setText(status_message)
 
                 self.unlock_pickng_if_ready()
+                self.set_last_folder_based_on_file(filename)
 
             except Exception as e:
                 window_err = WarnBox(self,
@@ -366,7 +380,7 @@ class MainWindow(QMainWindow):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(self,
                                                   "Save result",
-                                                  directory=str(Path.home()),
+                                                  directory=self.get_last_folder(),
                                                   filter="TXT (*.txt)",
                                                   options=options)
 
@@ -374,6 +388,7 @@ class MainWindow(QMainWindow):
             if self.last_task is not None and self.last_task.success:
                 Path(filename).parent.mkdir(parents=True, exist_ok=True)
                 self.last_task.export_result(str(Path(filename).resolve()), as_plain=True)
+                self.set_last_folder_based_on_file(filename)
 
 
 def run_app():
