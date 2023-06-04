@@ -341,7 +341,7 @@ class GraphExporter(GraphWidget):
         self.close()
 
 
-def export_image(source: Union[str, Path, bytes, SGY, Task],
+def export_image(source: Union[str, Path, bytes, np.ndarray, SGY, Task],
                  image_filename: Optional[Union[str, Path]],
                  *args,
                  dt_mcs: float = 1e3,
