@@ -101,7 +101,7 @@ class GraphWidget(pg.PlotWidget):
         item = pg.QtWidgets.QGraphicsPathItem(path)
         pen = QPen(Qt.black, 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
         # pen.setWidthF(0.01)
-        pen.setWidth(0.1)
+        pen.setWidthF(0.1)
         item.setPen(pen)
         item.setBrush(Qt.white)
         self.addItem(item)
@@ -116,7 +116,7 @@ class GraphWidget(pg.PlotWidget):
 
         pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
         # pen.setWidthF(0.01)
-        pen.setWidth(0.1)
+        pen.setWidthF(0.1)
         item.setPen(pen)
         item.setBrush(Qt.black)
         self.addItem(item)
