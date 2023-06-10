@@ -354,7 +354,7 @@ class MainWindow(QMainWindow):
         if not filename:
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(
-                self, "Open SGY-file", directory=self.get_last_folder(), filter="SGY-file (*.sgy)", options=options
+                self, "Open SEGY-file", directory=self.get_last_folder(), filter="SEGY-file (*.segy *.sgy);; Any file (*)", options=options
             )
         if filename:
             try:
