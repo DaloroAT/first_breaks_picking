@@ -14,7 +14,7 @@ from first_breaks.const import (
     MODEL_ONNX_HASH,
     MODEL_ONNX_PATH,
     MODEL_ONNX_URL,
-    TIMEOUT,
+    TIMEOUT, MODEL_TORCH_HASH, MODEL_TORCH_URL, MODEL_TORCH_PATH,
 )
 
 TScalar = Union[int, float, np.number]
@@ -23,6 +23,22 @@ TTimeType = Union[TScalar, List[TScalar], Tuple[TScalar, ...], np.ndarray]
 
 class InvalidHash(Exception):
     pass
+
+
+def is_torch_available() -> bool:
+    try:
+        import torch
+        return True
+    except (ModuleNotFoundError, ImportError):
+        return False
+
+
+def is_cuda_available() -> bool:
+    if is_torch_available():
+        import torch
+        return torch.cuda.is_available()
+    else:
+        return False
 
 
 def chunk_iterable(it: Iterable[Any], size: int) -> List[Tuple[Any, ...]]:
@@ -85,6 +101,12 @@ def download_demo_sgy(
 
 def download_model_onnx(
     fname: Union[str, Path] = MODEL_ONNX_PATH, url: str = MODEL_ONNX_URL, md5: str = MODEL_ONNX_HASH
+) -> Union[str, Path]:
+    return download_and_validate_file(fname=fname, url=url, md5=md5)
+
+
+def download_model_torch(
+    fname: Union[str, Path] = MODEL_TORCH_PATH, url: str = MODEL_TORCH_URL, md5: str = MODEL_TORCH_HASH
 ) -> Union[str, Path]:
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 

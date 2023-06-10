@@ -30,6 +30,11 @@ MODEL_ONNX_PATH = CACHE_FOLDER / "fb.onnx"
 MODEL_ONNX_URL = "https://oml.daloroserver.com/download/seis/fb.onnx"
 MODEL_ONNX_HASH = "7e39e017b01325180e36885eccaeb17a"
 
+
+MODEL_TORCH_PATH = CACHE_FOLDER / "fb_torch_unet3plus_11483cfe0c10f32a4bedc8b1351054eb.pth"
+MODEL_TORCH_URL = "https://oml.daloroserver.com/download/seis/fb_torch_unet3plus_11483cfe0c10f32a4bedc8b1351054eb.pth"
+MODEL_TORCH_HASH = "11483cfe0c10f32a4bedc8b1351054eb"
+
 TIMEOUT = 60
 
 HIGH_DPI = os.getenv("HIGH_DPI", True)

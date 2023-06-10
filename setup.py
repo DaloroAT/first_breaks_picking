@@ -1,13 +1,23 @@
 from pathlib import Path
-from typing import List
 
 from setuptools import find_packages, setup
 
 
-def load_requirements(filename: str) -> List[str]:
-    with open(filename, "r") as f:
-        reqs = f.read().splitlines()
-    return reqs
+basic_requirements = [
+    "requests==2.28.2",
+    "numpy==1.24.2",
+    "pandas==2.0.0",
+    "PyQt5==5.15.9",
+    "onnxruntime==1.14.1",
+    "pyqtgraph==0.13.3",
+    "tqdm==4.65.0",
+    "click==8.1.3"
+]
+
+torch_requirements = [
+    "torch==2.0.1",
+    "torchvision==0.15.2"
+]
 
 
 setup(
@@ -15,7 +25,8 @@ setup(
     version="0.1.0",
     packages=find_packages(exclude=['data', 'docs', 'legacy']),
     python_requires=">=3.7,<4.0",
-    install_requires=load_requirements("requirements.txt"),
+    install_requires=basic_requirements,
+    extras_require={'torch': torch_requirements},
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
     entry_points={
