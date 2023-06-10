@@ -28,9 +28,6 @@ class PickerONNX:
         if self.show_progressbar:
             self.progressbar.close()
 
-    def callback_step_started(self, step: int) -> Any:
-        pass
-
     def callback_step_finished(self, step: int) -> Any:
         if self.show_progressbar:
             self.progressbar.update(1)

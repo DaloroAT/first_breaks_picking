@@ -78,7 +78,6 @@ class SGY:
         dt_mcs: Optional[Union[int, float]] = None,
         general_headers_schema: FileHeaders = FileHeaders(),
         traces_headers_schema: TraceHeaders = TraceHeaders(),
-        use_delayed_init: bool = False,
     ):
         self.source = source
         self._dt_mcs_input = dt_mcs
@@ -103,11 +102,9 @@ class SGY:
         self._endianess: Optional[str] = None
         self._bps: Optional[int] = None
         self._data_fmt: Optional[int] = None
-        self._initialized = False
         self._hash_value: Optional[str] = None
 
-        if not use_delayed_init:
-            self._delayed_init()
+        self.__init()
 
     def get_hash(self) -> Optional[str]:
         if self.is_source_ndarray:
@@ -117,25 +114,10 @@ class SGY:
                 self._descriptor = get_io(self.source, mode="rb")
                 self._hash_value = calc_hash(self._descriptor)
                 self._descriptor.close()
+                self._descriptor = None
             return self._hash_value
 
-    def __getattribute__(self, item: str) -> Any:
-        _initialized_name = "_initialized"
-        _delayed_init_name = "_delayed_init"
-        _initialized_value = super().__getattribute__(_initialized_name)
-
-        # We run `_delayed_init` if
-        # 1. Try to get any attr with another name
-        # 2. Not initialized yet
-        if item not in (_initialized_name, _delayed_init_name) and not _initialized_value:
-            self._delayed_init()
-        return super().__getattribute__(item)
-
-    def _delayed_init(self) -> None:
-        if self._initialized:
-            return
-        self._initialized = True
-
+    def __init(self) -> None:
         if isinstance(self.source, (str, Path, bytes)):
             if self._dt_mcs_input is not None:
                 raise SGYInitParamsError("Argument 'dt_mcs' must be empty if SGY created from external sources")
@@ -168,6 +150,7 @@ class SGY:
         self._read_general_headers()
         self._read_traces_headers()
         self._descriptor.close()
+        self._descriptor = None
 
     def _read_endianess(self) -> None:
         num_bytes = self._descriptor.seek(0, 2)
@@ -289,6 +272,7 @@ class SGY:
             self._descriptor.seek(pointer)
             buffer.append(self._descriptor.read(length_slice * self._bps))
         self._descriptor.close()
+        self._descriptor = None
 
         buffer_tr = b"".join(buffer)
         traces = self._read_traces_from_buffer(buffer_tr, (length_slice, len(ids)))

@@ -6,14 +6,6 @@ from torch import nn, Tensor
 from torchvision import models
 
 
-def build_prod_model():
-    return Unet3Plus(resnet_type='resnet18',
-                     in_channels=1,
-                     out_channels=3,
-                     inter_channels=64,
-                     pretrained=False)
-
-
 class Unet3Plus(nn.Module):
     def __init__(
             self,
