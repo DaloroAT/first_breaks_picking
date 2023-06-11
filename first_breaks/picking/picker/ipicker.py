@@ -10,6 +10,9 @@ class IPicker:
         self.show_progressbar = show_progressbar
         self.progressbar: Optional[tqdm] = None
 
+    def change_settings(self, *args: Any, kwargs: Any) -> None:
+        pass
+
     def process_task(self, task: Task) -> Task:
         raise NotImplementedError
 

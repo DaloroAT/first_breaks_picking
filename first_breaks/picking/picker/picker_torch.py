@@ -85,7 +85,7 @@ class PickerTorch(IPicker):
                         batch_size: Optional[int] = None
                         ) -> None:
         if args:
-            raise ValueError("Use names arguments instead of positional")
+            raise ValueError("Use named arguments instead of positional")
 
         if device:
             self.model.to(device)

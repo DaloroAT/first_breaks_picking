@@ -1,8 +1,9 @@
 import hashlib
+import inspect
 import io
 from itertools import islice
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union, Dict
 
 import numpy as np
 import requests
@@ -104,3 +105,7 @@ def sample2ms(sample: TTimeType, dt_ms: float) -> TTimeType:
         return tuple(sample2ms(val, dt_ms) for val in sample)
     else:
         raise TypeError("Invalid type for samples")
+
+
+def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
+    return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
