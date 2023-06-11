@@ -25,22 +25,6 @@ class InvalidHash(Exception):
     pass
 
 
-def is_torch_available() -> bool:
-    try:
-        import torch
-        return True
-    except (ModuleNotFoundError, ImportError):
-        return False
-
-
-def is_cuda_available() -> bool:
-    if is_torch_available():
-        import torch
-        return torch.cuda.is_available()
-    else:
-        return False
-
-
 def chunk_iterable(it: Iterable[Any], size: int) -> List[Tuple[Any, ...]]:
     it = iter(it)
     return list(iter(lambda: tuple(islice(it, size)), ()))

@@ -25,7 +25,7 @@ from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import InitNet, PickerQRunnable
 from first_breaks.desktop.warn_widget import WarnBox
-from first_breaks.picking.picker import PickerONNX
+from first_breaks.picking.picker.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import calc_hash
@@ -97,9 +97,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("First breaks picking")
 
         # toolbar
-        toolbar = QToolBar()
-        toolbar.setIconSize(QSize(30, 30))
-        self.addToolBar(toolbar)
+        self.toolbar = QToolBar()
+        self.toolbar.setIconSize(QSize(30, 30))
+        self.addToolBar(self.toolbar)
 
         # buttons on toolbar
         icon_load_nn = self.style().standardIcon(QStyle.SP_ComputerIcon)
@@ -107,23 +107,23 @@ class MainWindow(QMainWindow):
         self.button_load_nn = QAction(icon_load_nn, "Load model", self)
         self.button_load_nn.triggered.connect(self.load_nn)
         self.button_load_nn.setEnabled(True)
-        toolbar.addAction(self.button_load_nn)
+        self.toolbar.addAction(self.button_load_nn)
 
         icon_get_filename = self.style().standardIcon(QStyle.SP_DirIcon)
         # icon_get_filename = QIcon(str(self.main_folder / "icons" / "sgy.png"))
         self.button_get_filename = QAction(icon_get_filename, "Open SGY-file", self)
         self.button_get_filename.triggered.connect(self.get_filename)
         self.button_get_filename.setEnabled(True)
-        toolbar.addAction(self.button_get_filename)
+        self.toolbar.addAction(self.button_get_filename)
 
-        toolbar.addSeparator()
+        self.toolbar.addSeparator()
 
         icon_fb = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
         # icon_fb = QIcon(str(self.main_folder / "icons" / "picking.png"))
         self.button_fb = QAction(icon_fb, "Neural network FB picking", self)
         self.button_fb.triggered.connect(self.pick_fb)
         self.button_fb.setEnabled(False)
-        toolbar.addAction(self.button_fb)
+        self.toolbar.addAction(self.button_fb)
 
         self.need_processing_region = True
         icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
@@ -135,9 +135,9 @@ class MainWindow(QMainWindow):
         self.button_processing_show.setCheckable(True)
         if self.need_processing_region:
             self.button_processing_show.toggle()
-        toolbar.addAction(self.button_processing_show)
+        self.toolbar.addAction(self.button_processing_show)
 
-        toolbar.addSeparator()
+        self.toolbar.addSeparator()
 
         default_gain_value = 1.0
         self.gain_value = default_gain_value
@@ -150,19 +150,19 @@ class MainWindow(QMainWindow):
         self.slider_gain.setMaximumWidth(150)
         self.slider_gain.valueChanged.connect(self.gain_changed)
         self.slider_gain.sliderReleased.connect(self.update_plot)
-        toolbar.addWidget(self.slider_gain)
-        toolbar.addWidget(self.gain_label)
+        self.toolbar.addWidget(self.slider_gain)
+        self.toolbar.addWidget(self.gain_label)
 
         icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
         self.button_export = QAction(icon_export, "Export picks to file", self)
         self.button_export.triggered.connect(self.export)
         self.button_export.setEnabled(False)
-        toolbar.addAction(self.button_export)
+        self.toolbar.addAction(self.button_export)
 
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        toolbar.addWidget(spacer)
+        self.toolbar.addWidget(spacer)
 
         self.status = self.statusBar()
         self.status_progress = QProgressBar()
@@ -196,6 +196,7 @@ class MainWindow(QMainWindow):
         self.last_task: Optional[Task] = None
         self.settings: Optional[Dict[str, Any]] = None
         self.last_folder: Optional[Union[str, Path]] = None
+        self.model_hash = MODEL_ONNX_HASH
 
         self.threadpool = QThreadPool()
 
@@ -329,7 +330,7 @@ class MainWindow(QMainWindow):
             )
 
         if filename:
-            if FileState.get_file_state(filename, MODEL_ONNX_HASH) == FileState.valid_file:
+            if FileState.get_file_state(filename, self.model_hash) == FileState.valid_file:
                 self._thread_init_net(weights=filename)
                 self.button_load_nn.setEnabled(False)
                 self.ready_to_process.model_loaded = True
@@ -360,7 +361,7 @@ class MainWindow(QMainWindow):
             try:
                 self.fn_sgy = Path(filename)
                 self.last_task = None
-                self.sgy = SGY(self.fn_sgy, use_delayed_init=False)
+                self.sgy = SGY(self.fn_sgy)
 
                 self.graph.clear()
                 self.update_plot(refresh_view=True)

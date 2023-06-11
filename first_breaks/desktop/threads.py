@@ -3,7 +3,7 @@ from typing import Union
 
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 
-from first_breaks.picking.picker import PickerONNX
+from first_breaks.picking.picker.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 
 

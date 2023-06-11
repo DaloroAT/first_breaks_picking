@@ -1,36 +1,23 @@
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import onnxruntime as ort
-from tqdm.auto import tqdm
 
+from first_breaks.picking.picker.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.utils.utils import calc_hash, download_model_onnx
 
 
-class PickerONNX:
+class PickerONNX(IPicker):
     def __init__(self, onnx_path: Optional[Union[str, Path]] = None, show_progressbar: bool = True):
+        super().__init__(show_progressbar=show_progressbar)
         if onnx_path is None:
             onnx_path = download_model_onnx()
         self.onnx_path = onnx_path
         self.model_hash = calc_hash(self.onnx_path)
         self.model = ort.InferenceSession(str(onnx_path))
-        self.show_progressbar = show_progressbar
-        self.progressbar: Optional[tqdm] = None
-
-    def callback_processing_started(self, length: int) -> Any:
-        if self.show_progressbar:
-            self.progressbar = tqdm(desc="Picking", total=length)
-
-    def callback_processing_finished(self) -> Any:
-        if self.show_progressbar:
-            self.progressbar.close()
-
-    def callback_step_finished(self, step: int) -> Any:
-        if self.show_progressbar:
-            self.progressbar.update(1)
 
     def pick_gather(self, gather: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         assert gather.ndim == 2
@@ -45,8 +32,6 @@ class PickerONNX:
         self.callback_processing_started(task.num_gathers)
 
         for step, gather_ids in enumerate(task.get_gathers_ids()):
-            self.callback_step_started(step)
-
             amplitudes = np.array(
                 [-1 if idx in task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
             )

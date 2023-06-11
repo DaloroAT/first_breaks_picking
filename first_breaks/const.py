@@ -4,18 +4,43 @@ from pathlib import Path
 from sys import platform
 
 
+def is_windows() -> bool:
+    return "win" in platform
+
+
+def is_linux() -> bool:
+    return "linux" in platform
+
+
+def is_macos() -> bool:
+    return "darwin" in platform
+
+
 def get_cache_folder() -> Path:
-    if platform == "linux" or platform == "linux2":
+    if is_linux():
         return Path(environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "first_breaks_picking"
-
-    elif platform == "darwin":  # mac os
+    elif is_macos():
         return Path.home() / "Library" / "Caches" / "first_breaks_picking"
-
-    elif platform.startswith("win"):
+    elif is_windows():
         return Path.home() / ".cache" / "first_breaks_picking"
-
     else:
         raise ValueError(f"Unexpected platform {platform}.")
+
+
+def is_torch_available() -> bool:
+    try:
+        import torch
+        return True
+    except (ModuleNotFoundError, ImportError):
+        return False
+
+
+def is_cuda_available() -> bool:
+    if is_torch_available():
+        import torch
+        return torch.cuda.is_available()
+    else:
+        return False
 
 
 PROJECT_ROOT = Path(__file__).parent.parent
