@@ -11,13 +11,13 @@ from first_breaks.utils.utils import calc_hash, download_model_onnx
 
 
 class PickerONNX(IPicker):
-    def __init__(self, onnx_path: Optional[Union[str, Path]] = None, show_progressbar: bool = True):
+    def __init__(self, model_path: Optional[Union[str, Path]] = None, show_progressbar: bool = True):
         super().__init__(show_progressbar=show_progressbar)
-        if onnx_path is None:
-            onnx_path = download_model_onnx()
-        self.onnx_path = onnx_path
-        self.model_hash = calc_hash(self.onnx_path)
-        self.model = ort.InferenceSession(str(onnx_path))
+        if model_path is None:
+            model_path = download_model_onnx()
+        self.model_path = model_path
+        self.model_hash = calc_hash(self.model_path)
+        self.model = ort.InferenceSession(str(model_path))
 
     def pick_gather(self, gather: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         assert gather.ndim == 2

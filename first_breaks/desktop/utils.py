@@ -1,10 +1,12 @@
+from typing import Optional
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QDialog,
     QDialogButtonBox,
     QLabel,
-    QVBoxLayout,
+    QVBoxLayout, QWidget,
 )
 
 
@@ -30,3 +32,25 @@ class WarnBox(QDialog):
         self.layout.addWidget(error_label)
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
+
+
+def set_geometry(widget: QWidget,
+                 width_rel: float,
+                 height_rel: float,
+                 centralize: bool = True,
+                 fix_size: bool = False) -> None:
+    assert 0 < width_rel <= 1
+    assert 0 < height_rel <= 1
+    h, w = widget.screen().size().height(), widget.screen().size().width()
+    width = int(width_rel * w)
+    height = int(height_rel * h)
+    widget.setGeometry(0, 0, width, height)
+
+    if centralize:
+        qt_rectangle = widget.frameGeometry()
+        center_point = QDesktopWidget().availableGeometry().center()
+        qt_rectangle.moveCenter(center_point)
+        widget.move(qt_rectangle.topLeft())
+
+    if fix_size:
+        widget.setFixedSize(width, height)

@@ -23,12 +23,12 @@ from PyQt5.QtWidgets import (
 from first_breaks.const import HIGH_DPI, MODEL_ONNX_HASH
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
-from first_breaks.desktop.threads import InitNet, PickerQRunnable
-from first_breaks.desktop.warn_widget import WarnBox
+from first_breaks.desktop.threads import PickerQRunnable, CallInThread
+from first_breaks.desktop.utils import WarnBox, set_geometry
 from first_breaks.picking.picker.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import calc_hash
+from first_breaks.utils.utils import calc_hash, remove_unused_kwargs
 
 warnings.filterwarnings("ignore")
 
@@ -81,19 +81,7 @@ class MainWindow(QMainWindow):
         else:
             self.main_folder = Path(__file__).parent
 
-        # main window settings
-        h, w = self.screen().size().height(), self.screen().size().width()
-        left = int(0.2 * w)
-        top = int(0.2 * h)
-        width = int(0.6 * w)
-        height = int(0.6 * h)
-        self.setGeometry(left, top, width, height)
-
-        qt_rectangle = self.frameGeometry()
-        center_point = QDesktopWidget().availableGeometry().center()
-        qt_rectangle.moveCenter(center_point)
-        self.move(qt_rectangle.topLeft())
-
+        set_geometry(self, width_rel=0.6, height_rel=0.6, fix_size=False, centralize=True)
         self.setWindowTitle("First breaks picking")
 
         # toolbar
@@ -184,19 +172,21 @@ class MainWindow(QMainWindow):
         self.graph.hide()
         self.setCentralWidget(self.graph)
 
-        # picking widget
-        self.picking = PickingWindow()
-        self.picking.hide()
-
         # placeholders
         self.sgy: Optional[SGY] = None
         self.fn_sgy: Optional[Union[str, Path]] = None
         self.ready_to_process = ReadyToProcess()
-        self.picker: Optional[PickerONNX] = None
         self.last_task: Optional[Task] = None
         self.settings: Optional[Dict[str, Any]] = None
         self.last_folder: Optional[Union[str, Path]] = None
-        self.model_hash = MODEL_ONNX_HASH
+
+        self.picker_class = PickerONNX
+        self.picker: Optional[PickerONNX] = None
+        self.picker_hash = MODEL_ONNX_HASH
+        self.picker_extra_kwargs_init = {'show_progressbar': False}
+
+        self.picking_window_class = PickingWindow
+        self.picking_window_extra_kwargs = {}
 
         self.threadpool = QThreadPool()
 
@@ -223,9 +213,9 @@ class MainWindow(QMainWindow):
         self.gain_label.setText(str(self.gain_value))
 
     def _thread_init_net(self, weights: Union[str, Path]) -> None:
-        worker = InitNet(weights)
-        worker.signals.finished.connect(self.init_net)
-        self.threadpool.start(worker)
+        task = CallInThread(self.picker_class, model_path=weights, **self.picker_extra_kwargs_init)
+        task.signals.result.connect(self.init_net)
+        self.threadpool.start(task)
 
     def init_net(self, picker: PickerONNX) -> None:
         self.picker = picker
@@ -234,7 +224,7 @@ class MainWindow(QMainWindow):
         self.settings = settings
 
     def pick_fb(self) -> None:
-        settings = PickingWindow(self.last_task)
+        settings = self.picking_window_class(task=self.last_task, **self.picking_window_extra_kwargs)
         settings.export_settings_signal.connect(self.receive_settings)
         settings.exec_()
 
@@ -242,7 +232,12 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            task = Task(self.sgy, **self.settings)
+            task_kwargs = remove_unused_kwargs(self.settings, Task)
+            task = Task(self.sgy, **task_kwargs)
+            change_settings_kwargs = remove_unused_kwargs(self.settings, self.picker_class.change_settings)
+            print(self.picker)
+            print(change_settings_kwargs)
+            self.picker.change_settings(**change_settings_kwargs)
             self.process_task(task)
         except Exception as e:
             window_err = WarnBox(self, title=e.__class__.__name__, message=str(e))
@@ -256,7 +251,7 @@ class MainWindow(QMainWindow):
         worker.signals.result.connect(self.on_result_task)
         worker.signals.progress.connect(self.on_progressbar_task)
         worker.signals.message.connect(self.on_message_task)
-        worker.signals.finished.connect(self.on_finish_task)
+        worker.signals.result.connect(self.on_finish_task)
         self.threadpool.start(worker)
 
     def store_task(self, task: Task) -> None:
@@ -330,7 +325,7 @@ class MainWindow(QMainWindow):
             )
 
         if filename:
-            if FileState.get_file_state(filename, self.model_hash) == FileState.valid_file:
+            if FileState.get_file_state(filename, self.picker_hash) == FileState.valid_file:
                 self._thread_init_net(weights=filename)
                 self.button_load_nn.setEnabled(False)
                 self.ready_to_process.model_loaded = True

@@ -1,9 +1,8 @@
-from pathlib import Path
-from typing import Union
+from typing import Any
 
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 
-from first_breaks.picking.picker.picker_onnx import PickerONNX
+from first_breaks.picking.picker.ipicker import IPicker
 from first_breaks.picking.task import Task
 
 
@@ -16,7 +15,7 @@ class PickerSignals(QObject):
 
 
 class PickerQRunnable(QRunnable):
-    def __init__(self, picker: PickerONNX, task: Task):
+    def __init__(self, picker: IPicker, task: Task):
         super().__init__()
 
         self.signals = PickerSignals()
@@ -26,14 +25,16 @@ class PickerQRunnable(QRunnable):
 
         self.picker.callback_step_finished = self.callback_step_finished  # type: ignore
         self.picker.callback_processing_started = self.callback_processing_started  # type: ignore
+        self.picker.callback_processing_finished = lambda *args, **kwargs: None
 
-        self.len = task.num_gathers
+        self.len = 0
 
     def callback_step_finished(self, idx_batch: int) -> None:
         progress = int(100 * (idx_batch + 1) / self.len)
         self.signals.progress.emit(progress)
 
     def callback_processing_started(self, length: int) -> None:  # type: ignore
+        self.len = length
         self.signals.progress.emit(0)
         self.signals.message.emit("Picking")
 
@@ -55,17 +56,33 @@ class PickerQRunnable(QRunnable):
             self.signals.result.emit(self.task)
 
 
-class InitNetSignals(QObject):
-    finished = pyqtSignal(PickerONNX)
+class CallInThreadSignals(QObject):
+    started = pyqtSignal()
+    finished = pyqtSignal()
+    success = pyqtSignal(bool)
+    result = pyqtSignal(object)
 
 
-class InitNet(QRunnable):
-    def __init__(self, weights: Union[str, Path]):
+class CallInThread(QRunnable):
+    def __init__(self, callable_obj: Any, *args: Any, **kwargs: Any):
         super().__init__()
-        self.weights = weights
-        self.signals = InitNetSignals()
+        self.callable_obj = callable_obj
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = CallInThreadSignals()
 
     @pyqtSlot()
     def run(self) -> None:
-        picker = PickerONNX(self.weights, show_progressbar=False)
-        self.signals.finished.emit(picker)
+        self.signals.started.emit()
+        try:
+            result = self.callable_obj(*self.args, **self.kwargs)
+            success = True
+        except Exception as e:
+            result = e
+            success = False
+
+        self.signals.finished.emit()
+        self.signals.success.emit(success)
+        self.signals.result.emit(result)
+
+

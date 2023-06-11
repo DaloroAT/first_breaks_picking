@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Any, Optional, Tuple, Union, Dict
 
@@ -87,7 +86,7 @@ class PickerTorch(IPicker):
         if args:
             raise ValueError("Use named arguments instead of positional")
 
-        if device:
+        if device and device != self.device:
             self.model.to(device)
             self.device = device
 
