@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
         self.picker_class = PickerONNX
         self.picker: Optional[PickerONNX] = None
         self.picker_hash = MODEL_ONNX_HASH
-        self.picker_extra_kwargs_init = {'show_progressbar': False}
+        self.picker_extra_kwargs_init = {'show_progressbar': False, 'device': 'cpu'}
 
         self.picking_window_class = PickingWindow
         self.picking_window_extra_kwargs = {}

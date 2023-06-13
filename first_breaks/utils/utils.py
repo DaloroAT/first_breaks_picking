@@ -105,5 +105,11 @@ def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, 
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
 
 
+ONNX_DEVICE2PROVIDER = {"cuda": "CUDAExecutionProvider", "cpu": "CPUExecutionProvider"}
+
+
 def is_onnx_cuda_available() -> bool:
-    return any(provider.lower().startswith('cuda') for provider in ort.get_available_providers())
+    return ONNX_DEVICE2PROVIDER['cuda'] in ort.get_available_providers()
+
+
+
