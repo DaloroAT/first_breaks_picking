@@ -4,6 +4,9 @@ from pathlib import Path
 from sys import platform
 
 
+SUPPORTED_TORCH = '2.0'
+
+
 def is_windows() -> bool:
     return "win" in platform
 
@@ -41,6 +44,19 @@ def is_cuda_available() -> bool:
         return torch.cuda.is_available()
     else:
         return False
+
+
+def raise_if_no_torch() -> None:
+    if not is_torch_available():
+        raise ModuleNotFoundError("To use the features of 'torch', you need to install it. "
+                                  'Follow this official link: https://pytorch.org/get-started/locally/')
+    else:
+        import torch
+        if not torch.__version__.startswith(SUPPORTED_TORCH):
+            raise ImportError(f"Now the library works only with version '{SUPPORTED_TORCH}' of 'torch'. "
+                              'We may loosen the requirements in the future. '
+                              'Follow this official link to install supported version: '
+                              'https://pytorch.org/get-started/locally/')
 
 
 PROJECT_ROOT = Path(__file__).parent.parent

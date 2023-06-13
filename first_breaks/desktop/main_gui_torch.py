@@ -1,29 +1,21 @@
+from first_breaks.const import raise_if_no_torch
+raise_if_no_torch()
+
 import warnings
 from os import cpu_count
 from typing import Optional, Dict, Any
 
-from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QLabel, QComboBox, QSpinBox
 
 from first_breaks.const import MODEL_TORCH_HASH, is_cuda_available, is_windows
 from first_breaks.desktop.main_gui import MainWindow
 from first_breaks.desktop.picking_widget import PickingWindow, get_current_value_default
-from first_breaks.desktop.utils import set_geometry
+from first_breaks.desktop.utils import set_geometry, QHSeparationLine
 from first_breaks.picking.picker.picker_torch import PickerTorch
 from first_breaks.picking.task import Task
 from first_breaks.utils.utils import remove_unused_kwargs
 
 warnings.filterwarnings("ignore")
-
-
-class QHSeparationLine(QtWidgets.QFrame):
-    def __init__(self):
-        super().__init__()
-        self.setMinimumWidth(1)
-        self.setFixedHeight(20)
-        self.setFrameShape(QtWidgets.QFrame.HLine)
-        self.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
 
 
 class PickingWindowTorch(PickingWindow):
@@ -130,5 +122,3 @@ def run_app_torch() -> None:
 
 if __name__ == "__main__":
     run_app_torch()
-
-

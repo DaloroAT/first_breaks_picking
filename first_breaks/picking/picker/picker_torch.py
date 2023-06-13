@@ -1,3 +1,6 @@
+from first_breaks.const import raise_if_no_torch
+raise_if_no_torch()
+
 from pathlib import Path
 from typing import Any, Optional, Tuple, Union, Dict
 

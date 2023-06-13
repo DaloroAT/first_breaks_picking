@@ -1,5 +1,6 @@
 from typing import Optional
 
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QDesktopWidget,
@@ -54,3 +55,13 @@ def set_geometry(widget: QWidget,
 
     if fix_size:
         widget.setFixedSize(width, height)
+
+
+class QHSeparationLine(QtWidgets.QFrame):
+    def __init__(self):
+        super().__init__()
+        self.setMinimumWidth(1)
+        self.setFixedHeight(20)
+        self.setFrameShape(QtWidgets.QFrame.HLine)
+        self.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
