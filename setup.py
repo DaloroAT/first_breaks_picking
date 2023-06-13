@@ -14,19 +14,17 @@ basic_requirements = [
     "click==8.1.3"
 ]
 
-torch_requirements = [
-    "torch==2.0.1",
-    "torchvision==0.15.2"
-]
+nn_cpu = ["onnxruntime==1.14.1"]
+nn_gpu = ["onnxruntime-gpu==1.14.1"]
 
 
 setup(
     # technical things
     version="0.1.0",
-    packages=find_packages(exclude=['data', 'docs', 'legacy']),
+    packages=find_packages(exclude=['data', 'docs', 'legacy', 'first_breaks._pytorch']),
     python_requires=">=3.7,<4.0",
-    install_requires=basic_requirements,
-    extras_require={'torch': torch_requirements},
+    install_requires=basic_requirements + nn_cpu,
+    extras_require={'gpu': nn_gpu},
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
     entry_points={

@@ -1,4 +1,3 @@
-from first_breaks.const import raise_if_no_torch
 raise_if_no_torch()
 
 import warnings
@@ -7,13 +6,15 @@ from typing import Optional, Dict, Any
 
 from PyQt5.QtWidgets import QApplication, QLabel, QComboBox, QSpinBox
 
-from first_breaks.const import MODEL_TORCH_HASH, is_cuda_available, is_windows
+from first_breaks.const import is_windows
+from first_breaks._pytorch.utils import MODEL_TORCH_HASH
 from first_breaks.desktop.main_gui import MainWindow
 from first_breaks.desktop.picking_widget import PickingWindow, get_current_value_default
 from first_breaks.desktop.utils import set_geometry, QHSeparationLine
-from first_breaks.picking.picker.picker_torch import PickerTorch
+from first_breaks._pytorch.picker_torch import PickerTorch
 from first_breaks.picking.task import Task
 from first_breaks.utils.utils import remove_unused_kwargs
+from first_breaks.utils.availability import is_torch_cuda_available
 
 warnings.filterwarnings("ignore")
 
@@ -21,7 +22,7 @@ warnings.filterwarnings("ignore")
 class PickingWindowTorch(PickingWindow):
     def __init__(self,
                  task: Optional[Task] = None,
-                 device: str = 'cuda' if is_cuda_available else 'cpu',
+                 device: str = 'cuda' if is_torch_cuda_available else 'cpu',
                  num_workers: int = 0,
                  batch_size: int = 1):
         super().__init__(task)
@@ -39,7 +40,7 @@ class PickingWindowTorch(PickingWindow):
         self.storage['device'] = [self.device_label, self.device, self.get_current_value_combobox, str]
         self.device_idx2labelvalue = {}
         idx = 0
-        if is_cuda_available():
+        if is_torch_cuda_available():
             self.device.addItem('GPU/CUDA')
             self.device_idx2labelvalue[idx] = ['GPU/CUDA', 'cuda']
             idx += 1
@@ -112,7 +113,8 @@ class MainWindowTorch(MainWindow):
 
 
 def run_app_torch() -> None:
-    from first_breaks.const import MODEL_TORCH_PATH, DEMO_SGY_PATH
+    from first_breaks.const import DEMO_SGY_PATH
+    from first_breaks._pytorch.utils import MODEL_TORCH_PATH
     app = QApplication([])
     window = MainWindowTorch()
     window.load_nn(MODEL_TORCH_PATH)

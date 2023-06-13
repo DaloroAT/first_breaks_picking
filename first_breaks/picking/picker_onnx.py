@@ -5,26 +5,29 @@ import numpy as np
 import onnxruntime as ort
 from torch.utils.data import DataLoader
 
-from first_breaks.picking.picker.ipicker import IPicker
-from first_breaks.picking.picker.picker_torch import PickingDataset
+from first_breaks.picking.ipicker import IPicker
+from first_breaks._pytorch.picker_torch import PickingDataset
 from first_breaks.picking.task import Task
-from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.utils import calc_hash, download_model_onnx
+from first_breaks.utils.utils import calc_hash, download_model_onnx, is_onnx_cuda_available
 
 
 class PickerONNX(IPicker):
-    def __init__(self, model_path: Optional[Union[str, Path]] = None, show_progressbar: bool = True):
+    def __init__(self,
+                 model_path: Optional[Union[str, Path]] = None,
+                 show_progressbar: bool = True,
+                 device: str = 'cuda' if is_onnx_cuda_available() else 'cpu',
+                 batch_size: int = 1):
         super().__init__(show_progressbar=show_progressbar)
         if model_path is None:
             model_path = download_model_onnx()
         self.model_path = model_path
         self.model_hash = calc_hash(self.model_path)
+        self.batch_size = batch_size
         # print(_pybind_state.get_available_providers())
         # print(Session().get_providers())
         sess_opt = ort.SessionOptions()
         sess_opt.intra_op_num_threads = 2
         sess_opt.inter_op_num_threads = 2
-        sess_opt.execution_mode = ort.ExecutionMode.ORT_PARALLEL
         sess_opt.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         print(ort.get_available_providers())
         self.model = ort.InferenceSession(str(model_path), providers=["CUDAExecutionProvider"],
@@ -42,7 +45,7 @@ class PickerONNX(IPicker):
         # self.model.eval()
         dataset = PickingDataset(task)
         dataloader = DataLoader(dataset,
-                                batch_size=20,
+                                batch_size=self.batch_size,
                                 shuffle=False,
                                 num_workers=0,)
 

@@ -7,7 +7,6 @@ from PyQt5.QtCore import QSize, Qt, QThreadPool
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
-    QDesktopWidget,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -25,7 +24,7 @@ from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import PickerQRunnable, CallInThread
 from first_breaks.desktop.utils import WarnBox, set_geometry
-from first_breaks.picking.picker.picker_onnx import PickerONNX
+from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import calc_hash, remove_unused_kwargs

@@ -7,6 +7,7 @@ from typing import Any, Iterable, List, Optional, Tuple, Union, Dict
 
 import numpy as np
 import requests
+import onnxruntime as ort
 
 from first_breaks.const import (
     DEMO_SGY_HASH,
@@ -15,8 +16,7 @@ from first_breaks.const import (
     MODEL_ONNX_HASH,
     MODEL_ONNX_PATH,
     MODEL_ONNX_URL,
-    TIMEOUT, MODEL_TORCH_HASH, MODEL_TORCH_URL, MODEL_TORCH_PATH,
-)
+    TIMEOUT, )
 
 TScalar = Union[int, float, np.number]
 TTimeType = Union[TScalar, List[TScalar], Tuple[TScalar, ...], np.ndarray]
@@ -90,12 +90,6 @@ def download_model_onnx(
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def download_model_torch(
-    fname: Union[str, Path] = MODEL_TORCH_PATH, url: str = MODEL_TORCH_URL, md5: str = MODEL_TORCH_HASH
-) -> Union[str, Path]:
-    return download_and_validate_file(fname=fname, url=url, md5=md5)
-
-
 def sample2ms(sample: TTimeType, dt_ms: float) -> TTimeType:
     if isinstance(sample, (int, float, (np.number, np.ndarray))):
         return sample * dt_ms
@@ -109,3 +103,7 @@ def sample2ms(sample: TTimeType, dt_ms: float) -> TTimeType:
 
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
+
+
+def is_onnx_cuda_available() -> bool:
+    return any(provider.lower().startswith('cuda') for provider in ort.get_available_providers())

@@ -1,6 +1,3 @@
-from first_breaks.const import raise_if_no_torch
-raise_if_no_torch()
-
 from pathlib import Path
 from typing import Any, Optional, Tuple, Union, Dict
 
@@ -11,12 +8,12 @@ from torch.nn.functional import interpolate
 from torchvision.transforms import ToTensor
 from tqdm.auto import tqdm
 
-from first_breaks.models.unet3plus import Unet3Plus
-from first_breaks.picking.picker.ipicker import IPicker
+from first_breaks._pytorch.models.unet3plus import Unet3Plus
+from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.utils import calc_hash, download_model_torch
-from first_breaks.const import is_cuda_available
+from first_breaks.utils.utils import calc_hash
+from first_breaks._pytorch.utils import is_torch_cuda_available, download_model_torch
 
 
 def build_prod_model():
@@ -56,7 +53,7 @@ class PickerTorch(IPicker):
                  segmentation_hw: Tuple[int, int] = (1024, 128),
                  show_progressbar: bool = True,
                  num_workers: int = 0,
-                 device: str = 'cuda' if is_cuda_available else 'cpu',
+                 device: str = 'cuda' if is_torch_cuda_available() else 'cpu',
                  batch_size: int = 1):
         super().__init__(show_progressbar=show_progressbar)
 

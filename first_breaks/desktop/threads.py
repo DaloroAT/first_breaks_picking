@@ -2,7 +2,7 @@ from typing import Any
 
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 
-from first_breaks.picking.picker.ipicker import IPicker
+from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 
 

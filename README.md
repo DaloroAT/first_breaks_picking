@@ -118,7 +118,7 @@ the project preview.
 from first_breaks.utils.utils import download_demo_sgy
 from first_breaks.sgy.reader import SGY
 from first_breaks.picking.task import Task
-from first_breaks.picking.picker.picker_onnx import PickerONNX
+from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.desktop.graph import export_image
 
 sgy_filename = 'data.sgy'
@@ -245,7 +245,7 @@ then pass the path to it. Or leave the path to the model empty so that we can do
 
 ```python
 from first_breaks.picking.task import Task
-from first_breaks.picking.picker.picker_onnx import PickerONNX
+from first_breaks.picking.picker_onnx import PickerONNX
 
 task: Task = ...  # put here previously created task
 picker = PickerONNX()
