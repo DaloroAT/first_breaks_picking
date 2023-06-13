@@ -8,7 +8,6 @@ basic_requirements = [
     "numpy==1.24.2",
     "pandas==2.0.0",
     "PyQt5==5.15.9",
-    "onnxruntime==1.14.1",
     "pyqtgraph==0.13.3",
     "tqdm==4.65.0",
     "click==8.1.3"
@@ -16,7 +15,6 @@ basic_requirements = [
 
 nn_cpu = ["onnxruntime==1.14.1"]
 nn_gpu = ["onnxruntime-gpu==1.14.1"]
-
 
 setup(
     # technical things
