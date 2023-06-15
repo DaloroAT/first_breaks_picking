@@ -10,12 +10,13 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QLabel,
     QLineEdit,
-    QSpinBox, QWidget,
+    QSpinBox, QWidget, QComboBox,
 )
 
 from first_breaks.const import HIGH_DPI
-from first_breaks.desktop.utils import WarnBox, set_geometry
+from first_breaks.desktop.utils import WarnBox, set_geometry, QHSeparationLine
 from first_breaks.picking.task import Task
+from first_breaks.utils.utils import is_onnx_cuda_available
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -24,19 +25,20 @@ if HIGH_DPI:
 warnings.filterwarnings("ignore")
 
 
-def get_current_value_default(widget: QWidget) -> str:
-    return widget.text()
-
-
 class PickingWindow(QDialog):
 
     export_settings_signal = pyqtSignal(dict)
 
-    def __init__(self, task: Optional[Task] = None):
+    def __init__(self,
+                 task: Optional[Task] = None,
+                 device: str = 'cuda' if is_onnx_cuda_available else 'cpu',
+                 batch_size: int = 1
+                 ):
+        assert device in ['cuda', 'cpu']
         super().__init__()
 
         self.setWindowTitle("Picking settings")
-        set_geometry(self, width_rel=0.2, height_rel=0.2, fix_size=True, centralize=True)
+        set_geometry(self, width_rel=0.22, height_rel=0.3, fix_size=True, centralize=True)
 
         self.storage = {}
 
@@ -47,7 +49,7 @@ class PickingWindow(QDialog):
         self.traces_per_gather = QSpinBox()
         self.storage['traces_per_gather'] = [self.traces_per_gather_label,
                                              self.traces_per_gather,
-                                             get_current_value_default,
+                                             self.get_current_value_default,
                                              int]
         self.traces_per_gather.setRange(2, 999)
         value_traces_per_gather = task.traces_per_gather if task else 48
@@ -59,7 +61,7 @@ class PickingWindow(QDialog):
         self.maximum_time = QLineEdit()
         self.storage['maximum_time'] = [self.maximum_time_label,
                                         self.maximum_time,
-                                        get_current_value_default,
+                                        self.get_current_value_default,
                                         float]
         maximum_time_validator = QDoubleValidator()
         maximum_time_validator.setBottom(0.0)
@@ -71,7 +73,7 @@ class PickingWindow(QDialog):
 
         self.gain_label = QLabel("Gain")
         self.gain = QLineEdit()
-        self.storage['gain'] = [self.gain_label, self.gain, get_current_value_default, float]
+        self.storage['gain'] = [self.gain_label, self.gain, self.get_current_value_default, float]
         gain_validator = QDoubleValidator()
         self.gain.setValidator(gain_validator)
         value_gain = task.gain if task else 1
@@ -81,7 +83,7 @@ class PickingWindow(QDialog):
 
         self.clip_label = QLabel("Clip")
         self.clip = QLineEdit()
-        self.storage['clip'] = [self.clip_label, self.clip, get_current_value_default, float]
+        self.storage['clip'] = [self.clip_label, self.clip, self.get_current_value_default, float]
         clip_validator = QDoubleValidator()
         clip_validator.setBottom(0.1)
         self.clip.setValidator(clip_validator)
@@ -89,6 +91,35 @@ class PickingWindow(QDialog):
         self.clip.setText(str(value_clip))
         self.layout.addWidget(self.clip_label, 3, 0)
         self.layout.addWidget(self.clip, 3, 1)
+
+        self.layout.addWidget(QHSeparationLine(), 4, 0, 1, 2)
+
+        self.device_label = QLabel('Device')
+        self.device = QComboBox()
+        self.storage['device'] = [self.device_label, self.device, self.get_current_value_combobox, str]
+        self.device_idx2labelvalue = {0: ['GPU/CUDA', 'cuda'], 1: ['CPU', 'cpu']}
+        self.device.addItem('GPU/CUDA')
+        self.device.addItem('CPU')
+        if device == 'cuda' and is_onnx_cuda_available():
+            self.device.setCurrentIndex(0)
+        else:
+            self.device.setCurrentIndex(1)
+            self.device.setEnabled(False)
+        self.device.activated.connect(self.set_enabled_batch_size_depend_on_device)
+        self.layout.addWidget(self.device_label, 5, 0)
+        self.layout.addWidget(self.device, 5, 1)
+
+        self.batch_size_label = QLabel("Batch size (GPU)")
+        self.batch_size = QSpinBox()
+        self.storage['batch_size'] = [self.batch_size_label,
+                                      self.batch_size,
+                                      self.get_current_value_default,
+                                      int]
+        self.batch_size.setRange(1, 20)
+        self.batch_size.setValue(batch_size)
+        self.set_enabled_batch_size_depend_on_device()
+        self.layout.addWidget(self.batch_size_label, 6, 0)
+        self.layout.addWidget(self.batch_size, 6, 1)
 
         self.button_box = QDialogButtonBox()
         self.button_box.addButton("Run picking", QDialogButtonBox.AcceptRole)
@@ -99,12 +130,19 @@ class PickingWindow(QDialog):
         self.layout.addWidget(self.button_box)
         self.show()
 
-    def mark_as_invalid_if_empty(self, edit: QLineEdit, label: str) -> None:
-        if edit.text().strip():
-            if label in self.invalid_fields:
-                self.invalid_fields.remove(label)
+    def set_enabled_batch_size_depend_on_device(self, _: Optional[int] = None) -> None:
+        current_device = self.get_current_value_combobox(self.device)
+        if current_device == 'cpu':
+            self.batch_size.setEnabled(False)
         else:
-            self.invalid_fields.add(label)
+            self.batch_size.setEnabled(True)
+
+    @staticmethod
+    def get_current_value_default(widget: QWidget) -> str:
+        return widget.text()
+
+    def get_current_value_combobox(self, widget: QComboBox) -> str:
+        return self.device_idx2labelvalue[widget.currentIndex()][1]
 
     def accept(self) -> None:
         empty_fields = [label.split(",")[0] for label, widget, getter, _ in self.storage.values()

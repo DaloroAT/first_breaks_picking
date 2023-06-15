@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from first_breaks.const import HIGH_DPI, MODEL_ONNX_HASH
+from first_breaks.const import HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH, DEMO_SGY_PATH
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import PickerQRunnable, CallInThread
@@ -27,7 +27,7 @@ from first_breaks.desktop.utils import WarnBox, set_geometry
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import calc_hash, remove_unused_kwargs
+from first_breaks.utils.utils import calc_hash, remove_unused_kwargs, download_model_onnx, download_demo_sgy
 
 warnings.filterwarnings("ignore")
 
@@ -234,8 +234,6 @@ class MainWindow(QMainWindow):
             task_kwargs = remove_unused_kwargs(self.settings, Task)
             task = Task(self.sgy, **task_kwargs)
             change_settings_kwargs = remove_unused_kwargs(self.settings, self.picker_class.change_settings)
-            print(self.picker)
-            print(change_settings_kwargs)
             self.picker.change_settings(**change_settings_kwargs)
             self.process_task(task)
         except Exception as e:
@@ -395,5 +393,15 @@ def run_app() -> None:
     app.exec_()
 
 
+def fetch_data_and_run_app() -> None:
+    download_model_onnx(MODEL_ONNX_PATH)
+    download_demo_sgy(DEMO_SGY_PATH)
+    app = QApplication([])
+    window = MainWindow()
+    window.load_nn(MODEL_ONNX_PATH)
+    window.get_filename(DEMO_SGY_PATH)
+    app.exec_()
+
+
 if __name__ == "__main__":
-    run_app()
+    fetch_data_and_run_app()

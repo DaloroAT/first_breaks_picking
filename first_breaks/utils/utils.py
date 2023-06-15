@@ -109,7 +109,10 @@ ONNX_DEVICE2PROVIDER = {"cuda": "CUDAExecutionProvider", "cpu": "CPUExecutionPro
 
 
 def is_onnx_cuda_available() -> bool:
-    return ONNX_DEVICE2PROVIDER['cuda'] in ort.get_available_providers()
+    try:
+        return ONNX_DEVICE2PROVIDER['cuda'] in ort.get_available_providers()
+    except Exception:
+        return False
 
 
 

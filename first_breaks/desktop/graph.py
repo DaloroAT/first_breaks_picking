@@ -7,6 +7,7 @@ import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
+from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 from pyqtgraph.exporters import ImageExporter
 
 from first_breaks.const import HIGH_DPI
@@ -34,7 +35,7 @@ class GraphDefaults:
 
 class GraphWidget(pg.PlotWidget):
     def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
+        super().__init__(useOpenGL=True, *args, **kwargs)
         self.getPlotItem().disableAutoRange()
         self.setAntialiasing(False)
         self.getPlotItem().setClipToView(True)
@@ -56,9 +57,32 @@ class GraphWidget(pg.PlotWidget):
         self.plotItem.ctrlMenu = None
 
         self.sgy: Optional[SGY] = None
-        self.picks_as_item: Optional[pg.QtWidgets.QGraphicsPathItem] = None
+        self.picks_in_ms: Optional[np.ndarray] = None
+        self.picks_as_item: Optional[pg.PlotCurveItem] = None
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
+        self.is_picks_modified_manually = False
+
+        self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
+
+    def mouse_clicked(self, ev: Tuple[MouseClickEvent]):
+        ev = ev[0]
+        if self.picks_as_item is not None and ev.button() == 1:
+            mousePoint = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
+            x, y = mousePoint.x(), mousePoint.y()
+            ids, picks = self.picks_as_item.getData()
+            closest = np.argmin(np.abs(ids - x))
+            picks[closest] = y
+            self.picks_as_item.setData(ids, picks)
+            self.picks_in_ms = picks
+            self.is_picks_modified_manually = True
+
+    def clear(self):
+        self.remove_picks()
+        self.remove_traces()
+        self.remove_processing_region()
+        self.is_picks_modified_manually = False
+        self.picks_in_ms = None
 
     def plotseis(
         self,
@@ -125,11 +149,14 @@ class GraphWidget(pg.PlotWidget):
     def remove_picks(self) -> None:
         if self.picks_as_item:
             self.removeItem(self.picks_as_item)
+            self.picks_as_item = None
+            self.picks_in_ms = None
 
     def remove_processing_region(self) -> None:
         if self.processing_region_as_items:
             for item in self.processing_region_as_items:
                 self.removeItem(item)
+            self.processing_region_as_items = None
 
     def remove_traces(self) -> None:
         if self.traces_as_items:
@@ -175,13 +202,14 @@ class GraphWidget(pg.PlotWidget):
 
     def plot_picks(self, picks_ms: Sequence[float], color: TColor = GraphDefaults.picks_color) -> None:
         self.remove_picks()
+        self.is_picks_modified_manually = False
 
-        num_traces = self.sgy.shape[1]
         picks_ms = np.array(picks_ms)
-        ids = np.arange(num_traces) + 1
+        ids = np.arange(self.sgy.num_traces) + 1
 
-        path = pg.arrayToQPath(ids, picks_ms, np.ones(num_traces, dtype=np.int32))
-        self.picks_as_item = pg.QtWidgets.QGraphicsPathItem(path)
+        self.picks_in_ms = picks_ms
+        self.picks_as_item = pg.PlotCurveItem()
+        self.picks_as_item.setData(ids, picks_ms)
 
         pen = pg.mkPen(color=color, width=3)
         self.picks_as_item.setPen(pen)
