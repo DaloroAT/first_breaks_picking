@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
 )
 
 from first_breaks.const import HIGH_DPI
-from first_breaks.desktop.utils import WarnBox, set_geometry, QHSeparationLine
+from first_breaks.desktop.utils import MessageBox, set_geometry, QHSeparationLine
 from first_breaks.picking.task import Task
 from first_breaks.utils.utils import is_onnx_cuda_available
 
@@ -104,6 +104,7 @@ class PickingWindow(QDialog):
             self.device.setCurrentIndex(0)
         else:
             self.device.setCurrentIndex(1)
+        if not is_onnx_cuda_available():
             self.device.setEnabled(False)
         self.device.activated.connect(self.set_enabled_batch_size_depend_on_device)
         self.layout.addWidget(self.device_label, 5, 0)
@@ -152,7 +153,7 @@ class PickingWindow(QDialog):
             template = "Fields" if len(empty_fields) > 1 else "Field"
             template += " {} must be filled"
             invalid_fields_str = ",".join(empty_fields)
-            window_error = WarnBox(self, title="Input error", message=template.format(invalid_fields_str))
+            window_error = MessageBox(self, title="Input error", message=template.format(invalid_fields_str))
             window_error.exec_()
         else:
             settings = {name: cast(getter(widget)) for name, (_, widget, getter, cast) in self.storage.items()}

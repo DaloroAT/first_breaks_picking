@@ -1,5 +1,3 @@
-from typing import Optional
-
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -11,27 +9,33 @@ from PyQt5.QtWidgets import (
 )
 
 
-class WarnBox(QDialog):
-    def __init__(self, parent, title="Error", message="Error"):  # type: ignore
+class MessageBox(QDialog):
+    def __init__(self,
+                 parent: QWidget,
+                 title: str = "Error",
+                 message: str = "Error",
+                 add_cancel_option: bool = False,
+                 label_ok: str = "Ok",
+                 label_cancel: str = "Cancel"):
         super().__init__(parent=parent)
 
         self.setWindowTitle(title)
-        self.setGeometry(100, 100, 350, 100)
+        set_geometry(self, width_rel=0.2, height_rel=0.2, centralize=True, fix_size=False)
 
-        qt_rectangle = self.frameGeometry()
-        center_point = QDesktopWidget().availableGeometry().center()
-        qt_rectangle.moveCenter(center_point)
-        self.move(qt_rectangle.topLeft())
-
-        QBtn = QDialogButtonBox.Ok
-        self.buttonBox = QDialogButtonBox(QBtn)
-        self.buttonBox.accepted.connect(self.accept)
         error_label = QLabel(message)
+        error_label.setWordWrap(True)
         error_label.setTextInteractionFlags(Qt.LinksAccessibleByMouse | Qt.TextSelectableByMouse)
+
+        self.button_box = QDialogButtonBox()
+        self.button_box.addButton(label_ok, QDialogButtonBox.AcceptRole)
+        self.button_box.accepted.connect(self.accept)
+        if add_cancel_option:
+            self.button_box.addButton(label_cancel, QDialogButtonBox.RejectRole)
+            self.button_box.rejected.connect(self.reject)
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(error_label)
-        self.layout.addWidget(self.buttonBox)
+        self.layout.addWidget(self.button_box)
         self.setLayout(self.layout)
 
 

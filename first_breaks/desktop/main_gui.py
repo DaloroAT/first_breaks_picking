@@ -23,7 +23,7 @@ from first_breaks.const import HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH, DEMO_
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import PickerQRunnable, CallInThread
-from first_breaks.desktop.utils import WarnBox, set_geometry
+from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
@@ -220,6 +220,7 @@ class MainWindow(QMainWindow):
         self.picker = picker
 
     def receive_settings(self, settings: Dict[str, Any]) -> None:
+        self.picking_window_extra_kwargs = remove_unused_kwargs(settings, self.picker.change_settings)
         self.settings = settings
 
     def pick_fb(self) -> None:
@@ -237,7 +238,7 @@ class MainWindow(QMainWindow):
             self.picker.change_settings(**change_settings_kwargs)
             self.process_task(task)
         except Exception as e:
-            window_err = WarnBox(self, title=e.__class__.__name__, message=str(e))
+            window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
             window_err.exec_()
 
     def process_task(self, task: Task) -> None:
@@ -274,7 +275,7 @@ class MainWindow(QMainWindow):
             self.run_processing_region()
             self.button_export.setEnabled(True)
         else:
-            window_error = WarnBox(self, title="InternalError", message=result.error_message)
+            window_error = MessageBox(self, title="InternalError", message=result.error_message)
             window_error.exec_()
 
         self.button_get_filename.setEnabled(True)
@@ -335,7 +336,7 @@ class MainWindow(QMainWindow):
                 self.unlock_pickng_if_ready()
                 self.set_last_folder_based_on_file(filename)
             else:
-                window_err = WarnBox(
+                window_err = MessageBox(
                     self,
                     title="Model loading error",
                     message="The file cannot be used as model weights. "
@@ -371,7 +372,7 @@ class MainWindow(QMainWindow):
                 self.set_last_folder_based_on_file(filename)
 
             except Exception as e:
-                window_err = WarnBox(self, title=e.__class__.__name__, message=str(e))
+                window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
                 window_err.exec_()
 
     def export(self) -> None:
