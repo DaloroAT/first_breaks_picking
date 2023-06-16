@@ -20,6 +20,7 @@ class MessageBox(QDialog):
         super().__init__(parent=parent)
 
         self.setWindowTitle(title)
+        self.setWindowModality(Qt.ApplicationModal)
         set_geometry(self, width_rel=0.2, height_rel=0.2, centralize=True, fix_size=False)
 
         error_label = QLabel(message)
@@ -43,7 +44,7 @@ def set_geometry(widget: QWidget,
                  width_rel: float,
                  height_rel: float,
                  centralize: bool = True,
-                 fix_size: bool = False) -> None:
+                 fix_size: bool = False,) -> None:
     assert 0 < width_rel <= 1
     assert 0 < height_rel <= 1
     h, w = widget.screen().size().height(), widget.screen().size().width()
@@ -56,6 +57,9 @@ def set_geometry(widget: QWidget,
         center_point = QDesktopWidget().availableGeometry().center()
         qt_rectangle.moveCenter(center_point)
         widget.move(qt_rectangle.topLeft())
+
+    monitor = QDesktopWidget().screenGeometry(1)
+    widget.move(monitor.left(), monitor.top())
 
     if fix_size:
         widget.setFixedSize(width, height)

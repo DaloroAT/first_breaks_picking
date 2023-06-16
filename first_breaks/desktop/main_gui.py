@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QSlider,
     QStyle,
     QToolBar,
-    QWidget,
+    QWidget, QDialog,
 )
 
 from first_breaks.const import HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH, DEMO_SGY_PATH
@@ -224,9 +224,27 @@ class MainWindow(QMainWindow):
         self.settings = settings
 
     def pick_fb(self) -> None:
-        settings = self.picking_window_class(task=self.last_task, **self.picking_window_extra_kwargs)
-        settings.export_settings_signal.connect(self.receive_settings)
-        settings.exec_()
+        if self.graph.is_picks_modified_manually:
+            overwrite_manual_changes_dialog = MessageBox(self,
+                                                         title="Overwrite manual picking",
+                                                         message="There are manual modifications in the current picks. "
+                                                                 "They will be lost when the new picking starts. "
+                                                                 "Do you agree?",
+                                                         add_cancel_option=True)
+            reply = overwrite_manual_changes_dialog.exec_()
+            if reply == QDialog.Accepted:
+                is_accepted_open_picking_settings = True
+            else:
+                is_accepted_open_picking_settings = False
+        else:
+            is_accepted_open_picking_settings = True
+
+        if is_accepted_open_picking_settings:
+            picking_settings = self.picking_window_class(task=self.last_task, **self.picking_window_extra_kwargs)
+            picking_settings.export_settings_signal.connect(self.receive_settings)
+            picking_settings.exec_()
+        else:
+            return
 
         if not self.settings:
             return
@@ -356,7 +374,7 @@ class MainWindow(QMainWindow):
                 self.last_task = None
                 self.sgy = SGY(self.fn_sgy)
 
-                self.graph.clear()
+                self.graph.full_clean()
                 self.update_plot(refresh_view=True)
                 self.graph.show()
                 self.button_export.setEnabled(False)

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import chunk_iterable, sample2ms
+from first_breaks.utils.utils import chunk_iterable, multiply_iterable_by
 
 MINIMUM_TRACES_PER_GATHER = 2
 
@@ -132,7 +132,14 @@ class Task:
     @property
     def picks_in_ms(self) -> Optional[List[float]]:
         if self.picks_in_samples is not None:
-            return sample2ms(self.picks_in_samples, self.sgy.dt_ms)  # type: ignore
+            return multiply_iterable_by(self.picks_in_samples, self.sgy.dt_ms)  # type: ignore
+        else:
+            return None
+
+    @property
+    def picks_in_mcs(self) -> Optional[List[int]]:
+        if self.picks_in_samples is not None:
+            return multiply_iterable_by(self.picks_in_samples, self.sgy.dt_mcs, cast_to=int)  # type: ignore
         else:
             return None
 
@@ -146,7 +153,7 @@ class Task:
             picks_in_samples = self.picks_in_samples.tolist()
         else:
             raise TypeError("Only 1D sequence can be saved")
-        picks_in_ms = sample2ms(picks_in_samples, dt_ms=self.sgy.dt_ms)
+        picks_in_ms = multiply_iterable_by(picks_in_samples, multiplier=self.sgy.dt_ms)
         confidence = self.confidence
 
         is_source_file = isinstance(self.sgy.source, (str, Path))

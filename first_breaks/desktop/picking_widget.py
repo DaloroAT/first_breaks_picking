@@ -38,6 +38,7 @@ class PickingWindow(QDialog):
         super().__init__()
 
         self.setWindowTitle("Picking settings")
+        self.setWindowModality(Qt.ApplicationModal)
         set_geometry(self, width_rel=0.22, height_rel=0.3, fix_size=True, centralize=True)
 
         self.storage = {}

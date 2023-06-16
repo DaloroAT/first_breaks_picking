@@ -90,7 +90,7 @@ class PickerONNX(IPicker):
         if args:
             raise ValueError("Use named arguments instead of positional")
 
-        if device:
+        if device and device != self.device:
             self.device = device
             self.init_model()
 

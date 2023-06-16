@@ -3,7 +3,7 @@ import inspect
 import io
 from itertools import islice
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Tuple, Union, Dict
+from typing import Any, Iterable, List, Optional, Tuple, Union, Dict, Callable
 
 import numpy as np
 import requests
@@ -90,13 +90,19 @@ def download_model_onnx(
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def sample2ms(sample: TTimeType, dt_ms: float) -> TTimeType:
-    if isinstance(sample, (int, float, (np.number, np.ndarray))):
-        return sample * dt_ms
+def multiply_iterable_by(sample: TTimeType,
+                         multiplier: float,
+                         cast_to: Optional[Callable[[Any], Any]] = None) -> TTimeType:
+    if isinstance(sample, (int, float, str)):
+        result = sample * multiplier
+        return cast_to(result) if cast_to else result
+    elif isinstance(sample, (np.number, np.ndarray)):
+        result = sample * multiplier
+        return result.dtype(cast_to) if cast_to else result
     elif isinstance(sample, list):
-        return list(sample2ms(val, dt_ms) for val in sample)
+        return list(multiply_iterable_by(val, multiplier, cast_to) for val in sample)
     elif isinstance(sample, tuple):
-        return tuple(sample2ms(val, dt_ms) for val in sample)
+        return tuple(multiply_iterable_by(val, multiplier, cast_to) for val in sample)
     else:
         raise TypeError("Invalid type for samples")
 

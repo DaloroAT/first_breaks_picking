@@ -77,12 +77,14 @@ class GraphWidget(pg.PlotWidget):
             self.picks_in_ms = picks
             self.is_picks_modified_manually = True
 
-    def clear(self):
+    def full_clean(self):
         self.remove_picks()
         self.remove_traces()
         self.remove_processing_region()
-        self.is_picks_modified_manually = False
+        self.picks_as_item = None
         self.picks_in_ms = None
+        self.is_picks_modified_manually = False
+        self.clear()
 
     def plotseis(
         self,
@@ -93,13 +95,13 @@ class GraphWidget(pg.PlotWidget):
         fill_black_left: bool = GraphDefaults.fill_black_left,
         refresh_view: bool = True,
     ) -> None:
-
         self.sgy = sgy
-        traces = self.sgy.read()
 
+        traces = self.sgy.read()
         traces = preprocess_gather(traces, gain=gain, clip=clip, normalize=normalize, copy=True)
 
         self.clear()
+
         num_sample, num_traces = self.sgy.shape
         t = np.arange(num_sample) * self.sgy.dt_ms
 
@@ -147,6 +149,7 @@ class GraphWidget(pg.PlotWidget):
         self.traces_as_items.append(item)
 
     def remove_picks(self) -> None:
+        self.is_picks_modified_manually = False
         if self.picks_as_item:
             self.removeItem(self.picks_as_item)
             self.picks_as_item = None
@@ -156,7 +159,6 @@ class GraphWidget(pg.PlotWidget):
         if self.processing_region_as_items:
             for item in self.processing_region_as_items:
                 self.removeItem(item)
-            self.processing_region_as_items = None
 
     def remove_traces(self) -> None:
         if self.traces_as_items:
