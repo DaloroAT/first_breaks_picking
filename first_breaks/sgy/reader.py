@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import io
+import shutil
 import struct
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union, List
 
 import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
-from first_breaks.utils.utils import calc_hash, chunk_iterable, get_io
+from first_breaks.utils.utils import calc_hash, chunk_iterable, get_io, multiply_iterable_by
 
 SizeHW = Tuple[int, int]
 
@@ -335,3 +336,31 @@ class SGY:
 
     def _read_traces_double(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
         return np.ndarray(shape, f"{self._endianess}f8", buffer, order="F")
+
+    def export_sgy_with_picks(self,
+                              output_fname: Union[str, Path],
+                              picks_in_samples: List[int],
+                              byte_to_write: int = 236) -> None:
+        assert not self.is_source_ndarray, "Only true SGY can be used for importing picks"
+        assert 0 <= byte_to_write <= 236, "Only 0-236 bytes can be ised for writing"
+        assert len(picks_in_samples) == self.num_traces, "Number of traces and picks differs"
+
+        output_fname.parent.mkdir(exist_ok=True, parents=True)
+
+        if isinstance(self.source, (str, Path)):
+            shutil.copyfile(self.source, output_fname)
+        elif isinstance(self.source, bytes):
+            with open(output_fname, 'wb+') as f_output:
+                f_output.write(self.source)
+        else:
+            raise TypeError('Invalid type of source data')
+
+        picks_in_mcs = multiply_iterable_by(picks_in_samples, self.dt_mcs, cast_to=int)
+
+        self._descriptor = get_io(self.source, mode='r+b')
+        for idx, pick in enumerate(picks_in_mcs):
+            pointer = 3600 + (240 + self.num_samples * self._bps) * idx + byte_to_write
+            pick_byte = struct.pack(f'{self._endianess}H', int(pick))
+            self._descriptor.seek(pointer)
+            self._descriptor.write(pick_byte)
+        self._descriptor.close()

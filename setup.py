@@ -10,7 +10,8 @@ basic_requirements = [
     "PyQt5==5.15.9",
     "pyqtgraph==0.13.3",
     "tqdm==4.65.0",
-    "click==8.1.3"
+    "click==8.1.3",
+    "pytest==7.3.2"
 ]
 
 nn_cpu = ["onnxruntime==1.14.1"]
@@ -19,7 +20,7 @@ nn_gpu = ["onnxruntime-gpu==1.14.1"]
 setup(
     # technical things
     version="0.1.0",
-    packages=find_packages(exclude=['data', 'docs', 'legacy', 'first_breaks._pytorch']),
+    packages=find_packages(exclude=['data', 'docs', 'legacy', 'first_breaks._pytorch', 'tests']),
     python_requires=">=3.7,<4.0",
     install_requires=basic_requirements + nn_cpu,
     extras_require={'gpu': nn_gpu},

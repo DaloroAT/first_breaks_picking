@@ -208,6 +208,6 @@ class TraceHeaders(Headers):
             (228, "source_measurement_exponent", "H"),
             (230, "source_measurement_unit", "h"),
             (232, "unassigned1", "i"),
-            (236, "FB_PICK", "i"),
+            (236, "FB_PICK", "H"),
         ]
         self.validate()
