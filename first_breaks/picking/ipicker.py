@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any, Optional
 
 from tqdm.auto import tqdm
 
@@ -28,6 +28,3 @@ class IPicker:
         if self.show_progressbar:
             interval = finished_step - self.progressbar.n
             self.progressbar.update(interval)
-
-
-

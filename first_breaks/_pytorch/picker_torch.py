@@ -1,27 +1,23 @@
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union, Dict
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
 from torch.nn.functional import interpolate
+from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import ToTensor
 from tqdm.auto import tqdm
 
 from first_breaks._pytorch.models.unet3plus import Unet3Plus
+from first_breaks._pytorch.utils import download_model_torch, is_torch_cuda_available
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.utils.utils import calc_hash
-from first_breaks._pytorch.utils import is_torch_cuda_available, download_model_torch
 
 
-def build_prod_model():
-    return Unet3Plus(resnet_type='resnet18',
-                     in_channels=1,
-                     out_channels=3,
-                     inter_channels=64,
-                     pretrained=False)
+def build_prod_model() -> Unet3Plus:
+    return Unet3Plus(resnet_type="resnet18", in_channels=1, out_channels=3, inter_channels=64, pretrained=False)
 
 
 class PickingDataset(Dataset):
@@ -48,13 +44,15 @@ class PickingDataset(Dataset):
 
 
 class PickerTorch(IPicker):
-    def __init__(self,
-                 model_path: Optional[Union[str, Path]] = None,
-                 segmentation_hw: Tuple[int, int] = (1024, 128),
-                 show_progressbar: bool = True,
-                 num_workers: int = 0,
-                 device: str = 'cuda' if is_torch_cuda_available() else 'cpu',
-                 batch_size: int = 1):
+    def __init__(
+        self,
+        model_path: Optional[Union[str, Path]] = None,
+        segmentation_hw: Tuple[int, int] = (1024, 128),
+        show_progressbar: bool = True,
+        num_workers: int = 0,
+        device: str = "cuda" if is_torch_cuda_available() else "cpu",
+        batch_size: int = 1,
+    ):
         super().__init__(show_progressbar=show_progressbar)
 
         if model_path is None:
@@ -76,13 +74,14 @@ class PickerTorch(IPicker):
         self.show_progressbar = show_progressbar
         self.progressbar: Optional[tqdm] = None
 
-    def change_settings(self,
-                        *args: Any,
-                        device: Optional[str] = None,
-                        segmentation_hw: Optional[Tuple[int, int]] = None,
-                        num_workers: Optional[int] = None,
-                        batch_size: Optional[int] = None
-                        ) -> None:
+    def change_settings(  # type: ignore
+        self,
+        *args: Any,
+        device: Optional[str] = None,
+        segmentation_hw: Optional[Tuple[int, int]] = None,
+        num_workers: Optional[int] = None,
+        batch_size: Optional[int] = None
+    ) -> None:
         if args:
             raise ValueError("Use named arguments instead of positional")
 
@@ -102,11 +101,13 @@ class PickerTorch(IPicker):
     def process_task(self, task: Task) -> Task:
         self.model.eval()
         dataset = PickingDataset(task)
-        dataloader = DataLoader(dataset,
-                                batch_size=self.batch_size,
-                                shuffle=False,
-                                num_workers=self.num_workers,
-                                persistent_workers=self.num_workers > 0)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            persistent_workers=self.num_workers > 0,
+        )
 
         task_picks_in_sample = torch.zeros(task.sgy.num_traces, device=self.device).long()
         task_confidence = torch.zeros(task.sgy.num_traces, device=self.device)
@@ -116,19 +117,19 @@ class PickerTorch(IPicker):
 
         with torch.no_grad():
             for batch_dict in dataloader:
-                x = batch_dict['gather']
+                x = batch_dict["gather"]
                 x = x.to(self.device)
 
                 src_hw = x.shape[2:]
-                x = interpolate(x, self.segmentation_hw, mode='bicubic')
+                x = interpolate(x, self.segmentation_hw, mode="bicubic")
                 x = self.model(x)
-                x = interpolate(x, src_hw, mode='bicubic')
+                x = interpolate(x, src_hw, mode="bicubic")
 
                 preds = torch.softmax(x, 1)[:, 0, :, :]  # 0 channel - FB
                 # preds = preds.cpu()
                 confs, picks = torch.max(preds, 1)
 
-                indices = batch_dict['gather_ids']
+                indices = batch_dict["gather_ids"]
 
                 # task_picks_in_sample[indices.flatten()] = picks.cpu().flatten().long()
                 # task_confidence[indices.flatten()] = confs.cpu().flatten()

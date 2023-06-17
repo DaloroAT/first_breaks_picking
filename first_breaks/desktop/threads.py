@@ -25,9 +25,12 @@ class PickerQRunnable(QRunnable):
 
         self.picker.callback_step_finished = self.callback_step_finished  # type: ignore
         self.picker.callback_processing_started = self.callback_processing_started  # type: ignore
-        self.picker.callback_processing_finished = lambda *args, **kwargs: None
+        self.picker.callback_processing_finished = self._do_nothing  # type: ignore
 
         self.len = 0
+
+    def _do_nothing(self, *args: Any, **kwargs: Any) -> None:
+        pass
 
     def callback_step_finished(self, idx_batch: int) -> None:
         progress = int(100 * (idx_batch + 1) / self.len)
@@ -84,5 +87,3 @@ class CallInThread(QRunnable):
         self.signals.finished.emit()
         self.signals.success.emit(success)
         self.signals.result.emit(result)
-
-

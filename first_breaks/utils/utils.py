@@ -3,11 +3,11 @@ import inspect
 import io
 from itertools import islice
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Tuple, Union, Dict, Callable
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
-import requests
 import onnxruntime as ort
+import requests
 
 from first_breaks.const import (
     DEMO_SGY_HASH,
@@ -16,7 +16,8 @@ from first_breaks.const import (
     MODEL_ONNX_HASH,
     MODEL_ONNX_PATH,
     MODEL_ONNX_URL,
-    TIMEOUT, )
+    TIMEOUT,
+)
 
 TScalar = Union[int, float, np.number]
 TTimeType = Union[TScalar, List[TScalar], Tuple[TScalar, ...], np.ndarray]
@@ -90,11 +91,11 @@ def download_model_onnx(
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def multiply_iterable_by(sample: TTimeType,
-                         multiplier: float,
-                         cast_to: Optional[Callable[[Any], Any]] = None) -> TTimeType:
+def multiply_iterable_by(
+    sample: TTimeType, multiplier: float, cast_to: Optional[Callable[[Any], Any]] = None
+) -> TTimeType:
     if isinstance(sample, (int, float, str)):
-        result = sample * multiplier
+        result = sample * multiplier  # type: ignore
         return cast_to(result) if cast_to else result
     elif isinstance(sample, (np.number, np.ndarray)):
         result = sample * multiplier
@@ -120,9 +121,6 @@ ONNX_DEVICE2PROVIDER = {"cuda": "CUDAExecutionProvider", "cpu": "CPUExecutionPro
 
 def is_onnx_cuda_available() -> bool:
     try:
-        return ONNX_DEVICE2PROVIDER['cuda'] in ort.get_available_providers()
+        return ONNX_DEVICE2PROVIDER["cuda"] in ort.get_available_providers()
     except Exception:
         return False
-
-
-

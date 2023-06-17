@@ -8,8 +8,8 @@ import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
-from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 from pyqtgraph.exporters import ImageExporter
+from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 
 from first_breaks.const import HIGH_DPI
 from first_breaks.picking.task import Task
@@ -66,11 +66,11 @@ class GraphWidget(pg.PlotWidget):
 
         self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
-    def mouse_clicked(self, ev: Tuple[MouseClickEvent]):
+    def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
         if self.picks_as_item is not None and ev.button() == 1:
-            mousePoint = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
-            x, y = mousePoint.x(), mousePoint.y()
+            mouse_point = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
+            x, y = mouse_point.x(), mouse_point.y()
             ids, picks = self.picks_as_item.getData()
             closest = np.argmin(np.abs(ids - x))
             picks[closest] = y
@@ -78,7 +78,7 @@ class GraphWidget(pg.PlotWidget):
             self.picks_in_ms = picks
             self.is_picks_modified_manually = True
 
-    def full_clean(self):
+    def full_clean(self) -> None:
         self.remove_picks()
         self.remove_traces()
         self.remove_processing_region()
@@ -468,7 +468,8 @@ def export_image(
     warnings.resetwarnings()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from first_breaks.utils.utils import download_demo_sgy
+
     demo_sgy = download_demo_sgy()
-    export_image(demo_sgy, 'demo_sgy.png')
+    export_image(demo_sgy, "demo_sgy.png")

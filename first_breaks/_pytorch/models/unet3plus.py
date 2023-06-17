@@ -1,19 +1,19 @@
 from math import copysign
-from typing import List
+from typing import Any, List
 
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 from torchvision import models
 
 
 class Unet3Plus(nn.Module):
     def __init__(
-            self,
-            resnet_type: str,
-            in_channels: int,
-            out_channels: int,
-            inter_channels: int,
-            pretrained: bool,
+        self,
+        resnet_type: str,
+        in_channels: int,
+        out_channels: int,
+        inter_channels: int,
+        pretrained: bool,
     ):
         super().__init__()
         self.encoder = UnetEncoder(resnet_type, pretrained, in_channels)
@@ -107,10 +107,9 @@ class Unet3PlusDecoderBlock(nn.Module):
 
         self.reshaping_blocks = nn.ModuleList(self.reshaping_blocks)
 
-        self.stacking_conv = Conv2dReLU(out_channels * num_features_blocks,
-                                        out_channels * num_features_blocks,
-                                        kernel_size=(3, 3),
-                                        padding=(1, 1))
+        self.stacking_conv = Conv2dReLU(
+            out_channels * num_features_blocks, out_channels * num_features_blocks, kernel_size=(3, 3), padding=(1, 1)
+        )
 
     def forward(self, features: List[Tensor]) -> Tensor:
         reshaped_features = []
@@ -123,7 +122,7 @@ class Unet3PlusDecoderBlock(nn.Module):
 
 
 class Conv2dReLU(nn.Conv2d):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         out_channels = args[1] if len(args) > 1 else kwargs["out_channels"]
         self.bn = nn.BatchNorm2d(out_channels)
@@ -160,4 +159,3 @@ class ReshapeConv2D(nn.Module):
         x = self.reshape(x)
         x = self.conv(x)
         return x
-

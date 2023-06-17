@@ -101,8 +101,10 @@ class Task:
         else:
             index = self.sgy.ms2index(maximum_time)
             if index == 0:
-                warnings.warn("The maximum time is not zero and is less than the duration of one sample, "
-                              "so the maximum time will be equal to the length of the trace.")
+                warnings.warn(
+                    "The maximum time is not zero and is less than the duration of one sample, "
+                    "so the maximum time will be equal to the length of the trace."
+                )
                 maximum_time = self.sgy.max_time_ms
             else:
                 maximum_time = min(maximum_time, self.sgy.max_time_ms)

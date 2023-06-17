@@ -1,12 +1,13 @@
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Type, Union
 
 from PyQt5.QtCore import QSize, Qt, QThreadPool
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
+    QDialog,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -16,18 +17,24 @@ from PyQt5.QtWidgets import (
     QSlider,
     QStyle,
     QToolBar,
-    QWidget, QDialog,
+    QWidget,
 )
 
-from first_breaks.const import HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH, DEMO_SGY_PATH
+from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
-from first_breaks.desktop.threads import PickerQRunnable, CallInThread
+from first_breaks.desktop.threads import CallInThread, PickerQRunnable
 from first_breaks.desktop.utils import MessageBox, set_geometry
+from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import calc_hash, remove_unused_kwargs, download_model_onnx, download_demo_sgy
+from first_breaks.utils.utils import (
+    calc_hash,
+    download_demo_sgy,
+    download_model_onnx,
+    remove_unused_kwargs,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -179,10 +186,10 @@ class MainWindow(QMainWindow):
         self.settings: Optional[Dict[str, Any]] = None
         self.last_folder: Optional[Union[str, Path]] = None
 
-        self.picker_class = PickerONNX
-        self.picker: Optional[PickerONNX] = None
+        self.picker_class: Type[IPicker] = PickerONNX
+        self.picker: Optional[IPicker] = None
         self.picker_hash = MODEL_ONNX_HASH
-        self.picker_extra_kwargs_init = {'show_progressbar': False, 'device': 'cpu'}
+        self.picker_extra_kwargs_init = {"show_progressbar": False, "device": "cpu"}
 
         self.picking_window_class = PickingWindow
         self.picking_window_extra_kwargs = {}
@@ -225,12 +232,14 @@ class MainWindow(QMainWindow):
 
     def pick_fb(self) -> None:
         if self.graph.is_picks_modified_manually:
-            overwrite_manual_changes_dialog = MessageBox(self,
-                                                         title="Overwrite manual picking",
-                                                         message="There are manual modifications in the current picks. "
-                                                                 "They will be lost when the new picking starts. "
-                                                                 "Do you agree?",
-                                                         add_cancel_option=True)
+            overwrite_manual_changes_dialog = MessageBox(
+                self,
+                title="Overwrite manual picking",
+                message="There are manual modifications in the current picks. "
+                "They will be lost when the new picking starts. "
+                "Do you agree?",
+                add_cancel_option=True,
+            )
             reply = overwrite_manual_changes_dialog.exec_()
             if reply == QDialog.Accepted:
                 is_accepted_open_picking_settings = True
@@ -333,7 +342,7 @@ class MainWindow(QMainWindow):
             self.button_fb.setEnabled(True)
             self.status_message.setText("Click on picking to start processing")
 
-    def load_nn(self, filename: Optional[str] = None) -> None:
+    def load_nn(self, filename: Optional[Union[str, Path]] = None) -> None:
         if not filename:
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(
@@ -362,13 +371,13 @@ class MainWindow(QMainWindow):
                 )
                 window_err.exec_()
 
-    def get_filename(self, filename: Optional[str] = None) -> None:
+    def get_filename(self, filename: Optional[Union[str, Path]] = None) -> None:
         if not filename:
             filename, _ = QFileDialog.getOpenFileName(
                 self,
                 "Open SEGY-file",
                 directory=self.get_last_folder(),
-                filter="SEGY-file (*.segy *.sgy);; Any file (*)"
+                filter="SEGY-file (*.segy *.sgy);; Any file (*)",
             )
         if filename:
             try:
@@ -396,9 +405,7 @@ class MainWindow(QMainWindow):
                 window_err.exec_()
 
     def export(self) -> None:
-        formats = ["SEGY-file (*.segy *.sgy)",
-                   "JSON-file (*.json)",
-                   "TXT-file (*.txt)"]
+        formats = ["SEGY-file (*.segy *.sgy)", "JSON-file (*.json)", "TXT-file (*.txt)"]
         formats = ";; ".join(formats)
         filename, _ = QFileDialog.getSaveFileName(self, "Save result", directory=self.get_last_folder(), filter=formats)
 
@@ -407,16 +414,14 @@ class MainWindow(QMainWindow):
             if self.last_task is not None and self.last_task.success:
                 filename.parent.mkdir(parents=True, exist_ok=True)
                 if filename.suffix.lower() in (".sgy", ".segy"):
-                    self.sgy.export_sgy_with_picks(filename, self.last_task.picks_in_samples)
+                    self.sgy.export_sgy_with_picks(filename, self.last_task.picks_in_samples)  # type: ignore
                 elif filename.suffix.lower() == ".txt":
                     self.last_task.export_result(str(filename), as_plain=True)
                 elif filename.suffix.lower() == ".json":
                     self.last_task.export_result(str(filename), as_plain=False)
                 else:
                     message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
-                    window_err = MessageBox(self,
-                                            title="Wrong filename",
-                                            message=message_er)
+                    window_err = MessageBox(self, title="Wrong filename", message=message_er)
                     window_err.exec_()
 
 

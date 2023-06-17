@@ -5,18 +5,21 @@ from PyQt5.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QLabel,
-    QVBoxLayout, QWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 
 class MessageBox(QDialog):
-    def __init__(self,
-                 parent: QWidget,
-                 title: str = "Error",
-                 message: str = "Error",
-                 add_cancel_option: bool = False,
-                 label_ok: str = "Ok",
-                 label_cancel: str = "Cancel"):
+    def __init__(
+        self,
+        parent: QWidget,
+        title: str = "Error",
+        message: str = "Error",
+        add_cancel_option: bool = False,
+        label_ok: str = "Ok",
+        label_cancel: str = "Cancel",
+    ):
         super().__init__(parent=parent)
 
         self.setWindowTitle(title)
@@ -40,11 +43,13 @@ class MessageBox(QDialog):
         self.setLayout(self.layout)
 
 
-def set_geometry(widget: QWidget,
-                 width_rel: float,
-                 height_rel: float,
-                 centralize: bool = True,
-                 fix_size: bool = False,) -> None:
+def set_geometry(
+    widget: QWidget,
+    width_rel: float,
+    height_rel: float,
+    centralize: bool = True,
+    fix_size: bool = False,
+) -> None:
     assert 0 < width_rel <= 1
     assert 0 < height_rel <= 1
     h, w = widget.screen().size().height(), widget.screen().size().width()
@@ -66,7 +71,7 @@ def set_geometry(widget: QWidget,
 
 
 class QHSeparationLine(QtWidgets.QFrame):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setMinimumWidth(1)
         self.setFixedHeight(20)

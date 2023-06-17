@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple, Union, Any, Dict, Generator
+from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 import numpy as np
 import onnxruntime as ort
@@ -7,8 +7,13 @@ import onnxruntime as ort
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.utils import calc_hash, download_model_onnx, is_onnx_cuda_available, ONNX_DEVICE2PROVIDER, \
-    chunk_iterable
+from first_breaks.utils.utils import (
+    ONNX_DEVICE2PROVIDER,
+    calc_hash,
+    chunk_iterable,
+    download_model_onnx,
+    is_onnx_cuda_available,
+)
 
 
 class IteratorOfTask:
@@ -25,8 +30,7 @@ class IteratorOfTask:
     def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
         gather_ids = self.idx2gather_ids[idx]
         amplitudes = np.array(
-            [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))],
-            dtype=np.float32
+            [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
         )
         gather = self.task.sgy.read_traces_by_ids(gather_ids)
         gather = preprocess_gather(gather, self.task.gain, self.task.clip)
@@ -51,13 +55,15 @@ class IteratorOfTask:
 
 
 class PickerONNX(IPicker):
-    def __init__(self,
-                 model_path: Optional[Union[str, Path]] = None,
-                 show_progressbar: bool = True,
-                 device: str = 'cuda' if is_onnx_cuda_available() else 'cpu',
-                 batch_size: int = 1):
+    def __init__(
+        self,
+        model_path: Optional[Union[str, Path]] = None,
+        show_progressbar: bool = True,
+        device: str = "cuda" if is_onnx_cuda_available() else "cpu",
+        batch_size: int = 1,
+    ):
         super().__init__(show_progressbar=show_progressbar)
-        assert device in ['cpu', 'cuda']
+        assert device in ["cpu", "cuda"]
 
         if model_path is None:
             model_path = download_model_onnx()
@@ -73,20 +79,17 @@ class PickerONNX(IPicker):
     def init_model(self) -> None:
         sess_opt = ort.SessionOptions()
         sess_opt.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        if self.device == 'cuda':
+        if self.device == "cuda":
             sess_opt = ort.SessionOptions()
             sess_opt.intra_op_num_threads = 2
             sess_opt.inter_op_num_threads = 2
-        self.model = ort.InferenceSession(str(self.model_path),
-                                          providers=[ONNX_DEVICE2PROVIDER[self.device]],
-                                          sess_options=sess_opt
-                                          )
+        self.model = ort.InferenceSession(
+            str(self.model_path), providers=[ONNX_DEVICE2PROVIDER[self.device]], sess_options=sess_opt
+        )
 
-    def change_settings(self,
-                        *args: Any,
-                        device: Optional[str] = None,
-                        batch_size: Optional[int] = None
-                        ) -> None:
+    def change_settings(  # type: ignore
+        self, *args: Any, device: Optional[str] = None, batch_size: Optional[int] = None
+    ) -> None:
         if args:
             raise ValueError("Use named arguments instead of positional")
 
@@ -112,10 +115,10 @@ class PickerONNX(IPicker):
         self.callback_processing_started(len(task_iterator))
 
         for batch in task_iterator.get_batch_generator(batch_size=self.batch_size):
-            data = batch['gather']
+            data = batch["gather"]
             picks, confidence = self.pick_batch_of_gathers(data)
 
-            indices = batch['gather_ids']
+            indices = batch["gather_ids"]
             task_picks_in_sample[indices.flatten()] = picks.flatten()
             task_confidence[indices.flatten()] = confidence.flatten()
 
