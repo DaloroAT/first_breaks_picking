@@ -357,10 +357,13 @@ class SGY:
 
         picks_in_mcs = multiply_iterable_by(picks_in_samples, self.dt_mcs, cast_to=int)
 
-        self._descriptor = get_io(self.source, mode='r+b')
+        pack_type = [pack_type for _, header, pack_type in self._traces_headers_schema.headers_schema
+                     if header == self._traces_headers_schema.fb_pick_default][0]
+
+        self._descriptor = get_io(output_fname, mode='r+b')
         for idx, pick in enumerate(picks_in_mcs):
             pointer = 3600 + (240 + self.num_samples * self._bps) * idx + byte_to_write
-            pick_byte = struct.pack(f'{self._endianess}H', int(pick))
+            pick_byte = struct.pack(f'{self._endianess}{pack_type}', int(pick))
             self._descriptor.seek(pointer)
             self._descriptor.write(pick_byte)
         self._descriptor.close()

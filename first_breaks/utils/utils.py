@@ -98,7 +98,7 @@ def multiply_iterable_by(sample: TTimeType,
         return cast_to(result) if cast_to else result
     elif isinstance(sample, (np.number, np.ndarray)):
         result = sample * multiplier
-        return result.dtype(cast_to) if cast_to else result
+        return result.astype(cast_to) if cast_to else result
     elif isinstance(sample, list):
         return list(multiply_iterable_by(val, multiplier, cast_to) for val in sample)
     elif isinstance(sample, tuple):
