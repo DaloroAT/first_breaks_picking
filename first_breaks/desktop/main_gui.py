@@ -364,9 +364,11 @@ class MainWindow(QMainWindow):
 
     def get_filename(self, filename: Optional[str] = None) -> None:
         if not filename:
-            options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(
-                self, "Open SEGY-file", directory=self.get_last_folder(), filter="SEGY-file (*.segy *.sgy);; Any file (*)", options=options
+                self,
+                "Open SEGY-file",
+                directory=self.get_last_folder(),
+                filter="SEGY-file (*.segy *.sgy);; Any file (*)"
             )
         if filename:
             try:
@@ -394,16 +396,28 @@ class MainWindow(QMainWindow):
                 window_err.exec_()
 
     def export(self) -> None:
-        options = QFileDialog.Options()
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Save result", directory=self.get_last_folder(), filter="TXT (*.txt)", options=options
-        )
+        formats = ["SEGY-file (*.segy *.sgy)",
+                   "JSON-file (*.json)",
+                   "TXT-file (*.txt)"]
+        formats = ";; ".join(formats)
+        filename, _ = QFileDialog.getSaveFileName(self, "Save result", directory=self.get_last_folder(), filter=formats)
 
         if filename:
+            filename = Path(filename).resolve()
             if self.last_task is not None and self.last_task.success:
-                Path(filename).parent.mkdir(parents=True, exist_ok=True)
-                self.last_task.export_result(str(Path(filename).resolve()), as_plain=True)
-                self.set_last_folder_based_on_file(filename)
+                filename.parent.mkdir(parents=True, exist_ok=True)
+                if filename.suffix.lower() in (".sgy", ".segy"):
+                    self.sgy.export_sgy_with_picks(filename, self.last_task.picks_in_samples)
+                elif filename.suffix.lower() == ".txt":
+                    self.last_task.export_result(str(filename), as_plain=True)
+                elif filename.suffix.lower() == ".json":
+                    self.last_task.export_result(str(filename), as_plain=False)
+                else:
+                    message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
+                    window_err = MessageBox(self,
+                                            title="Wrong filename",
+                                            message=message_er)
+                    window_err.exec_()
 
 
 def run_app() -> None:

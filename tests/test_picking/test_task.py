@@ -8,7 +8,7 @@ from first_breaks.sgy.reader import SGY
 
 
 @pytest.fixture
-def readed_demo_sgy(demo_sgy: Path) -> SGY:
+def read_demo_sgy(demo_sgy: Path) -> SGY:
     return SGY(demo_sgy)
 
 
@@ -46,7 +46,7 @@ def readed_demo_sgy(demo_sgy: Path) -> SGY:
     (-2, -2, True),  # Positive
     (3.3, 3.3, False),  # OK
 ])
-def test_task_params(readed_demo_sgy: SGY,
+def test_task_params(read_demo_sgy,
                      tps: int,
                      tps_parsed: int,
                      tps_error: bool,
@@ -65,14 +65,14 @@ def test_task_params(readed_demo_sgy: SGY,
                      clip_error: bool) -> None:
     if any((tps_error, mtime_error, gain_error, clip_error, tti_error)):
         with pytest.raises(ProcessingParametersException):
-            Task(readed_demo_sgy,
+            Task(read_demo_sgy,
                  traces_per_gather=tps,
                  maximum_time=mtime,
                  traces_to_inverse=tti,
                  gain=gain,
                  clip=clip)
     else:
-        task = Task(readed_demo_sgy,
+        task = Task(read_demo_sgy,
                     traces_per_gather=tps,
                     maximum_time=mtime,
                     traces_to_inverse=tti,
