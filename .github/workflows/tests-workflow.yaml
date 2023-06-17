@@ -24,6 +24,7 @@ jobs:
       uses: actions/checkout@v3
     - name: Install package
       run: |
+        apt-get install -y qt5-qmake
         pip install -e .
     - name: Tests
       run: |

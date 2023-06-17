@@ -1,29 +1,26 @@
 from pathlib import Path
+from typing import List
 
 from setuptools import find_packages, setup
 
 
-basic_requirements = [
-    "requests==2.28.2",
-    "numpy==1.24.2",
-    "pandas==2.0.0",
-    "PyQt5==5.15.9",
-    "pyqtgraph==0.13.3",
-    "tqdm==4.65.0",
-    "click==8.1.3",
-    "pytest==7.3.2"
-]
+def load_requirements(filename: str) -> List[str]:
+    with open(filename, "r") as f:
+        reqs = f.read().splitlines()
+    return reqs
 
-nn_cpu = ["onnxruntime==1.14.1"]
-nn_gpu = ["onnxruntime-gpu==1.14.1"]
+
+basic_reqs = load_requirements("requirements/basic.txt")
+gpu_extra_reqs = load_requirements("requirements/gpu.txt")
+
 
 setup(
     # technical things
     version="0.1.0",
-    packages=find_packages(exclude=['data', 'docs', 'legacy', 'first_breaks._pytorch', 'tests']),
+    packages=find_packages(exclude=['data', 'docs', 'legacy', 'first_breaks._pytorch', 'tests', "requirements"]),
     python_requires=">=3.7,<4.0",
-    install_requires=basic_requirements + nn_cpu,
-    extras_require={'gpu': nn_gpu},
+    install_requires=basic_reqs,
+    extras_require={'gpu': gpu_extra_reqs},
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
     entry_points={
