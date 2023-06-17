@@ -6,6 +6,12 @@ install_precommit:
 run_precommit:
 	pre-commit install && pre-commit run -a
 
+
+.PHONY: tests
+tests:
+	pytest -sv --disable-warnings tests
+
+
 .PHONY: build_wheel
 build_wheel:
 	python -m pip install --upgrade pip
