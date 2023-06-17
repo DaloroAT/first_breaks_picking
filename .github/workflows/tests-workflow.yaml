@@ -24,8 +24,7 @@ jobs:
       uses: actions/checkout@v3
     - name: Install package
       run: |
-        sudo apt-get install -y qt5-qmake
-        pip install -e .
+        make docker_build
     - name: Tests
       run: |
-        make tests
+        make docker_tests
