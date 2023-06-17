@@ -1,4 +1,5 @@
 import json
+import warnings
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple, Union
 
@@ -35,7 +36,7 @@ class Task:
 
         self.traces_per_gather_parsed = self.validate_and_parse_traces_per_gather(traces_per_gather)
         self.maximum_time_parsed = self.validate_and_parse_maximum_time(maximum_time)
-        self.maximum_time_sample = self._convert_maximum_time_to_index()
+        self.maximum_time_sample = self.sgy.ms2index(self.maximum_time_parsed)
         self.traces_to_inverse_parsed = self.validate_and_parse_traces_to_inverse(traces_to_inverse)
         self.gain_parsed = self.validate_and_parse_gain(gain)
         self.clip_parsed = self.validate_and_parse_clip(clip)
@@ -95,8 +96,16 @@ class Task:
 
     def validate_and_parse_maximum_time(self, maximum_time: float) -> float:
         self.validate_maximum_time(maximum_time)
-        if maximum_time > 0.0:
-            maximum_time = min(maximum_time, self.sgy.shape[0] * self.sgy.dt_ms)
+        if maximum_time == 0.0:
+            maximum_time = self.sgy.max_time_ms
+        else:
+            index = self.sgy.ms2index(maximum_time)
+            if index == 0:
+                warnings.warn("The maximum time is not zero and is less than the duration of one sample, "
+                              "so the maximum time will be equal to the length of the trace.")
+                maximum_time = self.sgy.max_time_ms
+            else:
+                maximum_time = min(maximum_time, self.sgy.max_time_ms)
         return maximum_time
 
     def validate_and_parse_traces_to_inverse(self, traces_to_inverse: Sequence[int]) -> Sequence[int]:
@@ -115,12 +124,6 @@ class Task:
     def validate_and_parse_clip(cls, clip: float) -> float:
         cls.validate_clip(clip)
         return float(clip)
-
-    def _convert_maximum_time_to_index(self) -> int:
-        if self.maximum_time_parsed == 0.0:
-            return self.sgy.shape[0]
-        else:
-            return int(self.maximum_time_parsed / (self.sgy.dt_ms))
 
     def get_gathers_ids(self) -> List[Tuple[int]]:
         return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather_parsed))  # type: ignore

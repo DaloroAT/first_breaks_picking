@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
-from first_breaks.utils.utils import calc_hash, chunk_iterable, get_io, multiply_iterable_by
+from first_breaks.utils.utils import calc_hash, chunk_iterable, get_io, multiply_iterable_by, ms2index
 
 SizeHW = Tuple[int, int]
 
@@ -72,6 +72,13 @@ class SGY:
     @property
     def shape(self) -> SizeHW:
         return self.ns, self.ntr
+
+    def ms2index(self, ms_value: float) -> int:
+        return ms2index(ms_value, self.dt_ms)
+
+    @property
+    def max_time_ms(self):
+        return self.num_samples * self.dt_ms
 
     def __init__(
         self,

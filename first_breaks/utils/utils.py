@@ -107,6 +107,10 @@ def multiply_iterable_by(sample: TTimeType,
         raise TypeError("Invalid type for samples")
 
 
+def ms2index(ms: float, sgy_ms: float) -> int:
+    return int(ms / sgy_ms)
+
+
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
 

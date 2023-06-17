@@ -1,3 +1,4 @@
+import os
 import warnings
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Tuple, Union
@@ -237,6 +238,13 @@ class GraphExporter(GraphWidget):
     MAX_SIDE_SIZE = 65000
     MAX_NUM_PIXELS = MAX_SIDE_SIZE * 2000
 
+    def __init__(self, *args: Any, **kwargs: Any):
+        os.environ["DEBIAN_FRONTEND"] = "noninteractive"
+        os.environ["LIBGL_ALWAYS_INDIRECT"] = "1"
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        super().__init__(*args, **kwargs)
+        self.setAntialiasing(True)
+
     @classmethod
     def avoid_memory_bomb(
         cls,
@@ -458,3 +466,9 @@ def export_image(
     )
     app.exec()
     warnings.resetwarnings()
+
+
+if __name__ == '__main__':
+    from first_breaks.utils.utils import download_demo_sgy
+    demo_sgy = download_demo_sgy()
+    export_image(demo_sgy, 'demo_sgy.png')

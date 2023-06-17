@@ -125,7 +125,7 @@ class PickerONNX(IPicker):
         self.callback_processing_finished()
 
         task.success = True
-        task.picks_in_samples = task_picks_in_sample.tolist()
+        task.picks_in_samples = task_picks_in_sample.astype(int).tolist()
         task.confidence = task_confidence.tolist()
         task.model_hash = self.model_hash
 
