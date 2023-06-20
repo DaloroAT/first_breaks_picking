@@ -79,7 +79,7 @@ class SliderConverter:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):  # type: ignore
+    def __init__(self, use_open_gl: bool = True):  # type: ignore
         super(MainWindow, self).__init__()
 
         if getattr(sys, "frozen", False):
@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
         self.status.addPermanentWidget(status_widget)
 
         # graph widget
-        self.graph = GraphWidget(background="w")
+        self.graph = GraphWidget(use_open_gl=use_open_gl, background="w")
         self.graph.hide()
         self.setCentralWidget(self.graph)
 
@@ -414,11 +414,11 @@ class MainWindow(QMainWindow):
             if self.last_task is not None and self.last_task.success:
                 filename.parent.mkdir(parents=True, exist_ok=True)
                 if filename.suffix.lower() in (".sgy", ".segy"):
-                    self.sgy.export_sgy_with_picks(filename, self.last_task.picks_in_samples)  # type: ignore
+                    self.last_task.export_result(str(filename), as_sgy=True)  # type: ignore
                 elif filename.suffix.lower() == ".txt":
                     self.last_task.export_result(str(filename), as_plain=True)
                 elif filename.suffix.lower() == ".json":
-                    self.last_task.export_result(str(filename), as_plain=False)
+                    self.last_task.export_result(str(filename), as_json=True)
                 else:
                     message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
                     window_err = MessageBox(self, title="Wrong filename", message=message_er)

@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from first_breaks.const import PROJECT_ROOT
 from first_breaks.utils.utils import download_demo_sgy, download_model_onnx
 
 
@@ -18,11 +17,8 @@ def model_onnx() -> Path:
 
 
 @pytest.fixture(scope="session")
-def test_logs_dir() -> Path:
-    logs_dir = Path('tests_logs')
+def logs_dir_for_tests() -> Path:
+    logs_dir = Path('tests_logs').resolve()
     logs_dir.mkdir(parents=True, exist_ok=True)
     yield logs_dir
     shutil.rmtree(logs_dir, ignore_errors=True)
-
-
-

@@ -148,9 +148,16 @@ class Task:
         else:
             return None
 
-    def export_result(self, filename: Union[str, Path], as_plain: bool = False) -> None:
+    def export_result(
+        self, filename: Union[str, Path], as_plain: bool = False, as_json: bool = False, as_sgy: bool = False
+    ) -> None:
         if self.picks_in_samples is None:
-            raise RuntimeError("There are no picks. Put them manually or process the task first")
+            raise ValueError("There are no picks. Put them manually or process the task first")
+
+        if sum([as_plain, as_json, as_sgy]) == 0:
+            raise ValueError("One of the options 'as_plain', 'as_json', or 'as_sgy' must be explicitly selected.")
+        elif sum([as_plain, as_json, as_sgy]) > 1:
+            raise ValueError("Only one of the options 'as_plain', 'as_json', or 'as_sgy' can be selected.")
 
         if isinstance(self.picks_in_samples, (tuple, list)):
             picks_in_samples = self.picks_in_samples
@@ -158,42 +165,51 @@ class Task:
             picks_in_samples = self.picks_in_samples.tolist()
         else:
             raise TypeError("Only 1D sequence can be saved")
-        picks_in_ms = multiply_iterable_by(picks_in_samples, multiplier=self.sgy.dt_ms)
-        confidence = self.confidence
 
-        is_source_file = isinstance(self.sgy.source, (str, Path))
-        if is_source_file:
-            source_filename = str(Path(self.sgy.source).name)  # type: ignore
-            source_full_name = str(Path(self.sgy.source).resolve())  # type: ignore
+        if as_sgy:
+            self.sgy.export_sgy_with_picks(filename, picks_in_samples)
         else:
-            source_filename = None
-            source_full_name = None
+            picks_in_ms = multiply_iterable_by(picks_in_samples, multiplier=self.sgy.dt_ms)
+            confidence = self.confidence
 
-        meta = {
-            "is_source_file": is_source_file,
-            "is_source_ndarray": self.sgy.is_source_ndarray,
-            "filename": source_filename,
-            "full_name": source_full_name,
-            "hash": self.sgy.get_hash(),
-            "dt_ms": self.sgy.dt_ms,
-            "is_picked_with_model": bool(self.success),
-            "model_hash": self.model_hash,
-            "traces_per_gather": self.traces_per_gather_parsed,
-            "maximum_time": self.maximum_time_parsed,
-            "traces_to_inverse": self.traces_to_inverse_parsed,
-            "gain": self.gain_parsed,
-            "clip": self.clip_parsed,
-        }
-        data = {"picks_in_samples": picks_in_samples, "picks_in_ms": picks_in_ms, "confidence": confidence}
-
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
-
-        with open(filename, "w") as fout:
-            if as_plain:
-                content = [f"{k}={v}" for k, v in meta.items()]
-                data_str = pd.DataFrame(data).to_string(index=False, justify="right")
-                content.append(data_str)
-                content = "\n".join(content)
-                fout.write(content)
+            is_source_file = isinstance(self.sgy.source, (str, Path))
+            if is_source_file:
+                source_filename = str(Path(self.sgy.source).name)  # type: ignore
+                source_full_name = str(Path(self.sgy.source).resolve())  # type: ignore
             else:
-                json.dump({**meta, **data}, fout)
+                source_filename = None
+                source_full_name = None
+
+            meta = {
+                "is_source_file": is_source_file,
+                "is_source_ndarray": self.sgy.is_source_ndarray,
+                "filename": source_filename,
+                "full_name": source_full_name,
+                "hash": self.sgy.get_hash(),
+                "dt_ms": self.sgy.dt_ms,
+                "is_picked_with_model": bool(self.success),
+                "model_hash": self.model_hash,
+                "traces_per_gather": self.traces_per_gather_parsed,
+                "maximum_time": self.maximum_time_parsed,
+                "traces_to_inverse": self.traces_to_inverse_parsed,
+                "gain": self.gain_parsed,
+                "clip": self.clip_parsed,
+            }
+            data = {
+                "trace": list(range(1, len(picks_in_samples) + 1)),
+                "picks_in_samples": picks_in_samples,
+                "picks_in_ms": picks_in_ms,
+                "confidence": confidence,
+            }
+
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+
+            with open(filename, "w") as fout:
+                if as_plain:
+                    content = [f"{k}={v}" for k, v in meta.items()]
+                    data_str = pd.DataFrame(data).to_string(index=False, justify="right")
+                    content.append(data_str)
+                    content = "\n".join(content)
+                    fout.write(content)
+                else:
+                    json.dump({**meta, **data}, fout)

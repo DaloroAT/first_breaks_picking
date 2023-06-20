@@ -30,7 +30,7 @@ def test_reader_open_different_sources(demo_sgy: Path) -> None:
 
 
 @pytest.mark.parametrize("picks_in_samples_type", [list, np.ndarray])
-def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, test_logs_dir: Path) -> None:
+def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, logs_dir_for_tests: Path) -> None:
     sgy = SGY(demo_sgy)
     picks_col_name = sgy._traces_headers_schema.fb_pick_default
 
@@ -43,7 +43,7 @@ def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, test_logs_dir
     else:
         raise TypeError('Invalid type')
 
-    sgy_with_picks_path = test_logs_dir / 'sgy_with_picks.sgy'
+    sgy_with_picks_path = logs_dir_for_tests / 'sgy_with_picks.sgy'
     sgy.export_sgy_with_picks(sgy_with_picks_path, picks_in_samples)
     sgy_with_picks = SGY(sgy_with_picks_path)
 

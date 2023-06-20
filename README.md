@@ -80,6 +80,25 @@ Library is available in [PyPI](https://pypi.org/project/first-breaks-picking/):
 pip install -U first-breaks-picking
 ```
 
+### GPU support
+
+You can use the capabilities of GPU to significantly reduce picking time. Before started, check
+[here](https://developer.nvidia.com/cuda-gpus) that your GPU is CUDA compatible.
+
+Install GPU supported version of library:
+```shell
+pip install -U first-breaks-picking[gpu]
+```
+
+The following steps are operating system dependent and must be performed manually:
+
+- Install [latest NVIDIA drivers](https://www.nvidia.com/Download/index.aspx).
+- Install [CUDA toolkit](https://developer.nvidia.com/cuda-downloads).
+**The version must be between 11.x, starting with 11.6. Version 12 is not supported**.
+- Install ZLib and CuDNN:
+[Windows](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-windows) and
+[Linux](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-linux).
+
 ### Extra data
 
 - To pick first breaks you need
@@ -90,6 +109,7 @@ to [download model](https://oml.daloroserver.com/download/seis/fb.onnx).
 
 It's also possible to download them with Python using the following snippet:
 
+[code-block-start]:downloading-extra
 ```python
 from first_breaks.utils.utils import (download_demo_sgy,
                                       download_model_onnx)
@@ -100,6 +120,7 @@ model_filename = 'model.onnx'
 download_demo_sgy(sgy_filename)
 download_model_onnx(model_filename)
 ```
+[code-block-end]:downloading-extra
 
 # How to use it
 
@@ -114,6 +135,7 @@ Programmatic way has more flexibility for building your own picking scenario and
 The following snippet implements the picking process of the demo file. As a result, you can get an image from
 the project preview.
 
+[code-block-start]:e2e-example
 ```python
 from first_breaks.utils.utils import download_demo_sgy
 from first_breaks.sgy.reader import SGY
@@ -147,6 +169,7 @@ export_image(task, image_filename,
              width=700,
              hide_traces_axis=True)
 ```
+[code-block-end]:e2e-example
 
 For a better understanding of the steps taken, expand and read the next section.
 
@@ -156,30 +179,50 @@ For a better understanding of the steps taken, expand and read the next section.
 
 <summary>Show examples</summary>
 
+### Download demo SGY
+
+Let's download the demo file. All the following examples assume that the file is downloaded and saved as `data.sgy`.
+You can also put your own SGY file.
+
+```python
+from first_breaks.utils.utils import download_demo_sgy
+
+sgy_filename = 'data.sgy'
+download_demo_sgy(fname=sgy_filename)
+```
+
 ### Create SGY
 We provide several ways to create `SGY` object: from file, `bytes` or `numpy` array.
 
 From file:
+
+[code-block-start]:init-from-path
 ```python
 from first_breaks.sgy.reader import SGY
 
-sgy_filename = ...  # put path to your file.
+sgy_filename = 'data.sgy'
 sgy = SGY(sgy_filename)
 ```
+[code-block-end]:init-from-path
 
 From `bytes`:
+
+[code-block-start]:init-from-bytes
 ```python
 from first_breaks.sgy.reader import SGY
 
-sgy_filename = ...  # put path to your file.
+sgy_filename = 'data.sgy'
 
 with open(sgy_filename, 'rb') as fin:
     sgy_bytes = fin.read()
 
 sgy = SGY(sgy_bytes)
 ```
+[code-block-end]:init-from-bytes
 
 If you want to create from `numpy` array, extra argument `dt_mcs` is required:
+
+[code-block-start]:init-from-np
 ```python
 import numpy as np
 from first_breaks.sgy.reader import SGY
@@ -191,15 +234,18 @@ dt_mcs = 1e3
 traces = np.random.random((num_samples, num_traces))
 sgy = SGY(traces, dt_mcs=dt_mcs)
 ```
+[code-block-end]:init-from-np
 
 ### Content of SGY
 
 Created `SGY` allows you to read traces, get observation parameters and view headers (empty if created from `numpy`)
 
+[code-block-start]:sgy-content
 ```python
 from first_breaks.sgy.reader import SGY
 
-sgy: SGY = ...  # put here previously created SGY
+sgy_filename = 'data.sgy'
+sgy = SGY(sgy_filename)
 
 # get all traces or specific traces limited by time
 all_traces = sgy.read()
@@ -221,6 +267,7 @@ print(sgy.general_headers)
 # pandas DataFrame with headers for each trace
 print(sgy.traces_headers.head())
 ```
+[code-block-end]:sgy-content
 
 ### Create task for picking
 
@@ -228,26 +275,70 @@ Next, we create a task for picking and pass the picking parameters to it. They h
 best quality, they must be matched to specific data. You can use the desktop application to evaluate the parameters.
 A detailed description of the parameters can be found  in the `Picking process` chapter.
 
+[code-block-start]:create-task
 ```python
 from first_breaks.sgy.reader import SGY
 from first_breaks.picking.task import Task
 
-sgy: SGY = ...  # put here previously created SGY
+sgy_filename = 'data.sgy'
+sgy = SGY(sgy_filename)
+
 task = Task(sgy,
             traces_per_gather=24,
             maximum_time=200)
 ```
+[code-block-end]:create-task
+
+
+### Create Picker
+In this step, we instantiate the neural network for picking. If you downloaded the model according to the
+installation section, then pass the path to it. Or leave the path to the model empty so that we can download it
+automatically.
+
+It's also possible to use GPU/CUDA to accelerate computation. By default `cuda` is selected if you have finished
+all steps regarding GPU in `Installation` section. Otherwise, it's `cpu`.
+
+You can also set the value of parameter `batch_size`, which can further speed up the calculations on the GPU.
+However, this will require additional video memory (VRAM).
+
+NOTE: When using the CPU, increasing `batch_size` does not speed up the calculation at all, but it may
+require additional memory costs (RAM). So don't increase this parameter when using CPU.
+
+[code-block-start]:create-picker
+```python
+from first_breaks.picking.picker_onnx import PickerONNX
+
+# the library will determine the best available device
+picker_default = PickerONNX()
+
+# create picker explicitly on CPU
+picker_cpu = PickerONNX(device='cpu')
+
+# create picker explicitly on GPU
+picker_gpu = PickerONNX(device='cuda', batch_size=2)
+
+# transfer model to another device
+picker_cpu.change_settings(device='cuda', batch_size=3)
+picker_gpu.change_settings(device='cpu', batch_size=1)
+```
+[code-block-end]:create-picker
 
 ### Pick first breaks
 
-In this step, we use the neural network for picking. If you downloaded the model according to the installation section,
-then pass the path to it. Or leave the path to the model empty so that we can download it automatically.
+Now, using all the created components, we can pick the first breaks and export the results.
 
+[code-block-start]:pick-fb
 ```python
 from first_breaks.picking.task import Task
 from first_breaks.picking.picker_onnx import PickerONNX
+from first_breaks.sgy.reader import SGY
 
-task: Task = ...  # put here previously created task
+sgy_filename = 'data.sgy'
+sgy = SGY(sgy_filename)
+
+task = Task(sgy,
+            traces_per_gather=24,
+            maximum_time=200)
 picker = PickerONNX()
 task = picker.process_task(task)
 
@@ -259,8 +350,11 @@ print(task.confidence)
 # you can export picks to file as plain text
 task.export_result('result.txt', as_plain=True)
 # or save as json file
-task.export_result('result.json', as_plain=False)
+task.export_result('result.json', as_json=True)
+# or make a copy of source SGY and put picks to 236 byte
+task.export_result('result.segy', as_sgy=True)
 ```
+[code-block-end]:pick-fb
 
 ### Visualizations
 
@@ -271,6 +365,8 @@ We've added named arguments to various scenarios for demonstration purposes, but
 use them all. See the function arguments for more visualization options.
 
 Plot `SGY` only:
+
+[code-block-start]:plot-sgy
 ```python
 from first_breaks.sgy.reader import SGY
 from first_breaks.desktop.graph import export_image
@@ -286,8 +382,11 @@ export_image(sgy, image_filename,
              height=300,
              width_per_trace=30)
 ```
+[code-block-end]:plot-sgy
 
 Plot `numpy` traces:
+
+[code-block-start]:plot-np
 ```python
 import numpy as np
 from first_breaks.sgy.reader import SGY
@@ -308,8 +407,11 @@ sgy = SGY(traces, dt_mcs=dt_mcs)
 export_image(sgy, image_filename,
              gain=2)
 ```
+[code-block-end]:plot-np
 
 Plot `SGY` with custom picks:
+
+[code-block-start]:plot-sgy-custom-picks
 ```python
 import numpy as np
 from first_breaks.sgy.reader import SGY
@@ -326,22 +428,33 @@ export_image(sgy, image_filename,
              picks_ms=picks_ms,
              picks_color=(0, 100, 100))
 ```
+[code-block-end]:plot-sgy-custom-picks
 
 Plot result of picking:
+
+[code-block-start]:plot-sgy-real-picks
 ```python
 from first_breaks.picking.task import Task
+from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.desktop.graph import export_image
+from first_breaks.sgy.reader import SGY
 
+sgy_filename = 'data.sgy'
 image_filename = 'image.png'
 
-task: Task = ...  # put here previously created task
-# if the task was not finished, then picks will not be drawn
+sgy = SGY(sgy_filename)
+task = Task(sgy,
+            traces_per_gather=24,
+            maximum_time=200)
+picker = PickerONNX()
+task = picker.process_task(task)
 
 export_image(task, image_filename,
              show_processing_region=False,
              fill_black_left=False,
              width=1000)
 ```
+[code-block-end]:plot-sgy-real-picks
 
 ### *Limit processing region
 
@@ -349,11 +462,11 @@ Unfortunately, processing of a part of a file is not currently supported nativel
 
 However, you can use the following workaround to do this:
 
+[code-block-start]:pick-limited
 ```python
 from first_breaks.sgy.reader import SGY
 
 sgy_filename = 'data.sgy'
-
 sgy = SGY(sgy_filename)
 
 interesting_traces = sgy.read_traces_by_ids(ids=list(range(20, 40)),
@@ -363,6 +476,7 @@ interesting_traces = sgy.read_traces_by_ids(ids=list(range(20, 40)),
 # we create new SGY based on region of interests
 sgy = SGY(interesting_traces, dt_mcs=sgy.dt_mcs)
 ```
+[code-block-end]:pick-limited
 
 </details>
 
@@ -394,6 +508,7 @@ The following mouse interactions are available:
 - Right button drag: Scales the scene. Dragging left/right scales horizontally; dragging up/down scales vertically.
 - Right button click: Open dialog with extra options, such as limit by X/Y axes and export.
 - Wheel spin: Zooms the scene in and out.
+- Left click: *After picking with model*, you can manually change picks.
 
 You can also use slider in toolbar to change gain of traces. **The gain value for the slider is only used for
 visualization, it is not used in picking process**.
@@ -414,6 +529,12 @@ arrivals.
 
 Run again with different parameters to achieve optimal values of the picking parameters for your data.
 
+If you have CUDA compatible GPU and installed GPU supported version of library (see `Installation` section), you can
+select `CUDA/GPU` device  to use GPU acceleration. It can drastically decrease computation time.
+
+Parameter `Batch size` determine how many gathers will be processed simultaneously on GPU. It also can decrease
+computation time, but make sure that you have enough free GPU memory (`Batch size=10` requires > 10 Gb VRAM on Windows).
+
 ### Processing grid
 
 Click on 4 button to toggle the display of the processing grid on or off. Horizontal line
@@ -422,8 +543,14 @@ processes blocks independently, as separate images.
 
 ### Save results
 
-Click on 5 button to save picks, picking parameters and info about SGY file into plain `.txt` file.
+Click on 5 button to save picks into file. Depending on file extension, results will be saved as `json`,
+as plain `txt`, or as `segy` file.
 
+For extensions `txt` and `json`, picking parameters and model confidence for each peak are additionally saved.
+
+When choosing an extension `segy`, the copy of original SGY file is saved with the values of the first breaks in the
+trace headers. They are stored in the last 4 bytes (236 byte if counting from 0) to be decoded as an unsigned integer.
+Values are in microseconds.
 # Picking process
 
 Neural network process file as series of **images**. There is why **the traces should not be random**,

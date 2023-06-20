@@ -89,7 +89,7 @@ class PickerONNX(IPicker):
 
     def change_settings(  # type: ignore
         self, *args: Any, device: Optional[str] = None, batch_size: Optional[int] = None
-    ) -> None:
+    ) -> "PickerONNX":
         if args:
             raise ValueError("Use named arguments instead of positional")
 
@@ -99,6 +99,8 @@ class PickerONNX(IPicker):
 
         if batch_size:
             self.batch_size = batch_size
+
+        return self
 
     def pick_batch_of_gathers(self, gather: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         assert gather.ndim == 4

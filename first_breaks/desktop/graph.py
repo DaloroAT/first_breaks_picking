@@ -35,8 +35,8 @@ class GraphDefaults:
 
 
 class GraphWidget(pg.PlotWidget):
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(useOpenGL=True, *args, **kwargs)
+    def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
+        super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
         self.getPlotItem().disableAutoRange()
         self.setAntialiasing(False)
         self.getPlotItem().setClipToView(True)
@@ -326,7 +326,7 @@ class GraphExporter(GraphWidget):
 
         if task:
             picks_to_plot = task.picks_in_ms  # type: ignore
-        elif picks_ms:
+        elif picks_ms is not None:
             picks_to_plot = picks_ms  # type: ignore
         else:
             picks_to_plot = None  # type: ignore
