@@ -1,10 +1,12 @@
 import hashlib
+import inspect
 import io
 from itertools import islice
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
+import onnxruntime as ort
 import requests
 
 from first_breaks.const import (
@@ -89,12 +91,36 @@ def download_model_onnx(
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def sample2ms(sample: TTimeType, dt_ms: float) -> TTimeType:
-    if isinstance(sample, (int, float, (np.number, np.ndarray))):
-        return sample * dt_ms
+def multiply_iterable_by(
+    sample: TTimeType, multiplier: float, cast_to: Optional[Callable[[Any], Any]] = None
+) -> TTimeType:
+    if isinstance(sample, (int, float, str)):
+        result = sample * multiplier  # type: ignore
+        return cast_to(result) if cast_to else result
+    elif isinstance(sample, (np.number, np.ndarray)):
+        result = sample * multiplier
+        return result.astype(cast_to) if cast_to else result
     elif isinstance(sample, list):
-        return list(sample2ms(val, dt_ms) for val in sample)
+        return list(multiply_iterable_by(val, multiplier, cast_to) for val in sample)
     elif isinstance(sample, tuple):
-        return tuple(sample2ms(val, dt_ms) for val in sample)
+        return tuple(multiply_iterable_by(val, multiplier, cast_to) for val in sample)
     else:
         raise TypeError("Invalid type for samples")
+
+
+def ms2index(ms: float, sgy_ms: float) -> int:
+    return int(ms / sgy_ms)
+
+
+def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
+    return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
+
+
+ONNX_DEVICE2PROVIDER = {"cuda": "CUDAExecutionProvider", "cpu": "CPUExecutionProvider"}
+
+
+def is_onnx_cuda_available() -> bool:
+    try:
+        return ONNX_DEVICE2PROVIDER["cuda"] in ort.get_available_providers()
+    except Exception:
+        return False

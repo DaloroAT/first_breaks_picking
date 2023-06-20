@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import io
+import shutil
 import struct
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
-from first_breaks.utils.utils import calc_hash, chunk_iterable, get_io
+from first_breaks.utils.utils import (
+    calc_hash,
+    chunk_iterable,
+    get_io,
+    ms2index,
+    multiply_iterable_by,
+)
 
 SizeHW = Tuple[int, int]
 
@@ -72,13 +79,19 @@ class SGY:
     def shape(self) -> SizeHW:
         return self.ns, self.ntr
 
+    def ms2index(self, ms_value: float) -> int:
+        return ms2index(ms_value, self.dt_ms)
+
+    @property
+    def max_time_ms(self) -> float:
+        return self.num_samples * self.dt_ms
+
     def __init__(
         self,
         source: Union[str, Path, bytes, np.ndarray],
         dt_mcs: Optional[Union[int, float]] = None,
         general_headers_schema: FileHeaders = FileHeaders(),
         traces_headers_schema: TraceHeaders = TraceHeaders(),
-        use_delayed_init: bool = False,
     ):
         self.source = source
         self._dt_mcs_input = dt_mcs
@@ -103,11 +116,9 @@ class SGY:
         self._endianess: Optional[str] = None
         self._bps: Optional[int] = None
         self._data_fmt: Optional[int] = None
-        self._initialized = False
         self._hash_value: Optional[str] = None
 
-        if not use_delayed_init:
-            self._delayed_init()
+        self.__init()
 
     def get_hash(self) -> Optional[str]:
         if self.is_source_ndarray:
@@ -117,25 +128,10 @@ class SGY:
                 self._descriptor = get_io(self.source, mode="rb")
                 self._hash_value = calc_hash(self._descriptor)
                 self._descriptor.close()
+                self._descriptor = None
             return self._hash_value
 
-    def __getattribute__(self, item: str) -> Any:
-        _initialized_name = "_initialized"
-        _delayed_init_name = "_delayed_init"
-        _initialized_value = super().__getattribute__(_initialized_name)
-
-        # We run `_delayed_init` if
-        # 1. Try to get any attr with another name
-        # 2. Not initialized yet
-        if item not in (_initialized_name, _delayed_init_name) and not _initialized_value:
-            self._delayed_init()
-        return super().__getattribute__(item)
-
-    def _delayed_init(self) -> None:
-        if self._initialized:
-            return
-        self._initialized = True
-
+    def __init(self) -> None:
         if isinstance(self.source, (str, Path, bytes)):
             if self._dt_mcs_input is not None:
                 raise SGYInitParamsError("Argument 'dt_mcs' must be empty if SGY created from external sources")
@@ -168,6 +164,7 @@ class SGY:
         self._read_general_headers()
         self._read_traces_headers()
         self._descriptor.close()
+        self._descriptor = None
 
     def _read_endianess(self) -> None:
         num_bytes = self._descriptor.seek(0, 2)
@@ -289,6 +286,7 @@ class SGY:
             self._descriptor.seek(pointer)
             buffer.append(self._descriptor.read(length_slice * self._bps))
         self._descriptor.close()
+        self._descriptor = None
 
         buffer_tr = b"".join(buffer)
         traces = self._read_traces_from_buffer(buffer_tr, (length_slice, len(ids)))
@@ -351,3 +349,36 @@ class SGY:
 
     def _read_traces_double(self, buffer: bytes, shape: SizeHW) -> np.ndarray:
         return np.ndarray(shape, f"{self._endianess}f8", buffer, order="F")
+
+    def export_sgy_with_picks(
+        self, output_fname: Union[str, Path], picks_in_samples: List[int], byte_to_write: int = 236
+    ) -> None:
+        assert not self.is_source_ndarray, "Only true SGY can be used for importing picks"
+        assert 0 <= byte_to_write <= 236, "Only 0-236 bytes can be ised for writing"
+        assert len(picks_in_samples) == self.num_traces, "Number of traces and picks differs"
+
+        Path(output_fname).parent.mkdir(exist_ok=True, parents=True)
+
+        if isinstance(self.source, (str, Path)):
+            shutil.copyfile(str(self.source), str(output_fname))
+        elif isinstance(self.source, bytes):
+            with open(output_fname, "wb+") as f_output:
+                f_output.write(self.source)
+        else:
+            raise TypeError("Invalid type of source data")
+
+        picks_in_mcs = multiply_iterable_by(picks_in_samples, self.dt_mcs, cast_to=int)
+
+        pack_type = [
+            pack_type
+            for _, header, pack_type in self._traces_headers_schema.headers_schema
+            if header == self._traces_headers_schema.fb_pick_default
+        ][0]
+
+        self._descriptor = get_io(output_fname, mode="r+b")
+        for idx, pick in enumerate(picks_in_mcs):  # type: ignore
+            pointer = 3600 + (240 + self.num_samples * self._bps) * idx + byte_to_write
+            pick_byte = struct.pack(f"{self._endianess}{pack_type}", int(pick))
+            self._descriptor.seek(pointer)
+            self._descriptor.write(pick_byte)
+        self._descriptor.close()

@@ -116,6 +116,8 @@ class FileHeaders(Headers):
 
 
 class TraceHeaders(Headers):
+    fb_pick_default = "FB_PICK"
+
     def __init__(self) -> None:
         self.headers_schema = [
             (0, "TRACENO", "i"),
@@ -208,6 +210,6 @@ class TraceHeaders(Headers):
             (228, "source_measurement_exponent", "H"),
             (230, "source_measurement_unit", "h"),
             (232, "unassigned1", "i"),
-            (236, "FB_PICK", "i"),
+            (236, self.fb_pick_default, "I"),
         ]
         self.validate()

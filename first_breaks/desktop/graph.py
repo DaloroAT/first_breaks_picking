@@ -1,3 +1,4 @@
+import os
 import warnings
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Tuple, Union
@@ -8,6 +9,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph.exporters import ImageExporter
+from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 
 from first_breaks.const import HIGH_DPI
 from first_breaks.picking.task import Task
@@ -33,8 +35,8 @@ class GraphDefaults:
 
 
 class GraphWidget(pg.PlotWidget):
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
+    def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
+        super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
         self.getPlotItem().disableAutoRange()
         self.setAntialiasing(False)
         self.getPlotItem().setClipToView(True)
@@ -56,9 +58,35 @@ class GraphWidget(pg.PlotWidget):
         self.plotItem.ctrlMenu = None
 
         self.sgy: Optional[SGY] = None
-        self.picks_as_item: Optional[pg.QtWidgets.QGraphicsPathItem] = None
+        self.picks_in_ms: Optional[np.ndarray] = None
+        self.picks_as_item: Optional[pg.PlotCurveItem] = None
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
+        self.is_picks_modified_manually = False
+
+        self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
+
+    def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
+        ev = ev[0]
+        if self.picks_as_item is not None and ev.button() == 1:
+            mouse_point = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
+            x, y = mouse_point.x(), mouse_point.y()
+            ids, picks = self.picks_as_item.getData()
+            closest = np.argmin(np.abs(ids - x))
+            y = np.clip(y, 0, self.sgy.max_time_ms)
+            picks[closest] = y
+            self.picks_as_item.setData(ids, picks)
+            self.picks_in_ms = picks
+            self.is_picks_modified_manually = True
+
+    def full_clean(self) -> None:
+        self.remove_picks()
+        self.remove_traces()
+        self.remove_processing_region()
+        self.picks_as_item = None
+        self.picks_in_ms = None
+        self.is_picks_modified_manually = False
+        self.clear()
 
     def plotseis(
         self,
@@ -69,13 +97,13 @@ class GraphWidget(pg.PlotWidget):
         fill_black_left: bool = GraphDefaults.fill_black_left,
         refresh_view: bool = True,
     ) -> None:
-
         self.sgy = sgy
-        traces = self.sgy.read()
 
+        traces = self.sgy.read()
         traces = preprocess_gather(traces, gain=gain, clip=clip, normalize=normalize, copy=True)
 
         self.clear()
+
         num_sample, num_traces = self.sgy.shape
         t = np.arange(num_sample) * self.sgy.dt_ms
 
@@ -123,8 +151,11 @@ class GraphWidget(pg.PlotWidget):
         self.traces_as_items.append(item)
 
     def remove_picks(self) -> None:
+        self.is_picks_modified_manually = False
         if self.picks_as_item:
             self.removeItem(self.picks_as_item)
+            self.picks_as_item = None
+            self.picks_in_ms = None
 
     def remove_processing_region(self) -> None:
         if self.processing_region_as_items:
@@ -175,13 +206,14 @@ class GraphWidget(pg.PlotWidget):
 
     def plot_picks(self, picks_ms: Sequence[float], color: TColor = GraphDefaults.picks_color) -> None:
         self.remove_picks()
+        self.is_picks_modified_manually = False
 
-        num_traces = self.sgy.shape[1]
         picks_ms = np.array(picks_ms)
-        ids = np.arange(num_traces) + 1
+        ids = np.arange(self.sgy.num_traces) + 1
 
-        path = pg.arrayToQPath(ids, picks_ms, np.ones(num_traces, dtype=np.int32))
-        self.picks_as_item = pg.QtWidgets.QGraphicsPathItem(path)
+        self.picks_in_ms = picks_ms
+        self.picks_as_item = pg.PlotCurveItem()
+        self.picks_as_item.setData(ids, picks_ms)
 
         pen = pg.mkPen(color=color, width=3)
         self.picks_as_item.setPen(pen)
@@ -206,6 +238,13 @@ need_kwargs_exception = ValueError(
 class GraphExporter(GraphWidget):
     MAX_SIDE_SIZE = 65000
     MAX_NUM_PIXELS = MAX_SIDE_SIZE * 2000
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        os.environ["DEBIAN_FRONTEND"] = "noninteractive"
+        os.environ["LIBGL_ALWAYS_INDIRECT"] = "1"
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        super().__init__(*args, **kwargs)
+        self.setAntialiasing(True)
 
     @classmethod
     def avoid_memory_bomb(
@@ -288,7 +327,7 @@ class GraphExporter(GraphWidget):
 
         if task:
             picks_to_plot = task.picks_in_ms  # type: ignore
-        elif picks_ms:
+        elif picks_ms is not None:
             picks_to_plot = picks_ms  # type: ignore
         else:
             picks_to_plot = None  # type: ignore
@@ -428,3 +467,10 @@ def export_image(
     )
     app.exec()
     warnings.resetwarnings()
+
+
+if __name__ == "__main__":
+    from first_breaks.utils.utils import download_demo_sgy
+
+    demo_sgy = download_demo_sgy()
+    export_image(demo_sgy, "demo_sgy.png")
