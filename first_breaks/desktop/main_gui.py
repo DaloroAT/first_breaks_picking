@@ -33,6 +33,7 @@ from first_breaks.utils.utils import (
     calc_hash,
     download_demo_sgy,
     download_model_onnx,
+    multiply_iterable_by,
     remove_unused_kwargs,
 )
 
@@ -413,6 +414,12 @@ class MainWindow(QMainWindow):
             filename = Path(filename).resolve()
             if self.last_task is not None and self.last_task.success:
                 filename.parent.mkdir(parents=True, exist_ok=True)
+
+                picks_in_samples_prev = self.last_task.picks_in_samples
+                if self.graph.is_picks_modified_manually:
+                    self.last_task.picks_in_samples = multiply_iterable_by(
+                        self.graph.picks_in_ms, 1 / self.sgy.dt_ms, int
+                    )
                 if filename.suffix.lower() in (".sgy", ".segy"):
                     self.last_task.export_result(str(filename), as_sgy=True)  # type: ignore
                 elif filename.suffix.lower() == ".txt":
@@ -423,6 +430,8 @@ class MainWindow(QMainWindow):
                     message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
                     window_err = MessageBox(self, title="Wrong filename", message=message_er)
                     window_err.exec_()
+                if self.graph.is_picks_modified_manually:
+                    self.last_task.picks_in_samples = picks_in_samples_prev
 
 
 def run_app() -> None:

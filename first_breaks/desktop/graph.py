@@ -73,6 +73,7 @@ class GraphWidget(pg.PlotWidget):
             x, y = mouse_point.x(), mouse_point.y()
             ids, picks = self.picks_as_item.getData()
             closest = np.argmin(np.abs(ids - x))
+            y = np.clip(y, 0, self.sgy.max_time_ms)
             picks[closest] = y
             self.picks_as_item.setData(ids, picks)
             self.picks_in_ms = picks

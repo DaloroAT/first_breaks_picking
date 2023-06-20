@@ -63,9 +63,6 @@ def set_geometry(
         qt_rectangle.moveCenter(center_point)
         widget.move(qt_rectangle.topLeft())
 
-    monitor = QDesktopWidget().screenGeometry(1)
-    widget.move(monitor.left(), monitor.top())
-
     if fix_size:
         widget.setFixedSize(width, height)
 
