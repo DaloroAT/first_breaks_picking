@@ -167,7 +167,7 @@ class Task:
             raise TypeError("Only 1D sequence can be saved")
 
         if as_sgy:
-            self.sgy.export_sgy_with_picks(filename, picks_in_samples)
+            self.sgy.export_sgy_with_picks(filename, picks_in_samples)  # type: ignore
         else:
             picks_in_ms = multiply_iterable_by(picks_in_samples, multiplier=self.sgy.dt_ms)
             confidence = self.confidence

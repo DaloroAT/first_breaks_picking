@@ -11,6 +11,7 @@ def load_requirements(filename: str) -> List[str]:
 
 
 basic_reqs = load_requirements("requirements/basic.txt")
+cpu_reqs = load_requirements("requirements/cpu.txt")
 gpu_extra_reqs = load_requirements("requirements/gpu.txt")
 
 
@@ -19,7 +20,7 @@ setup(
     version="0.1.0",
     packages=find_packages(exclude=['data', 'docs', 'legacy', 'first_breaks._pytorch', 'tests', "requirements"]),
     python_requires=">=3.7,<4.0",
-    install_requires=basic_reqs,
+    install_requires=basic_reqs + cpu_reqs,
     extras_require={'gpu': gpu_extra_reqs},
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",

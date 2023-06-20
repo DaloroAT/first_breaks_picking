@@ -192,7 +192,7 @@ class MainWindow(QMainWindow):
         self.picker_extra_kwargs_init = {"show_progressbar": False, "device": "cpu"}
 
         self.picking_window_class = PickingWindow
-        self.picking_window_extra_kwargs = {}
+        self.picking_window_extra_kwargs: Dict[str, Any] = {}
 
         self.threadpool = QThreadPool()
 
