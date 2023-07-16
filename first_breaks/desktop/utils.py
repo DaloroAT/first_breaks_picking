@@ -66,6 +66,9 @@ def set_geometry(
     if fix_size:
         widget.setFixedSize(width, height)
 
+    monitor = QDesktopWidget().screenGeometry(1)
+    widget.move(monitor.left(), monitor.top())
+
 
 class QHSeparationLine(QtWidgets.QFrame):
     def __init__(self) -> None:
@@ -75,3 +78,5 @@ class QHSeparationLine(QtWidgets.QFrame):
         self.setFrameShape(QtWidgets.QFrame.HLine)
         self.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+
+

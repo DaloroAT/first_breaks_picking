@@ -1,3 +1,4 @@
+import ast
 import os
 import warnings
 from pathlib import Path
@@ -8,6 +9,7 @@ import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
+from pyqtgraph import AxisItem
 from pyqtgraph.exporters import ImageExporter
 from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 
@@ -24,7 +26,7 @@ TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
 
 
 class GraphDefaults:
-    normalize: bool = True
+    normalize: Optional[str] = 'trace'
     gain: float = 1.0
     clip: float = 0.9
     fill_black_left: bool = True
@@ -48,14 +50,16 @@ class GraphWidget(pg.PlotWidget):
         self.x_ax = self.getPlotItem().getAxis("top")
         self.y_ax = self.getPlotItem().getAxis("left")
         text_size = 12
-        labelstyle = {"font-size": f"{text_size}pt"}
+        self.label_style = {"font-size": f"{text_size}pt"}
         font = QFont()
         font.setPointSize(text_size)
-        self.x_ax.setLabel("trace", **labelstyle)
-        self.y_ax.setLabel("t, ms", **labelstyle)
+        self.x_ax.setLabel(None, **self.label_style)
+        self.y_ax.setLabel("t, ms", **self.label_style)
         self.x_ax.setTickFont(font)
         self.y_ax.setTickFont(font)
         self.plotItem.ctrlMenu = None
+
+        self.x_ax.tickStrings = self.replace_tick_labels
 
         self.sgy: Optional[SGY] = None
         self.picks_in_ms: Optional[np.ndarray] = None
@@ -63,6 +67,7 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.is_picks_modified_manually = False
+        self.x_ax_header = None
 
         self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
@@ -93,10 +98,13 @@ class GraphWidget(pg.PlotWidget):
         sgy: SGY,
         clip: float = GraphDefaults.clip,
         gain: float = GraphDefaults.gain,
-        normalize: bool = GraphDefaults.normalize,
+        normalize: Optional[str] = GraphDefaults.normalize,
+        x_axis: Optional[str] = None,
         fill_black_left: bool = GraphDefaults.fill_black_left,
         refresh_view: bool = True,
     ) -> None:
+        self.x_ax_header = x_axis
+
         self.sgy = sgy
 
         traces = self.sgy.read()
@@ -115,6 +123,28 @@ class GraphWidget(pg.PlotWidget):
 
         for idx in range(num_traces):
             self._plot_trace_fast(traces[:, idx], t, idx + 1, fill_black_left)
+
+        self.x_ax.showLabel()
+
+    def replace_tick_labels(self, *args, **kwargs):
+        self.x_ax.setLabel(self.x_ax_header, **self.label_style)
+        previous_labels = AxisItem.tickStrings(self.x_ax, *args, **kwargs)
+
+        if self.x_ax_header is not None:
+            labels_from_headers = []
+            for v in previous_labels:
+                v = ast.literal_eval(v)
+                if v % 1 == 0:
+                    v = int(v) - 1
+                    if 0 <= v < self.sgy.num_traces:
+                        labels_from_headers.append(str(self.sgy.traces_headers[self.x_ax_header].iloc[v]))
+                    else:
+                        labels_from_headers.append('')
+                else:
+                    labels_from_headers.append('')
+            return labels_from_headers
+        else:
+            return previous_labels
 
     def _plot_trace_fast(self, trace: np.ndarray, t: np.ndarray, shift: int, fill_black_left: bool) -> None:
         connect = np.ones(len(t), dtype=np.int32)
@@ -137,7 +167,7 @@ class GraphWidget(pg.PlotWidget):
         rect = QPainterPath()
 
         sign = -1 if fill_black_left else 1
-        rect.addRect(shift, t[0], sign * 1.1 * max(np.abs(trace)), t[-1])
+        rect.addRect(shift, t[0], sign * 1.1 * max(np.abs(shifted_trace)), t[-1])
 
         patch = path.intersected(rect)
         item = pg.QtWidgets.QGraphicsPathItem(patch)
@@ -284,7 +314,7 @@ class GraphExporter(GraphWidget):
         # content parameters
         clip: float = GraphDefaults.clip,
         gain: float = GraphDefaults.gain,
-        normalize: bool = GraphDefaults.normalize,
+        normalize: Optional[str] = GraphDefaults.normalize,
         fill_black_left: bool = GraphDefaults.fill_black_left,
         time_window: Optional[Tuple[float, float]] = None,
         traces_window: Optional[Tuple[float, float]] = None,
@@ -295,6 +325,7 @@ class GraphExporter(GraphWidget):
         contour_color: TColor = GraphDefaults.region_contour_color,
         poly_color: TColor = GraphDefaults.region_poly_color,
         contour_width: float = GraphDefaults.region_contour_width,
+        x_axis: Optional[str] = None,
         # rendering parameters
         height: int = 500,
         width: Optional[int] = None,
@@ -319,6 +350,8 @@ class GraphExporter(GraphWidget):
                 width = int(width_per_trace * (traces_window[1] - traces_window[0])) + headers_total_pixels
 
         self.avoid_memory_bomb(height, width)
+
+        self.x_ax_header = x_axis
 
         self.clear()
         self.plotseis(
@@ -353,7 +386,7 @@ class GraphExporter(GraphWidget):
         labelstyle = {"font-size": f"{headers_font_pixels}px"}
         tickfont = QFont()
         tickfont.setPixelSize(max(int(0.9 * headers_font_pixels), 1))
-        self.x_ax.setLabel("trace", **labelstyle)
+        self.x_ax.setLabel(self.x_ax_header, **labelstyle)
         self.y_ax.setLabel("t, ms", **labelstyle)
         self.x_ax.setTickFont(tickfont)
         self.y_ax.setTickFont(tickfont)
@@ -396,7 +429,7 @@ def export_image(
     dt_mcs: float = 1e3,
     clip: float = GraphDefaults.clip,
     gain: float = GraphDefaults.gain,
-    normalize: bool = GraphDefaults.normalize,
+    normalize: Optional[str] = GraphDefaults.normalize,
     fill_black_left: bool = GraphDefaults.fill_black_left,
     time_window: Optional[Tuple[float, float]] = None,
     traces_window: Optional[Tuple[float, float]] = None,
@@ -406,6 +439,7 @@ def export_image(
     contour_color: TColor = GraphDefaults.region_contour_color,
     poly_color: TColor = GraphDefaults.region_poly_color,
     contour_width: float = GraphDefaults.region_contour_width,
+    x_axis: Optional[str] = None,
     # rendering parameters
     height: int = 500,
     width: Optional[int] = None,
@@ -456,6 +490,7 @@ def export_image(
         contour_color=contour_color,
         poly_color=poly_color,
         contour_width=contour_width,
+        x_axis=x_axis,
         height=height,
         width=width,
         width_per_trace=width_per_trace,

@@ -25,6 +25,7 @@ from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import CallInThread, PickerQRunnable
 from first_breaks.desktop.utils import MessageBox, set_geometry
+from first_breaks.desktop.visualization_settings_widget import VisualizationSettingsWindow, PlotseisSettings
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
@@ -63,20 +64,6 @@ class ReadyToProcess:
 
     def is_ready(self) -> bool:
         return (self.sgy_selected == self.model_loaded) is True
-
-
-class SliderConverter:
-    multiplier = 10
-
-    @classmethod
-    def slider2value(cls, slider_value: int) -> float:
-        a = slider_value / cls.multiplier
-        return a
-
-    @classmethod
-    def value2slider(cls, value: float) -> int:
-        a = int(cls.multiplier * value)
-        return a
 
 
 class MainWindow(QMainWindow):
@@ -134,19 +121,11 @@ class MainWindow(QMainWindow):
 
         self.toolbar.addSeparator()
 
-        default_gain_value = 1.0
-        self.gain_value = default_gain_value
-        self.gain_label = QLabel(str(default_gain_value))
-        self.slider_gain = QSlider(Qt.Horizontal)
-        self.slider_gain.setRange(SliderConverter.value2slider(-5), SliderConverter.value2slider(5))
-        self.slider_gain.setValue(SliderConverter.value2slider(1))
-        self.slider_gain.setSingleStep(SliderConverter.value2slider(0.1))
-        self.slider_gain.wheelEvent = lambda *args: args[-1].ignore()  # block scrolling with wheel
-        self.slider_gain.setMaximumWidth(150)
-        self.slider_gain.valueChanged.connect(self.gain_changed)
-        self.slider_gain.sliderReleased.connect(self.update_plot)
-        self.toolbar.addWidget(self.slider_gain)
-        self.toolbar.addWidget(self.gain_label)
+        icon_visual_settings = self.style().standardIcon(QStyle.SP_BrowserReload)
+        self.button_visual_settings = QAction(icon_visual_settings, "Show visual settings", self)
+        self.button_visual_settings.triggered.connect(self.show_visual_settings_window)
+        self.button_visual_settings.setEnabled(False)
+        self.toolbar.addAction(self.button_visual_settings)
 
         icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
@@ -178,6 +157,12 @@ class MainWindow(QMainWindow):
         self.graph = GraphWidget(use_open_gl=use_open_gl, background="w")
         self.graph.hide()
         self.setCentralWidget(self.graph)
+
+        # visual settings widget
+        self.plotseis_settings = {"clip": 0.9, "gain": 1, "normalize": "trace", "x_axis": None}
+        self.visual_settings_widget = VisualizationSettingsWindow(hide_on_close=True, **self.plotseis_settings)
+        self.visual_settings_widget.hide()
+        self.visual_settings_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
 
         # placeholders
         self.sgy: Optional[SGY] = None
@@ -214,10 +199,6 @@ class MainWindow(QMainWindow):
             self.last_folder = str(file.parent)
         else:
             self.last_folder = None
-
-    def gain_changed(self, gain_from_slider: int) -> None:
-        self.gain_value = SliderConverter.slider2value(gain_from_slider)
-        self.gain_label.setText(str(self.gain_value))
 
     def _thread_init_net(self, weights: Union[str, Path]) -> None:
         task = CallInThread(self.picker_class, model_path=weights, **self.picker_extra_kwargs_init)
@@ -333,10 +314,22 @@ class MainWindow(QMainWindow):
         if self.last_task and self.last_task.success:
             self.graph.plot_picks(self.last_task.picks_in_ms)
 
+    # def update_plotseis_settings(self, new_settings: Dict[str, Any]) -> None:
+    #     self.plotseis_settings = new_settings
+    #     self.update_plot(False)
+
+    def update_plotseis_settings(self, new_settings: PlotseisSettings) -> None:
+        self.plotseis_settings = new_settings.model_dump()
+        self.update_plot(False)
+
     def update_plot(self, refresh_view: bool = False) -> None:
-        self.graph.plotseis(self.sgy, gain=self.gain_value, refresh_view=refresh_view)
+        self.graph.plotseis(self.sgy, refresh_view=refresh_view, **self.plotseis_settings)
         self.show_processing_region()
         self.show_picks()
+
+    def show_visual_settings_window(self):
+        self.visual_settings_widget.show()
+        self.visual_settings_widget.focusWidget()
 
     def unlock_pickng_if_ready(self) -> None:
         if self.ready_to_process.is_ready():
@@ -390,6 +383,7 @@ class MainWindow(QMainWindow):
                 self.update_plot(refresh_view=True)
                 self.graph.show()
                 self.button_export.setEnabled(False)
+                self.button_visual_settings.setEnabled(True)
 
                 self.button_get_filename.setEnabled(True)
                 self.ready_to_process.sgy_selected = True
