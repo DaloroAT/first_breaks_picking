@@ -90,7 +90,7 @@ def validate_mapping_setup_and_get_current_index(
     current_index: Optional[int] = None,
     current_label: Optional[str] = None,
     current_value: Optional[Any] = None,
-):
+) -> int:
     assert all(isinstance(k, int) for k in mapping.keys())
     assert all(isinstance(v, (list, tuple)) and len(v) == 2 for v in mapping.values())
     assert all(isinstance(label, str) for label, _ in mapping.values())

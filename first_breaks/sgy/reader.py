@@ -74,7 +74,7 @@ class SGY:
         return self.ns, self.ntr
 
     def ms2index(self, ms_value: float) -> int:
-        return self.units_converter.ms2index(ms_value)
+        return self.units_converter.ms2index(ms_value)  # type: ignore
 
     @property
     def max_time_ms(self) -> float:
@@ -215,17 +215,16 @@ class SGY:
 
         self._traces_headers_raw = pd.DataFrame(data=traces_headers)
 
-    def _scalar_raw_traces_headers(self):
+    def _scalar_raw_traces_headers(self) -> None:
         self.traces_headers = self._traces_headers_raw.copy()
         for scalar_from, apply_to_columns in self._traces_headers_schema.scalar_from2apply.items():
-            print(scalar_from, self._traces_headers_raw[scalar_from].unique())
             scalar = self._traces_headers_raw[scalar_from].copy()
 
             scalar[scalar == 0] = 1
             scalar[scalar < 0] = 1 / abs(scalar[scalar < 0])
             self.traces_headers[apply_to_columns] = self.traces_headers[apply_to_columns].apply(lambda x: scalar * x)
 
-    def _read_custom_trace_header_with_existed_descriptor(self, byte_position: int, encoding: str) -> Tuple[Any]:
+    def _read_custom_trace_header_with_existed_descriptor(self, byte_position: int, encoding: str) -> Tuple[Any, ...]:
         size = self._traces_headers_schema.get_num_bytes(encoding)
         buffer = []
         for idx in range(self._ntr):
@@ -234,7 +233,7 @@ class SGY:
             buffer.append(self._descriptor.read(size))
         return struct.unpack(f"{self._endianess}{encoding * self._ntr}", b"".join(buffer))
 
-    def read_custom_trace_header(self, byte_position: int, encoding: str) -> Tuple[Any]:
+    def read_custom_trace_header(self, byte_position: int, encoding: str) -> Tuple[Any, ...]:
         self._descriptor = get_io(self.source, mode="rb")
         result = self._read_custom_trace_header_with_existed_descriptor(byte_position, encoding)
         self._descriptor.close()

@@ -54,8 +54,8 @@ def build_x_axis_mapping() -> Dict[int, Tuple[str, str]]:
         "REC_DATUM",
         "SOU_DATUM",
     ]
-    mapping.update({idx: (f"Header: {h}", h) for idx, h in enumerate(headers, 1)})
-    return mapping
+    mapping.update({idx: (f"Header: {h}", h) for idx, h in enumerate(headers, 1)})  # type: ignore
+    return mapping  # type: ignore
 
 
 X_AXIS_MAPPING = build_x_axis_mapping()
@@ -141,7 +141,7 @@ class VisualizationSettingsWidget(QDialog):
         self.layout.addWidget(self.normalize_widget, 3, 1)
 
         self.xaxis_label = QLabel("X Axis")
-        self.xaxis_widget = QComboBoxMapping(X_AXIS_MAPPING, current_value=x_axis)
+        self.xaxis_widget = QComboBoxMapping(X_AXIS_MAPPING, current_value=x_axis)  # type: ignore
         self.xaxis_widget.changed_signal.connect(self.export_plotseis_settings)
         self.storage_plotseis["x_axis"] = self.xaxis_widget
         self.layout.addWidget(self.xaxis_label, 4, 0)
@@ -170,7 +170,7 @@ class VisualizationSettingsWidget(QDialog):
     def update_picks_from_file_settings(self, params: Dict[str, Any]) -> None:
         self.picks_from_file_settings = params
 
-    def export_picks_from_file_settings(self):
+    def export_picks_from_file_settings(self) -> None:
         is_pressed = self.picks_from_file_toggle.checkState() == Qt.CheckState.Checked
         if is_pressed:
             self.picks_from_file_widget.setEnabled(False)

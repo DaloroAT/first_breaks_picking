@@ -1,7 +1,7 @@
 import json
 import warnings
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -148,7 +148,7 @@ class Task:
         else:
             return None
 
-    def _check_and_convert_picks(self) -> List[float]:
+    def _check_and_convert_picks(self) -> List[float]:  # type: ignore
         if self.picks_in_samples is None:
             raise ValueError("There are no picks. Put them manually or process the task first")
         if isinstance(self.picks_in_samples, (tuple, list)):
@@ -157,9 +157,9 @@ class Task:
             picks_in_samples = self.picks_in_samples.tolist()
         else:
             raise TypeError("Only 1D sequence can be saved")
-        return picks_in_samples
+        return picks_in_samples  # type: ignore
 
-    def _prepare_output_for_nonbinary_export(self):
+    def _prepare_output_for_nonbinary_export(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         picks_in_samples = self._check_and_convert_picks()
         picks_in_ms = self.sgy.units_converter.index2ms(picks_in_samples, cast_to=float)
 

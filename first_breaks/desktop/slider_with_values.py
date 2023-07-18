@@ -66,7 +66,7 @@ class QSliderWithValues(QWidget):
 
         self.show()
 
-    def slider_pressed(self):
+    def slider_pressed(self) -> None:
         self.value_changed()
 
     def slider_released(self) -> None:

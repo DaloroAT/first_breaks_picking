@@ -50,7 +50,7 @@ class QComboBoxMapping(QComboBox):
         self.setCurrentIndex(current_index)
         self.currentIndexChanged.connect(self.changed)
 
-    def changed(self):
+    def changed(self) -> None:
         self.index_changed_signal.emit(self.currentIndex())
         self.value_changed_signal.emit(self.value())
         self.label_changed_signal.emit(self.label())

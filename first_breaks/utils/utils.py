@@ -119,9 +119,9 @@ class UnitsConverter:
             raise RuntimeError("One and only one of `sgy_mcs` or `sgy_ms` must be specified")
         elif sgy_mcs is not None:
             self.sgy_mcs = sgy_mcs
-            self.sgy_ms = self.mcs2ms(sgy_mcs)
+            self.sgy_ms = self.mcs2ms(sgy_mcs)  # type: ignore
         elif sgy_ms is not None:
-            self.sgy_mcs = self.ms2mcs(sgy_ms)
+            self.sgy_mcs = self.ms2mcs(sgy_ms)  # type: ignore
             self.sgy_ms = sgy_ms
         else:
             raise RuntimeError("Init error")
@@ -135,13 +135,13 @@ class UnitsConverter:
         return multiply_iterable_by(sample, 0.001, cast_to)
 
     def ms2index(self, sample: TTimeType, cast_to: Any = int) -> TTimeType:
-        return multiply_iterable_by(sample, 1 / self.sgy_ms, cast_to)
+        return multiply_iterable_by(sample, 1 / self.sgy_ms, cast_to)  # type: ignore
 
     def mcs2index(self, sample: TTimeType, cast_to: Any = int) -> TTimeType:
         return multiply_iterable_by(sample, 1 / self.sgy_mcs, cast_to)
 
     def index2ms(self, sample: TTimeType, cast_to: Any = float) -> TTimeType:
-        return multiply_iterable_by(sample, self.sgy_ms, cast_to)
+        return multiply_iterable_by(sample, self.sgy_ms, cast_to)  # type: ignore
 
     def index2mcs(self, sample: TTimeType, cast_to: Any = int) -> TTimeType:
         return multiply_iterable_by(sample, self.sgy_mcs, cast_to)

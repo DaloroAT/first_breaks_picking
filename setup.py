@@ -17,9 +17,9 @@ gpu_extra_reqs = load_requirements("requirements/gpu.txt")
 
 setup(
     # technical things
-    version="0.2.0",
+    version="0.3.0b",
     packages=find_packages(exclude=['data', 'docs', 'legacy', 'first_breaks._pytorch', 'tests', "requirements"]),
-    python_requires=">=3.8,<4.0",
+    python_requires=">=3.8,<3.9",  # todo
     install_requires=basic_reqs + cpu_reqs,
     extras_require={'gpu': gpu_extra_reqs},
     long_description=Path("README.md").read_text(),

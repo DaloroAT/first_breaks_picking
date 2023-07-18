@@ -4,7 +4,7 @@ import numpy as np
 from pydantic import BaseModel, Field
 
 TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
-TNormalize = Union[Literal["trace", "gather"], float, int, None]
+TNormalize = Union[Literal["trace", "gather"], float, int, np.ndarray, None]
 
 
 class DefaultModel(BaseModel):

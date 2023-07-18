@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 
 class InvalidHeaders(Exception):
@@ -64,9 +64,6 @@ class Headers:
         elif any(offsets_is_none) and not all(offsets_is_none):
             raise InvalidHeaders("To fill offsets, they must all be either empty or filled (no modification)")
         return self.headers_schema
-
-    def get_template(self, *args: Any, **kwargs: Any) -> Any:
-        raise NotImplementedError
 
 
 class FileHeaders(Headers):
@@ -212,44 +209,6 @@ class TraceHeaders(Headers):
             (232, "unassigned1", "i"),
             (236, self.fb_pick_default, "I"),
         ]
-        """
-        (68, "elevation_scalar", "h"),
-        (70, "source_group_scalar", "h"),
-        (200, "shot_point_scalar", "h"),
-        (214, "scalar_trace_header", "h"),
-
-        (68, "elevation_scalar", "h"):
-            (40, "REC_ELEV", "i"),
-            (44, "SOU_ELEV", "i"),
-            (48, "DEPTH", "i"),
-            (52, "REC_DATUM", "i"),
-            (56, "SOU_DATUM", "i"),
-            (60, "SOU_H2OD", "i"),
-            (64, "REC_H2OD", "i"),
-
-        (70, "source_group_scalar", "h"):
-            (72, "SOU_X", "i"),
-            (76, "SOU_Y", "i"),
-            (80, "REC_X", "i"),
-            (84, "REC_Y", "i"),
-
-        (200, "shot_point_scalar", "h"):
-            (196, "shot_point", "i"),
-
-        (214, "scalar_trace_header", "h"):
-            (94, "UPHOLE", "h"),
-            (96, "REC_UPHOLE", "h"),
-            (98, "SOU_STAT", "h"),
-            (100, "REC_STAT", "h"),
-            (102, "TOT_STAT", "h"),
-            (104, "lag_time_a", "h"),
-            (106, "lag_time_b", "h"),
-            (108, "delay_recording_time", "h"),
-            (110, "TLIVE_S", "h"),
-            (112, "TFULL_S", "h"),
-
-
-        """
         self.validate()
         self.scalar_from2apply = {
             "elevation_scalar": [
