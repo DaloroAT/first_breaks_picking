@@ -1,7 +1,7 @@
-from typing import Any, Optional, List
+from typing import Any, Optional
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QSlider, QHBoxLayout, QSizePolicy
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QSlider, QWidget
 
 
 class QSliderWithValues(QWidget):
@@ -9,18 +9,20 @@ class QSliderWithValues(QWidget):
     slider_released_signal = pyqtSignal()
     value_on_released_signal = pyqtSignal(float)
 
-    def __init__(self,
-                 value: float = 1,
-                 min_value: float = -1,
-                 max_value: float = 1,
-                 step: float = 0.1,
-                 decimals: int = 1,
-                 ticks_interval: Optional[float] = None,
-                 margins: Optional[int] = None,
-                 slider_space_fraction: Optional[float] = None,
-                 block_mouse_scrolling: bool = True,
-                 *args: Any,
-                 **kwargs: Any):
+    def __init__(
+        self,
+        value: float = 1,
+        min_value: float = -1,
+        max_value: float = 1,
+        step: float = 0.1,
+        decimals: int = 1,
+        ticks_interval: Optional[float] = None,
+        margins: Optional[int] = None,
+        slider_space_fraction: Optional[float] = None,
+        block_mouse_scrolling: bool = True,
+        *args: Any,
+        **kwargs: Any,
+    ):
         super().__init__(*args, **kwargs)
 
         self.layout = QHBoxLayout()
@@ -97,6 +99,3 @@ if __name__ == "__main__":
     # window.rele
     window.show()
     app.exec_()
-
-
-

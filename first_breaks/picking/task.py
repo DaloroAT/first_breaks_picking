@@ -148,68 +148,82 @@ class Task:
         else:
             return None
 
-    def export_result(
-        self, filename: Union[str, Path], as_plain: bool = False, as_json: bool = False, as_sgy: bool = False
-    ) -> None:
+    def _check_and_convert_picks(self) -> List[float]:
         if self.picks_in_samples is None:
             raise ValueError("There are no picks. Put them manually or process the task first")
-
-        if sum([as_plain, as_json, as_sgy]) == 0:
-            raise ValueError("One of the options 'as_plain', 'as_json', or 'as_sgy' must be explicitly selected.")
-        elif sum([as_plain, as_json, as_sgy]) > 1:
-            raise ValueError("Only one of the options 'as_plain', 'as_json', or 'as_sgy' can be selected.")
-
         if isinstance(self.picks_in_samples, (tuple, list)):
             picks_in_samples = self.picks_in_samples
         elif isinstance(self.picks_in_samples, np.ndarray):
             picks_in_samples = self.picks_in_samples.tolist()
         else:
             raise TypeError("Only 1D sequence can be saved")
+        return picks_in_samples
 
-        if as_sgy:
-            self.sgy.export_sgy_with_picks(filename, picks_in_samples)  # type: ignore
+    def _prepare_output_for_nonbinary_export(self):
+        picks_in_samples = self._check_and_convert_picks()
+        picks_in_ms = self.sgy.units_converter.index2ms(picks_in_samples, cast_to=float)
+
+        confidence = self.confidence
+
+        is_source_file = isinstance(self.sgy.source, (str, Path))
+        if is_source_file:
+            source_filename = str(Path(self.sgy.source).name)  # type: ignore
+            source_full_name = str(Path(self.sgy.source).resolve())  # type: ignore
         else:
-            picks_in_ms = multiply_iterable_by(picks_in_samples, multiplier=self.sgy.dt_ms)
-            confidence = self.confidence
+            source_filename = None
+            source_full_name = None
 
-            is_source_file = isinstance(self.sgy.source, (str, Path))
-            if is_source_file:
-                source_filename = str(Path(self.sgy.source).name)  # type: ignore
-                source_full_name = str(Path(self.sgy.source).resolve())  # type: ignore
-            else:
-                source_filename = None
-                source_full_name = None
+        meta = {
+            "is_source_file": is_source_file,
+            "is_source_ndarray": self.sgy.is_source_ndarray,
+            "filename": source_filename,
+            "full_name": source_full_name,
+            "hash": self.sgy.get_hash(),
+            "dt_ms": self.sgy.dt_ms,
+            "is_picked_with_model": bool(self.success),
+            "model_hash": self.model_hash,
+            "traces_per_gather": self.traces_per_gather_parsed,
+            "maximum_time": self.maximum_time_parsed,
+            "traces_to_inverse": self.traces_to_inverse_parsed,
+            "gain": self.gain_parsed,
+            "clip": self.clip_parsed,
+        }
+        data = {
+            "trace": list(range(1, len(picks_in_samples) + 1)),
+            "picks_in_samples": picks_in_samples,
+            "picks_in_ms": picks_in_ms,
+            "confidence": confidence,
+        }
+        return meta, data
 
-            meta = {
-                "is_source_file": is_source_file,
-                "is_source_ndarray": self.sgy.is_source_ndarray,
-                "filename": source_filename,
-                "full_name": source_full_name,
-                "hash": self.sgy.get_hash(),
-                "dt_ms": self.sgy.dt_ms,
-                "is_picked_with_model": bool(self.success),
-                "model_hash": self.model_hash,
-                "traces_per_gather": self.traces_per_gather_parsed,
-                "maximum_time": self.maximum_time_parsed,
-                "traces_to_inverse": self.traces_to_inverse_parsed,
-                "gain": self.gain_parsed,
-                "clip": self.clip_parsed,
-            }
-            data = {
-                "trace": list(range(1, len(picks_in_samples) + 1)),
-                "picks_in_samples": picks_in_samples,
-                "picks_in_ms": picks_in_ms,
-                "confidence": confidence,
-            }
+    def export_result_as_sgy(
+        self,
+        filename: Union[str, Path],
+        byte_position: int = 236,
+        encoding: str = "I",
+        picks_unit: str = "mcs",
+    ) -> None:
+        picks_in_samples = self._check_and_convert_picks()
+        self.sgy.export_sgy_with_picks(
+            output_fname=filename,
+            picks_in_samples=picks_in_samples,
+            encoding=encoding,
+            byte_position=byte_position,
+            picks_unit=picks_unit,
+        )
 
-            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    def export_result_as_json(self, filename: Union[str, Path]) -> None:
+        meta, data = self._prepare_output_for_nonbinary_export()
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        with open(filename, "w") as fout:
+            json.dump({**meta, **data}, fout)
 
-            with open(filename, "w") as fout:
-                if as_plain:
-                    content = [f"{k}={v}" for k, v in meta.items()]
-                    data_str = pd.DataFrame(data).to_string(index=False, justify="right")
-                    content.append(data_str)
-                    content = "\n".join(content)
-                    fout.write(content)
-                else:
-                    json.dump({**meta, **data}, fout)
+    def export_result_as_txt(self, filename: Union[str, Path]) -> None:
+        meta, data = self._prepare_output_for_nonbinary_export()
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        with open(filename, "w") as fout:
+            content = [f"{k}={v}" for k, v in meta.items()]
+            data_str = pd.DataFrame(data).to_string(index=False, justify="right")
+            content.append(data_str)
+            content = "\n".join(content)
+            fout.write(content)

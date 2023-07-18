@@ -14,6 +14,8 @@ from pyqtgraph.exporters import ImageExporter
 from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 
 from first_breaks.const import HIGH_DPI
+from first_breaks.data_models.independent import TColor, TNormalize
+from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
@@ -21,19 +23,6 @@ from first_breaks.sgy.reader import SGY
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-
-TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
-
-
-class GraphDefaults:
-    normalize: Optional[str] = 'trace'
-    gain: float = 1.0
-    clip: float = 0.9
-    fill_black_left: bool = True
-    picks_color: TColor = (255, 0, 0)
-    region_contour_color: TColor = (100, 100, 100)
-    region_contour_width: float = 0.2
-    region_poly_color: TColor = (100, 100, 100, 50)
 
 
 class GraphWidget(pg.PlotWidget):
@@ -62,45 +51,46 @@ class GraphWidget(pg.PlotWidget):
         self.x_ax.tickStrings = self.replace_tick_labels
 
         self.sgy: Optional[SGY] = None
-        self.picks_in_ms: Optional[np.ndarray] = None
-        self.picks_as_item: Optional[pg.PlotCurveItem] = None
+        self.nn_picks_in_ms: Optional[np.ndarray] = None
+        self.nn_picks_as_item: Optional[pg.PlotCurveItem] = None
+        self.extra_picks_as_item_list: Optional[List[pg.PlotCurveItem]] = []
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.is_picks_modified_manually = False
-        self.x_ax_header = None
+        self.x_ax_header: Optional[str] = None
 
         self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
-        if self.picks_as_item is not None and ev.button() == 1:
+        if self.nn_picks_as_item is not None and ev.button() == 1:
             mouse_point = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
             x, y = mouse_point.x(), mouse_point.y()
-            ids, picks = self.picks_as_item.getData()
+            ids, picks = self.nn_picks_as_item.getData()
             closest = np.argmin(np.abs(ids - x))
             y = np.clip(y, 0, self.sgy.max_time_ms)
             picks[closest] = y
-            self.picks_as_item.setData(ids, picks)
-            self.picks_in_ms = picks
+            self.nn_picks_as_item.setData(ids, picks)
+            self.nn_picks_in_ms = picks
             self.is_picks_modified_manually = True
 
     def full_clean(self) -> None:
-        self.remove_picks()
+        self.remove_nn_picks()
         self.remove_traces()
         self.remove_processing_region()
-        self.picks_as_item = None
-        self.picks_in_ms = None
+        self.nn_picks_as_item = None
+        self.nn_picks_in_ms = None
         self.is_picks_modified_manually = False
         self.clear()
 
     def plotseis(
         self,
         sgy: SGY,
-        clip: float = GraphDefaults.clip,
-        gain: float = GraphDefaults.gain,
-        normalize: Optional[str] = GraphDefaults.normalize,
-        x_axis: Optional[str] = None,
-        fill_black_left: bool = GraphDefaults.fill_black_left,
+        clip: float = DEFAULTS.clip,
+        gain: float = DEFAULTS.gain,
+        normalize: TNormalize = DEFAULTS.normalize,
+        x_axis: Optional[str] = DEFAULTS.x_axis,
+        fill_black: Optional[str] = DEFAULTS.fill_black,
         refresh_view: bool = True,
     ) -> None:
         self.x_ax_header = x_axis
@@ -122,11 +112,11 @@ class GraphWidget(pg.PlotWidget):
             self.getPlotItem().setXRange(0, num_traces + 1)
 
         for idx in range(num_traces):
-            self._plot_trace_fast(traces[:, idx], t, idx + 1, fill_black_left)
+            self._plot_trace_fast(traces[:, idx], t, idx + 1, fill_black)
 
         self.x_ax.showLabel()
 
-    def replace_tick_labels(self, *args, **kwargs):
+    def replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
         self.x_ax.setLabel(self.x_ax_header, **self.label_style)
         previous_labels = AxisItem.tickStrings(self.x_ax, *args, **kwargs)
 
@@ -139,14 +129,14 @@ class GraphWidget(pg.PlotWidget):
                     if 0 <= v < self.sgy.num_traces:
                         labels_from_headers.append(str(self.sgy.traces_headers[self.x_ax_header].iloc[v]))
                     else:
-                        labels_from_headers.append('')
+                        labels_from_headers.append("")
                 else:
-                    labels_from_headers.append('')
+                    labels_from_headers.append("")
             return labels_from_headers
         else:
             return previous_labels
 
-    def _plot_trace_fast(self, trace: np.ndarray, t: np.ndarray, shift: int, fill_black_left: bool) -> None:
+    def _plot_trace_fast(self, trace: np.ndarray, t: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
         connect = np.ones(len(t), dtype=np.int32)
         connect[-1] = 0
 
@@ -163,29 +153,37 @@ class GraphWidget(pg.PlotWidget):
         item.setPen(pen)
         item.setBrush(Qt.white)
         self.addItem(item)
-
-        rect = QPainterPath()
-
-        sign = -1 if fill_black_left else 1
-        rect.addRect(shift, t[0], sign * 1.1 * max(np.abs(shifted_trace)), t[-1])
-
-        patch = path.intersected(rect)
-        item = pg.QtWidgets.QGraphicsPathItem(patch)
-
-        pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
-        # pen.setWidthF(0.01)
-        pen.setWidth(0.1)
-        item.setPen(pen)
-        item.setBrush(Qt.black)
-        self.addItem(item)
         self.traces_as_items.append(item)
 
-    def remove_picks(self) -> None:
+        if fill_black is None:
+            return
+        else:
+            sign = -1 if fill_black == "left" else 1
+
+            rect = QPainterPath()
+            rect.addRect(shift, t[0], sign * 1.1 * max(np.abs(shifted_trace)), t[-1])
+
+            patch = path.intersected(rect)
+            item = pg.QtWidgets.QGraphicsPathItem(patch)
+
+            pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
+            # pen.setWidthF(0.01)
+            pen.setWidth(0.1)
+            item.setPen(pen)
+            item.setBrush(Qt.black)
+            self.addItem(item)
+            self.traces_as_items.append(item)
+
+    def remove_nn_picks(self) -> None:
         self.is_picks_modified_manually = False
-        if self.picks_as_item:
-            self.removeItem(self.picks_as_item)
-            self.picks_as_item = None
-            self.picks_in_ms = None
+        if self.nn_picks_as_item:
+            self.removeItem(self.nn_picks_as_item)
+            self.nn_picks_as_item = None
+            self.nn_picks_in_ms = None
+
+    def remove_extra_picks(self) -> None:
+        for item in self.extra_picks_as_item_list:
+            self.removeItem(item)
 
     def remove_processing_region(self) -> None:
         if self.processing_region_as_items:
@@ -201,9 +199,9 @@ class GraphWidget(pg.PlotWidget):
         self,
         traces_per_gather: int,
         maximum_time: float,
-        contour_color: TColor = GraphDefaults.region_contour_color,
-        poly_color: TColor = GraphDefaults.region_poly_color,
-        contour_width: float = GraphDefaults.region_contour_width,
+        region_contour_color: TColor = DEFAULTS.region_contour_color,
+        region_poly_color: TColor = DEFAULTS.region_poly_color,
+        region_contour_width: float = DEFAULTS.region_contour_width,
     ) -> None:
         self.remove_processing_region()
 
@@ -211,8 +209,8 @@ class GraphWidget(pg.PlotWidget):
         sgy_end_time = (num_sample + 2) * self.sgy.dt_ms
         region_start_time = maximum_time if maximum_time > 0 else sgy_end_time
 
-        contour_pen = QPen(QColor(*contour_color), contour_width, Qt.DashLine, Qt.FlatCap, Qt.MiterJoin)
-        poly_brush = QColor(*poly_color)
+        contour_pen = QPen(QColor(*region_contour_color), region_contour_width, Qt.DashLine, Qt.FlatCap, Qt.MiterJoin)
+        poly_brush = QColor(*region_poly_color)
 
         # Vertical lines
         line_t = np.array([0, region_start_time])
@@ -234,20 +232,33 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items.append(poly_item)
         self.addItem(poly_item)
 
-    def plot_picks(self, picks_ms: Sequence[float], color: TColor = GraphDefaults.picks_color) -> None:
-        self.remove_picks()
+    def get_picks_as_item(
+        self,
+        picks_ms: Sequence[float],
+        color: TColor = DEFAULTS.picks_color,
+    ) -> pg.PlotCurveItem:
+        ids = np.arange(self.sgy.num_traces) + 1
+        line = pg.PlotCurveItem()
+        line.setData(ids, np.array(picks_ms))
+        pen = pg.mkPen(color=color, width=3)
+        line.setPen(pen)
+
+        return line
+
+    def plot_nn_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
+        self.remove_nn_picks()
         self.is_picks_modified_manually = False
 
-        picks_ms = np.array(picks_ms)
-        ids = np.arange(self.sgy.num_traces) + 1
+        self.nn_picks_in_ms = np.array(picks_ms)
+        self.nn_picks_as_item = self.get_picks_as_item(self.nn_picks_in_ms, color)
 
-        self.picks_in_ms = picks_ms
-        self.picks_as_item = pg.PlotCurveItem()
-        self.picks_as_item.setData(ids, picks_ms)
+        self.addItem(self.nn_picks_as_item)
 
-        pen = pg.mkPen(color=color, width=3)
-        self.picks_as_item.setPen(pen)
-        self.addItem(self.picks_as_item)
+    def plot_extra_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
+        picks = self.get_picks_as_item(picks_ms, color)
+
+        self.addItem(picks)
+        self.extra_picks_as_item_list.append(picks)
 
 
 class HighMemoryConsumption(Exception):
@@ -312,20 +323,20 @@ class GraphExporter(GraphWidget):
         image_filename: Optional[Union[str, Path]],
         *args: Any,
         # content parameters
-        clip: float = GraphDefaults.clip,
-        gain: float = GraphDefaults.gain,
-        normalize: Optional[str] = GraphDefaults.normalize,
-        fill_black_left: bool = GraphDefaults.fill_black_left,
+        clip: float = DEFAULTS.clip,
+        gain: float = DEFAULTS.gain,
+        normalize: TNormalize = DEFAULTS.normalize,
+        fill_black: Optional[str] = DEFAULTS.fill_black,
         time_window: Optional[Tuple[float, float]] = None,
         traces_window: Optional[Tuple[float, float]] = None,
         picks_ms: Optional[Sequence[float]] = None,
         task: Optional[Task] = None,
         show_processing_region: bool = True,
-        picks_color: TColor = GraphDefaults.picks_color,
-        contour_color: TColor = GraphDefaults.region_contour_color,
-        poly_color: TColor = GraphDefaults.region_poly_color,
-        contour_width: float = GraphDefaults.region_contour_width,
-        x_axis: Optional[str] = None,
+        picks_color: TColor = DEFAULTS.picks_color,
+        contour_color: TColor = DEFAULTS.region_contour_color,
+        poly_color: TColor = DEFAULTS.region_poly_color,
+        contour_width: float = DEFAULTS.region_contour_width,
+        x_axis: Optional[str] = DEFAULTS.x_axis,
         # rendering parameters
         height: int = 500,
         width: Optional[int] = None,
@@ -354,9 +365,7 @@ class GraphExporter(GraphWidget):
         self.x_ax_header = x_axis
 
         self.clear()
-        self.plotseis(
-            sgy, normalize=normalize, clip=clip, gain=gain, fill_black_left=fill_black_left, refresh_view=True
-        )
+        self.plotseis(sgy, normalize=normalize, clip=clip, gain=gain, fill_black=fill_black, refresh_view=True)
 
         if task:
             picks_to_plot = task.picks_in_ms  # type: ignore
@@ -366,15 +375,15 @@ class GraphExporter(GraphWidget):
             picks_to_plot = None  # type: ignore
 
         if picks_to_plot is not None:
-            self.plot_picks(picks_to_plot, color=picks_color)
+            self.plot_nn_picks(picks_to_plot, color=picks_color)
 
         if task is not None and show_processing_region:
             self.plot_processing_region(
                 maximum_time=task.maximum_time_parsed,
                 traces_per_gather=task.traces_per_gather_parsed,
-                contour_color=contour_color,
-                poly_color=poly_color,
-                contour_width=contour_width,
+                region_contour_color=contour_color,
+                region_poly_color=poly_color,
+                region_contour_width=contour_width,
             )
 
         if time_window:
@@ -427,19 +436,19 @@ def export_image(
     image_filename: Optional[Union[str, Path]],
     *args: Any,
     dt_mcs: float = 1e3,
-    clip: float = GraphDefaults.clip,
-    gain: float = GraphDefaults.gain,
-    normalize: Optional[str] = GraphDefaults.normalize,
-    fill_black_left: bool = GraphDefaults.fill_black_left,
+    clip: float = DEFAULTS.clip,
+    gain: float = DEFAULTS.gain,
+    normalize: TNormalize = DEFAULTS.normalize,
+    fill_black: Optional[str] = DEFAULTS.fill_black,
     time_window: Optional[Tuple[float, float]] = None,
     traces_window: Optional[Tuple[float, float]] = None,
     picks_ms: Optional[Sequence[float]] = None,
     show_processing_region: bool = True,
-    picks_color: TColor = GraphDefaults.picks_color,
-    contour_color: TColor = GraphDefaults.region_contour_color,
-    poly_color: TColor = GraphDefaults.region_poly_color,
-    contour_width: float = GraphDefaults.region_contour_width,
-    x_axis: Optional[str] = None,
+    picks_color: TColor = DEFAULTS.picks_color,
+    contour_color: TColor = DEFAULTS.region_contour_color,
+    poly_color: TColor = DEFAULTS.region_poly_color,
+    contour_width: float = DEFAULTS.region_contour_width,
+    x_axis: Optional[str] = DEFAULTS.x_axis,
     # rendering parameters
     height: int = 500,
     width: Optional[int] = None,
@@ -480,7 +489,7 @@ def export_image(
         clip=clip,
         gain=gain,
         normalize=normalize,
-        fill_black_left=fill_black_left,
+        fill_black=fill_black,
         time_window=time_window,
         traces_window=traces_window,
         picks_ms=picks_ms,

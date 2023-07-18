@@ -348,11 +348,14 @@ print(task.picks_in_ms)
 print(task.confidence)
 
 # you can export picks to file as plain text
-task.export_result('result.txt', as_plain=True)
+task.export_result_as_txt('result.txt')
 # or save as json file
-task.export_result('result.json', as_json=True)
+task.export_result_as_json('result.json')
 # or make a copy of source SGY and put picks to 236 byte
-task.export_result('result.segy', as_sgy=True)
+task.export_result_as_sgy('result.segy',
+                          byte_position=236,
+                          encoding='i',
+                          picks_unit='mcs')
 ```
 [code-block-end]:pick-fb
 
@@ -376,7 +379,7 @@ image_filename = 'image.png'
 
 sgy = SGY(sgy_filename)
 export_image(sgy, image_filename,
-             normalize=False,
+             normalize=None,
              traces_window=(5, 10),
              time_window=(0, 200),
              height=300,
@@ -451,7 +454,7 @@ task = picker.process_task(task)
 
 export_image(task, image_filename,
              show_processing_region=False,
-             fill_black_left=False,
+             fill_black='right',
              width=1000)
 ```
 [code-block-end]:plot-sgy-real-picks

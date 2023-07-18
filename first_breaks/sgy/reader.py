@@ -10,13 +10,7 @@ import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
-from first_breaks.utils.utils import (
-    calc_hash,
-    chunk_iterable,
-    get_io,
-    ms2index,
-    multiply_iterable_by,
-)
+from first_breaks.utils.utils import UnitsConverter, calc_hash, chunk_iterable, get_io
 
 SizeHW = Tuple[int, int]
 
@@ -80,7 +74,7 @@ class SGY:
         return self.ns, self.ntr
 
     def ms2index(self, ms_value: float) -> int:
-        return ms2index(ms_value, self.dt_ms)
+        return self.units_converter.ms2index(ms_value)
 
     @property
     def max_time_ms(self) -> float:
@@ -108,6 +102,7 @@ class SGY:
 
         # headers for traces
         self.traces_headers: Optional[pd.DataFrame] = None
+        self._traces_headers_raw: Optional[pd.DataFrame] = None
         self._traces_headers_schema: TraceHeaders = traces_headers_schema
 
         # other
@@ -117,6 +112,7 @@ class SGY:
         self._bps: Optional[int] = None
         self._data_fmt: Optional[int] = None
         self._hash_value: Optional[str] = None
+        self.units_converter: Optional[UnitsConverter] = None
 
         self.__init()
 
@@ -144,6 +140,7 @@ class SGY:
             self.is_source_ndarray = True
         else:
             raise SGYInitParamsError("Only `str, Path, bytes, np.ndarray` types are available as input")
+        self.units_converter = UnitsConverter(sgy_mcs=self.dt_mcs)
 
     def _init_from_numpy(self) -> None:
         assert self.source.ndim == 1 or self.source.ndim == 2, "Only arrays are available"  # type: ignore
@@ -163,6 +160,7 @@ class SGY:
         self._read_endianess()
         self._read_general_headers()
         self._read_traces_headers()
+        self._scalar_raw_traces_headers()
         self._descriptor.close()
         self._descriptor = None
 
@@ -212,16 +210,36 @@ class SGY:
         traces_headers = {}
 
         for offset, name, fmt in self._traces_headers_schema.headers_schema:
-            size = self._traces_headers_schema.get_num_bytes(fmt)
-            buffer = []
-            for idx in range(self._ntr):
-                pointer = 3600 + (240 + self._ns * self._bps) * idx + offset
-                self._descriptor.seek(pointer)
-                buffer.append(self._descriptor.read(size))
+            header = self._read_custom_trace_header_with_existed_descriptor(offset, fmt)
+            traces_headers[name] = header
 
-            traces_headers[name] = struct.unpack(f"{self._endianess}{fmt * self._ntr}", b"".join(buffer))
+        self._traces_headers_raw = pd.DataFrame(data=traces_headers)
 
-        self.traces_headers = pd.DataFrame(data=traces_headers)
+    def _scalar_raw_traces_headers(self):
+        self.traces_headers = self._traces_headers_raw.copy()
+        for scalar_from, apply_to_columns in self._traces_headers_schema.scalar_from2apply.items():
+            print(scalar_from, self._traces_headers_raw[scalar_from].unique())
+            scalar = self._traces_headers_raw[scalar_from].copy()
+
+            scalar[scalar == 0] = 1
+            scalar[scalar < 0] = 1 / abs(scalar[scalar < 0])
+            self.traces_headers[apply_to_columns] = self.traces_headers[apply_to_columns].apply(lambda x: scalar * x)
+
+    def _read_custom_trace_header_with_existed_descriptor(self, byte_position: int, encoding: str) -> Tuple[Any]:
+        size = self._traces_headers_schema.get_num_bytes(encoding)
+        buffer = []
+        for idx in range(self._ntr):
+            pointer = 3600 + (240 + self._ns * self._bps) * idx + byte_position
+            self._descriptor.seek(pointer)
+            buffer.append(self._descriptor.read(size))
+        return struct.unpack(f"{self._endianess}{encoding * self._ntr}", b"".join(buffer))
+
+    def read_custom_trace_header(self, byte_position: int, encoding: str) -> Tuple[Any]:
+        self._descriptor = get_io(self.source, mode="rb")
+        result = self._read_custom_trace_header_with_existed_descriptor(byte_position, encoding)
+        self._descriptor.close()
+        self._descriptor = None
+        return result
 
     def replace_traces(self, traces: np.ndarray) -> None:
         if traces.shape == self.shape:
@@ -351,34 +369,49 @@ class SGY:
         return np.ndarray(shape, f"{self._endianess}f8", buffer, order="F")
 
     def export_sgy_with_picks(
-        self, output_fname: Union[str, Path], picks_in_samples: List[int], byte_to_write: int = 236
+        self,
+        output_fname: Union[str, Path],
+        picks_in_samples: List[float],
+        byte_position: int = 236,
+        encoding: Optional[str] = None,
+        picks_unit: Optional[str] = "mcs",
     ) -> None:
         assert not self.is_source_ndarray, "Only true SGY can be used for importing picks"
-        assert 0 <= byte_to_write <= 236, "Only 0-236 bytes can be ised for writing"
+        assert 0 <= byte_position <= 236, "Only 0-236 bytes can be ised for writing"
         assert len(picks_in_samples) == self.num_traces, "Number of traces and picks differs"
+        assert picks_unit in ["ms", "mcs", "sample"]
 
         Path(output_fname).parent.mkdir(exist_ok=True, parents=True)
 
         if isinstance(self.source, (str, Path)):
-            shutil.copyfile(str(self.source), str(output_fname))
+            if Path(self.source).resolve() != Path(output_fname).resolve():
+                shutil.copyfile(str(self.source), str(output_fname))
         elif isinstance(self.source, bytes):
             with open(output_fname, "wb+") as f_output:
                 f_output.write(self.source)
         else:
             raise TypeError("Invalid type of source data")
 
-        picks_in_mcs = multiply_iterable_by(picks_in_samples, self.dt_mcs, cast_to=int)
+        if encoding is None:
+            encoding = [
+                pack_type
+                for _, header, pack_type in self._traces_headers_schema.headers_schema
+                if header == self._traces_headers_schema.fb_pick_default
+            ][0]
 
-        pack_type = [
-            pack_type
-            for _, header, pack_type in self._traces_headers_schema.headers_schema
-            if header == self._traces_headers_schema.fb_pick_default
-        ][0]
+        cast_to = float if encoding in ["f", "d"] else int
+
+        if picks_unit == "ms":
+            picks = self.units_converter.index2ms(picks_in_samples, cast_to=cast_to)
+        elif picks_unit == "mcs":
+            picks = self.units_converter.index2mcs(picks_in_samples, cast_to=cast_to)
+        else:
+            picks = picks_in_samples
 
         self._descriptor = get_io(output_fname, mode="r+b")
-        for idx, pick in enumerate(picks_in_mcs):  # type: ignore
-            pointer = 3600 + (240 + self.num_samples * self._bps) * idx + byte_to_write
-            pick_byte = struct.pack(f"{self._endianess}{pack_type}", int(pick))
+        for idx, pick in enumerate(picks):  # type: ignore
+            pointer = 3600 + (240 + self.num_samples * self._bps) * idx + byte_position
+            pick_byte = struct.pack(f"{self._endianess}{encoding}", pick)
             self._descriptor.seek(pointer)
             self._descriptor.write(pick_byte)
         self._descriptor.close()

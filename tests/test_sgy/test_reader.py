@@ -50,11 +50,3 @@ def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, logs_dir_for_
     picks_in_mcs = multiply_iterable_by(picks_in_samples, sgy.dt_mcs, cast_to=int)
 
     assert np.all(picks_in_mcs == sgy_with_picks.traces_headers[picks_col_name])
-
-
-
-
-
-
-
-
