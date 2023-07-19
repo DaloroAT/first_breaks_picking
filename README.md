@@ -544,16 +544,22 @@ Click on 4 button to toggle the display of the processing grid on or off. Horizo
 shows `Maximum time` and vertical lines are drawn at intervals equal to `Traces per gather`. The neural network
 processes blocks independently, as separate images.
 
+### Visual settings
+
+Click on 5 button to open window for visual settings. You can select gain, clip, normalization method,
+and trace values. In addition, you can also load a pick from a file, specifying how to read it.
+
 ### Save results
 
-Click on 5 button to save picks into file. Depending on file extension, results will be saved as `json`,
+Click on 6 button to save picks into file. Depending on file extension, results will be saved as `json`,
 as plain `txt`, or as `segy` file.
 
 For extensions `txt` and `json`, picking parameters and model confidence for each peak are additionally saved.
 
 When choosing an extension `segy`, the copy of original SGY file is saved with the values of the first breaks in the
-trace headers. They are stored in the last 4 bytes (236 byte if counting from 0) to be decoded as an unsigned integer.
-Values are in microseconds.
+trace headers. After selecting a file, you will be prompted to choose in which byte to save (counting starts from 1),
+in which units of measurement and how to encode.
+
 # Picking process
 
 Neural network process file as series of **images**. There is why **the traces should not be random**,
