@@ -177,6 +177,7 @@ class MainWindow(QMainWindow):
         self.visual_settings_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
         self.visual_settings_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
         self.visual_settings_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
+        self.is_toggled_picks_from_file = False
 
         # placeholders
         self.sgy: Optional[SGY] = None
@@ -346,7 +347,11 @@ class MainWindow(QMainWindow):
         self.picks_from_file_settings = new_settings
 
     def toggle_picks_from_file(self, toggled: bool) -> None:
-        if toggled:
+        self.is_toggled_picks_from_file = toggled
+        self.show_picks_from_file()
+
+    def show_picks_from_file(self) -> None:
+        if self.is_toggled_picks_from_file:
             self.read_picks_from_file()
             self.graph.plot_extra_picks(picks_ms=self.picks_from_file_in_ms, color=(0, 0, 255))
         else:
@@ -360,6 +365,7 @@ class MainWindow(QMainWindow):
         self.graph.plotseis(self.sgy, refresh_view=refresh_view, **self.plotseis_settings.model_dump())
         self.show_processing_region()
         self.show_nn_picks()
+        self.show_picks_from_file()
 
     def show_visual_settings_window(self) -> None:
         self.visual_settings_widget.show()
