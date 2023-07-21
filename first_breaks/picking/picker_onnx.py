@@ -8,12 +8,11 @@ from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.utils.utils import (
-    ONNX_DEVICE2PROVIDER,
     calc_hash,
     chunk_iterable,
     download_model_onnx,
-    is_onnx_cuda_available,
 )
+from first_breaks.utils.cuda import ONNX_DEVICE2PROVIDER, is_onnx_cuda_available
 
 
 class IteratorOfTask:

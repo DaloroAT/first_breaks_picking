@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 from first_breaks.const import HIGH_DPI
 from first_breaks.desktop.utils import MessageBox, QHSeparationLine, set_geometry
 from first_breaks.picking.task import Task
-from first_breaks.utils.utils import is_onnx_cuda_available
+from first_breaks.utils.cuda import is_onnx_cuda_available
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
