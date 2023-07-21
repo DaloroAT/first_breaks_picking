@@ -1,7 +1,7 @@
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from PyQt5.QtCore import QSize, Qt, QThreadPool
 from PyQt5.QtWidgets import (
@@ -14,22 +14,29 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QProgressBar,
     QSizePolicy,
-    QSlider,
     QStyle,
     QToolBar,
     QWidget,
 )
 
 from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
+from first_breaks.data_models.dependent import TraceHeaderParams
+from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import CallInThread, PickerQRunnable
 from first_breaks.desktop.utils import MessageBox, set_geometry
+from first_breaks.desktop.visualization_settings_widget import (
+    PicksFromFileSettings,
+    PlotseisSettings,
+    VisualizationSettingsWidget,
+)
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import (
+    UnitsConverter,
     calc_hash,
     download_demo_sgy,
     download_model_onnx,
@@ -63,20 +70,6 @@ class ReadyToProcess:
 
     def is_ready(self) -> bool:
         return (self.sgy_selected == self.model_loaded) is True
-
-
-class SliderConverter:
-    multiplier = 10
-
-    @classmethod
-    def slider2value(cls, slider_value: int) -> float:
-        a = slider_value / cls.multiplier
-        return a
-
-    @classmethod
-    def value2slider(cls, value: float) -> int:
-        a = int(cls.multiplier * value)
-        return a
 
 
 class MainWindow(QMainWindow):
@@ -134,19 +127,11 @@ class MainWindow(QMainWindow):
 
         self.toolbar.addSeparator()
 
-        default_gain_value = 1.0
-        self.gain_value = default_gain_value
-        self.gain_label = QLabel(str(default_gain_value))
-        self.slider_gain = QSlider(Qt.Horizontal)
-        self.slider_gain.setRange(SliderConverter.value2slider(-5), SliderConverter.value2slider(5))
-        self.slider_gain.setValue(SliderConverter.value2slider(1))
-        self.slider_gain.setSingleStep(SliderConverter.value2slider(0.1))
-        self.slider_gain.wheelEvent = lambda *args: args[-1].ignore()  # block scrolling with wheel
-        self.slider_gain.setMaximumWidth(150)
-        self.slider_gain.valueChanged.connect(self.gain_changed)
-        self.slider_gain.sliderReleased.connect(self.update_plot)
-        self.toolbar.addWidget(self.slider_gain)
-        self.toolbar.addWidget(self.gain_label)
+        icon_visual_settings = self.style().standardIcon(QStyle.SP_BrowserReload)
+        self.button_visual_settings = QAction(icon_visual_settings, "Show visual settings", self)
+        self.button_visual_settings.triggered.connect(self.show_visual_settings_window)
+        self.button_visual_settings.setEnabled(False)
+        self.toolbar.addAction(self.button_visual_settings)
 
         icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
@@ -179,6 +164,21 @@ class MainWindow(QMainWindow):
         self.graph.hide()
         self.setCentralWidget(self.graph)
 
+        # visual settings widget
+        self.plotseis_settings = PlotseisSettings()
+        first_byte = 1
+        self.picks_from_file_settings = PicksFromFileSettings(byte_position=first_byte)
+        self.visual_settings_widget = VisualizationSettingsWidget(
+            hide_on_close=True,
+            first_byte=first_byte,
+            **{**self.plotseis_settings.model_dump(), **self.picks_from_file_settings.model_dump()},
+        )
+        self.visual_settings_widget.hide()
+        self.visual_settings_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
+        self.visual_settings_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
+        self.visual_settings_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
+        self.is_toggled_picks_from_file = False
+
         # placeholders
         self.sgy: Optional[SGY] = None
         self.fn_sgy: Optional[Union[str, Path]] = None
@@ -186,6 +186,7 @@ class MainWindow(QMainWindow):
         self.last_task: Optional[Task] = None
         self.settings: Optional[Dict[str, Any]] = None
         self.last_folder: Optional[Union[str, Path]] = None
+        self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
 
         self.picker_class: Type[IPicker] = PickerONNX
         self.picker: Optional[IPicker] = None
@@ -214,10 +215,6 @@ class MainWindow(QMainWindow):
             self.last_folder = str(file.parent)
         else:
             self.last_folder = None
-
-    def gain_changed(self, gain_from_slider: int) -> None:
-        self.gain_value = SliderConverter.slider2value(gain_from_slider)
-        self.gain_label.setText(str(self.gain_value))
 
     def _thread_init_net(self, weights: Union[str, Path]) -> None:
         task = CallInThread(self.picker_class, model_path=weights, **self.picker_extra_kwargs_init)
@@ -299,7 +296,7 @@ class MainWindow(QMainWindow):
     def on_result_task(self, result: Task) -> None:
         self.store_task(result)
         if result.success:
-            self.graph.plot_picks(self.last_task.picks_in_ms)
+            self.graph.plot_nn_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
             self.button_export.setEnabled(True)
         else:
@@ -329,14 +326,50 @@ class MainWindow(QMainWindow):
         if self.last_task and self.last_task.success:
             self.graph.remove_processing_region()
 
-    def show_picks(self) -> None:
+    def show_nn_picks(self) -> None:
         if self.last_task and self.last_task.success:
-            self.graph.plot_picks(self.last_task.picks_in_ms)
+            self.graph.plot_nn_picks(self.last_task.picks_in_ms)
+
+    def read_picks_from_file(self) -> None:
+        picks = self.sgy.read_custom_trace_header(
+            **TraceHeaderParams(**self.picks_from_file_settings.model_dump()).model_dump(),
+        )
+        units_converter = UnitsConverter(sgy_mcs=self.sgy.dt_mcs)
+        if self.picks_from_file_settings.picks_unit == "sample":
+            self.picks_from_file_in_ms = units_converter.index2ms(picks)  # type: ignore
+        elif self.picks_from_file_settings.picks_unit == "mcs":
+            self.picks_from_file_in_ms = units_converter.mcs2ms(picks)  # type: ignore
+        else:
+            self.picks_from_file_in_ms = picks
+
+    def update_picks_from_file_settings(self, new_settings: PicksFromFileSettings) -> None:
+        print(new_settings)
+        self.picks_from_file_settings = new_settings
+
+    def toggle_picks_from_file(self, toggled: bool) -> None:
+        self.is_toggled_picks_from_file = toggled
+        self.show_picks_from_file()
+
+    def show_picks_from_file(self) -> None:
+        if self.is_toggled_picks_from_file:
+            self.read_picks_from_file()
+            self.graph.plot_extra_picks(picks_ms=self.picks_from_file_in_ms, color=(0, 0, 255))
+        else:
+            self.graph.remove_extra_picks()
+
+    def update_plotseis_settings(self, new_settings: PlotseisSettings) -> None:
+        self.plotseis_settings = new_settings
+        self.update_plot(False)
 
     def update_plot(self, refresh_view: bool = False) -> None:
-        self.graph.plotseis(self.sgy, gain=self.gain_value, refresh_view=refresh_view)
+        self.graph.plotseis(self.sgy, refresh_view=refresh_view, **self.plotseis_settings.model_dump())
         self.show_processing_region()
-        self.show_picks()
+        self.show_nn_picks()
+        self.show_picks_from_file()
+
+    def show_visual_settings_window(self) -> None:
+        self.visual_settings_widget.show()
+        self.visual_settings_widget.focusWidget()
 
     def unlock_pickng_if_ready(self) -> None:
         if self.ready_to_process.is_ready():
@@ -385,11 +418,13 @@ class MainWindow(QMainWindow):
                 self.fn_sgy = Path(filename)
                 self.last_task = None
                 self.sgy = SGY(self.fn_sgy)
+                self.picks_from_file_in_ms = None
 
                 self.graph.full_clean()
                 self.update_plot(refresh_view=True)
                 self.graph.show()
                 self.button_export.setEnabled(False)
+                self.button_visual_settings.setEnabled(True)
 
                 self.button_get_filename.setEnabled(True)
                 self.ready_to_process.sgy_selected = True
@@ -418,14 +453,19 @@ class MainWindow(QMainWindow):
                 picks_in_samples_prev = self.last_task.picks_in_samples
                 if self.graph.is_picks_modified_manually:
                     self.last_task.picks_in_samples = multiply_iterable_by(
-                        self.graph.picks_in_ms, 1 / self.sgy.dt_ms, int
+                        self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, int
                     )
                 if filename.suffix.lower() in (".sgy", ".segy"):
-                    self.last_task.export_result(str(filename), as_sgy=True)  # type: ignore
+                    save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
+                    save_params.setWindowTitle("How to save first breaks")
+                    save_params.show()
+                    save_params.exec_()
+                    export_params = save_params.get_values()
+                    self.last_task.export_result_as_sgy(str(filename), **export_params)  # type: ignore
                 elif filename.suffix.lower() == ".txt":
-                    self.last_task.export_result(str(filename), as_plain=True)
+                    self.last_task.export_result_as_txt(str(filename))
                 elif filename.suffix.lower() == ".json":
-                    self.last_task.export_result(str(filename), as_json=True)
+                    self.last_task.export_result_as_json(str(filename))
                 else:
                     message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
                     window_err = MessageBox(self, title="Wrong filename", message=message_er)

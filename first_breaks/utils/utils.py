@@ -3,7 +3,7 @@ import inspect
 import io
 from itertools import islice
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import onnxruntime as ort
@@ -91,15 +91,13 @@ def download_model_onnx(
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def multiply_iterable_by(
-    sample: TTimeType, multiplier: float, cast_to: Optional[Callable[[Any], Any]] = None
-) -> TTimeType:
+def multiply_iterable_by(sample: TTimeType, multiplier: float, cast_to: Optional[Any] = None) -> TTimeType:
     if isinstance(sample, (int, float, str)):
         result = sample * multiplier  # type: ignore
-        return cast_to(result) if cast_to else result
+        return cast_to(result) if cast_to is not None else result
     elif isinstance(sample, (np.number, np.ndarray)):
         result = sample * multiplier
-        return result.astype(cast_to) if cast_to else result
+        return result.astype(cast_to) if cast_to is not None else result
     elif isinstance(sample, list):
         return list(multiply_iterable_by(val, multiplier, cast_to) for val in sample)
     elif isinstance(sample, tuple):
@@ -108,8 +106,45 @@ def multiply_iterable_by(
         raise TypeError("Invalid type for samples")
 
 
-def ms2index(ms: float, sgy_ms: float) -> int:
-    return int(ms / sgy_ms)
+class UnitsConverter:
+    def __init__(
+        self,
+        *args: Any,
+        sgy_mcs: Optional[Union[int, float]] = None,
+        sgy_ms: Optional[Union[int, float]] = None,
+    ):
+        if args:
+            raise ValueError("Specify explicitly either `sgy_mcs`or `sgy_ms` as keyword argument")
+        if (sgy_mcs is None and sgy_ms is None) or (sgy_mcs is not None and sgy_ms is not None):
+            raise RuntimeError("One and only one of `sgy_mcs` or `sgy_ms` must be specified")
+        elif sgy_mcs is not None:
+            self.sgy_mcs = sgy_mcs
+            self.sgy_ms = self.mcs2ms(sgy_mcs)  # type: ignore
+        elif sgy_ms is not None:
+            self.sgy_mcs = self.ms2mcs(sgy_ms)  # type: ignore
+            self.sgy_ms = sgy_ms
+        else:
+            raise RuntimeError("Init error")
+
+    @staticmethod
+    def ms2mcs(sample: TTimeType, cast_to: Any = int) -> TTimeType:
+        return multiply_iterable_by(sample, 1000, cast_to)
+
+    @staticmethod
+    def mcs2ms(sample: TTimeType, cast_to: Any = float) -> TTimeType:
+        return multiply_iterable_by(sample, 0.001, cast_to)
+
+    def ms2index(self, sample: TTimeType, cast_to: Any = int) -> TTimeType:
+        return multiply_iterable_by(sample, 1 / self.sgy_ms, cast_to)  # type: ignore
+
+    def mcs2index(self, sample: TTimeType, cast_to: Any = int) -> TTimeType:
+        return multiply_iterable_by(sample, 1 / self.sgy_mcs, cast_to)
+
+    def index2ms(self, sample: TTimeType, cast_to: Any = float) -> TTimeType:
+        return multiply_iterable_by(sample, self.sgy_ms, cast_to)  # type: ignore
+
+    def index2mcs(self, sample: TTimeType, cast_to: Any = int) -> TTimeType:
+        return multiply_iterable_by(sample, self.sgy_mcs, cast_to)
 
 
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:

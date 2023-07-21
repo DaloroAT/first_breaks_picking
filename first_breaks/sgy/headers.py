@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 
 class InvalidHeaders(Exception):
@@ -64,9 +64,6 @@ class Headers:
         elif any(offsets_is_none) and not all(offsets_is_none):
             raise InvalidHeaders("To fill offsets, they must all be either empty or filled (no modification)")
         return self.headers_schema
-
-    def get_template(self, *args: Any, **kwargs: Any) -> Any:
-        raise NotImplementedError
 
 
 class FileHeaders(Headers):
@@ -213,3 +210,35 @@ class TraceHeaders(Headers):
             (236, self.fb_pick_default, "I"),
         ]
         self.validate()
+        self.scalar_from2apply = {
+            "elevation_scalar": [
+                "REC_ELEV",
+                "SOU_ELEV",
+                "DEPTH",
+                "REC_DATUM",
+                "SOU_DATUM",
+                "SOU_H2OD",
+                "REC_H2OD",
+            ],
+            "source_group_scalar": [
+                "SOU_X",
+                "SOU_Y",
+                "REC_X",
+                "REC_Y",
+            ],
+            "shot_point_scalar": [
+                "shot_point",
+            ],
+            "scalar_trace_header": [
+                "UPHOLE",
+                "REC_UPHOLE",
+                "SOU_STAT",
+                "REC_STAT",
+                "TOT_STAT",
+                "lag_time_a",
+                "lag_time_b",
+                "delay_recording_time",
+                "TLIVE_S",
+                "TFULL_S",
+            ],
+        }

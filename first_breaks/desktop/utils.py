@@ -1,3 +1,5 @@
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -66,6 +68,9 @@ def set_geometry(
     if fix_size:
         widget.setFixedSize(width, height)
 
+    monitor = QDesktopWidget().screenGeometry(1)
+    widget.move(monitor.left(), monitor.top())
+
 
 class QHSeparationLine(QtWidgets.QFrame):
     def __init__(self) -> None:
@@ -75,3 +80,50 @@ class QHSeparationLine(QtWidgets.QFrame):
         self.setFrameShape(QtWidgets.QFrame.HLine)
         self.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+
+
+TMappingSetup = Dict[int, Union[Tuple[str, Any], List[Any]]]
+
+
+def validate_mapping_setup_and_get_current_index(
+    mapping: TMappingSetup,
+    current_index: Optional[int] = None,
+    current_label: Optional[str] = None,
+    current_value: Optional[Any] = None,
+) -> int:
+    assert all(isinstance(k, int) for k in mapping.keys())
+    assert all(isinstance(v, (list, tuple)) and len(v) == 2 for v in mapping.values())
+    assert all(isinstance(label, str) for label, _ in mapping.values())
+    assert set(range(len(mapping.keys()))) == set(mapping.keys())
+
+    current_is_not_none = [v is not None for v in [current_index, current_label, current_value]]
+    assert (
+        0 <= sum(current_is_not_none) <= 1
+    ), "Only one of 'current_index' or 'current_label' or 'current_value' might be specified."
+
+    if current_label or current_value:
+        if current_label:
+            assert isinstance(current_label, str)
+            idx_to_check = 0
+            type_to_check = "Label"
+            got = current_label
+        else:
+            idx_to_check = 1
+            type_to_check = "Value"
+            got = current_value
+
+        corresponding_ids = [k for k, v in mapping.items() if v[idx_to_check] == got]
+
+        if not corresponding_ids:
+            raise KeyError(
+                f"{type_to_check} '{type_to_check}' not found in mapping. "
+                f"Available {[v[idx_to_check] for v in mapping.values()]}, got '{got}'"
+            )
+        current_index = corresponding_ids[0]
+    elif current_index:
+        assert isinstance(current_index, int)
+        assert 0 <= current_index < len(mapping)
+    else:
+        current_index = 0
+
+    return current_index
