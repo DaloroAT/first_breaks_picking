@@ -3,17 +3,7 @@ from os import environ
 from pathlib import Path
 from sys import platform
 
-
-def is_windows() -> bool:
-    return "win" in platform
-
-
-def is_linux() -> bool:
-    return "linux" in platform
-
-
-def is_macos() -> bool:
-    return "darwin" in platform
+from first_breaks import is_linux, is_macos, is_windows
 
 
 def get_cache_folder() -> Path:
