@@ -1,0 +1,4 @@
+recursive-exclude tests *
+recursive-exclude data *
+recursive-exclude docs *
+include README.md
