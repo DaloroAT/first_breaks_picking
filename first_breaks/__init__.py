@@ -3,7 +3,8 @@ from pathlib import Path
 from sys import platform
 
 
-VERSION = "0.4.0b"
+with open(Path(__file__).parent / "VERSION") as fin:
+    VERSION = fin.read()
 
 
 def is_windows() -> bool:
