@@ -4,10 +4,10 @@ import tomli
 
 
 def compare_main_and_gpu_tomls() -> None:
-    with open(Path(__file__).parent / "pyproject.toml", 'rb') as fin:
+    with open(Path(__file__).parent / "pyproject.toml", "rb") as fin:
         pyproject_main = tomli.load(fin)
 
-    with open(Path(__file__).parent / "pyproject_gpu.toml", 'rb') as fin:
+    with open(Path(__file__).parent / "pyproject_gpu.toml", "rb") as fin:
         pyproject_gpu = tomli.load(fin)
 
     deps_main = set(pyproject_main["project"].pop("dependencies"))

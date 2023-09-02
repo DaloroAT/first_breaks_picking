@@ -20,6 +20,9 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.8.0"
+    - name: Install lib
+      run: |
+        pip install tomli
     - name: Checks
       run: |
         python checks.py
