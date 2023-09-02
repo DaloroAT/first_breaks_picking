@@ -1,10 +1,11 @@
 import os
+import warnings
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
 
-from first_breaks import is_windows
+from first_breaks import is_windows, is_linux, is_macos
 
 ONNX_DEVICE2PROVIDER = {"cuda": "CUDAExecutionProvider", "cpu": "CPUExecutionProvider"}
 
@@ -82,11 +83,15 @@ def is_zlib_installed() -> bool:
     if is_windows():
         for path in os.environ['PATH'].split(";"):
             if (Path(path) / "zlibwapi.dll").exists():
-                pass
+                return True
+    if is_linux():
+        return True  # Implement linux zlib checks
+
+    return False
 
 
 def is_onnx_cuda_available() -> bool:
-    return is_onnx_gpu_version_installed() and is_onnx_cuda_initializable()
+    return all([not is_macos(), is_onnx_gpu_version_installed(), is_onnx_cuda_initializable(), is_zlib_installed()])
 
 
 ONNX_CUDA_AVAILABLE = is_onnx_cuda_available()
