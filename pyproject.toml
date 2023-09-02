@@ -3,9 +3,9 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "first-breaks-picking-gpu"
-version = "0.4.0a2"
-description = "Project is devoted to pick waves that are the first to be detected on a seismogram with neural network (CUDA supported)"
+name = "first-breaks-picking"
+dynamic = ["version"]
+description = "Project is devoted to pick waves that are the first to be detected on a seismogram with neural network"
 readme = {file = "README.md", content-type = "text/markdown"}
 
 requires-python = ">=3.8,<=3.10"
@@ -49,8 +49,12 @@ dependencies = [
     "click==8.1.3",
     "pydantic==2.0.3",
     "pytest==7.3.2",
-    "onnxruntime-gpu==1.14.1"
+    "onnxruntime==1.14.1"
 ]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "first_breaks.VERSION"}
 
 
 [tool.setuptools.packages.find]
@@ -61,32 +65,22 @@ include = ["first_breaks*"]
 
 
 #
-#[tool.briefcase]
-#project_name = "FirstBreaksPicking"
-#bundle = "com.example"
+[tool.briefcase]
+project_name = "FirstBreaksPicking"
+bundle = "com.example"
 #version = "0.4.0"
 #url = "https://somwhere/on/the/net"
 #license = "GNU General Public License v3 (GPLv3)"
 #author = 'MyName Firstname'
 #author_email = "cool@mailexample.com"
-#
-#[tool.briefcase.app.first_breaks]
-#formal_name = "A Cool App"
-#description = "The coolest app ever"
-##icon = "src/mypysideapp/resources/appicon" # Briecase will choose the right extension depending the os (png,ico,...)
-#sources = ['first_breaks']
-#requires = ["requests==2.28.2",
-#    "numpy==1.24.2",
-#    "pandas==2.0.0",
-#    "PyQt5==5.15.9",
-#    "pyqtgraph==0.13.3",
-#    "tqdm==4.65.0",
-#    "click==8.1.3",
-#    "pydantic==2.0.3",
-#    "pytest==7.3.2",
-#"onnxruntime-gpu==1.14.1"]
-#
-#
+
+[tool.briefcase.app.first_breaks]
+formal_name = "FirstBreaksPicking"
+description = "The coolest app ever"
+#icon = "src/mypysideapp/resources/appicon" # Briecase will choose the right extension depending the os (png,ico,...)
+sources = ['first_breaks']
+
+
 #[tool.briefcase.app.first_breaks.macOS]
 #requires = []
 #

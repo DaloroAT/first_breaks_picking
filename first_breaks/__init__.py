@@ -3,6 +3,9 @@ from pathlib import Path
 from sys import platform
 
 
+VERSION = "0.4.0b"
+
+
 def is_windows() -> bool:
     return "win" in platform
 
