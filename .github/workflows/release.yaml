@@ -68,8 +68,8 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file_glob: True
-        file: dist/*
+        file_glob: true
+        file: dist\*
         body: |
           ${{ steps.read_release.outputs.RELEASE_BODY }}
 
