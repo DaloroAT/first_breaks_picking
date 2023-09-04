@@ -1,15 +1,15 @@
 name: Release
 
 on:
-#  push:
-#    tags:
-#      - '*'
-  pull_request:
-    branches:
-      - main
   push:
-    branches:
-      - main
+    tags:
+      - '*'
+#  pull_request:
+#    branches:
+#      - main
+#  push:
+#    branches:
+#      - main
 
 jobs:
   publish:
