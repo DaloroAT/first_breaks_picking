@@ -34,7 +34,7 @@ jobs:
 #      run: briefcase package
 
     - name: Asset
-      run: "my test release" > test.txt
+      run: New-Item test.txt
 
     - name: CPU - Upload MSI binaries to release
       uses: svenstaro/upload-release-action@v2
@@ -42,4 +42,5 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: test.txt
         asset_name: test.txt
+        overwrite: true
         tag: ${{ github.ref }}
