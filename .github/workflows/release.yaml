@@ -42,10 +42,12 @@ jobs:
 #    - name: Body
 #      run:
     - name: read release
+      id: read_release
       shell: powershell
       run: |
         $RELEASE_BODY = [IO.File]::ReadAllText("last_release.md")
-        echo $RELEASE_BODY
+#        echo $RELEASE_BODY
+        echo "::set-output name=file_content::$RELEASE_BODY"
     - name: Asset1
       run: New-Item test.txt
     - name: Upload binaries to release
@@ -54,5 +56,5 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: test.txt
         asset_name: test.txt
-        body: ${{ env.RELEASE_BODY }}
+        body: ${{ steps.read_release.outputs.RELEASE_BODY }}
         tag: ${{ github.ref }}
