@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+#          - os: ubuntu-latest
+#            artifact_name: mything
+#            asset_name: mything-linux-amd64
+          - os: windows-latest
+            artifact_name: FirstBreaksPicking-0.4.1.msi
+            asset_name: FirstBreaksPicking
+#          - os: macos-latest
+#            artifact_name: mything
+#            asset_name: mything-macos-amd64
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.8.0"
+    - name: Install Builder
+      run: python -m pip install briefcase
+    - name: Create Package
+      run: briefcase create
+    - name: Build Package
+      run: briefcase build
+    - name: Create installer
+      run: briefcase package --adhoc-sign
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: dist/${{ matrix.artifact_name }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
