@@ -4,17 +4,24 @@ on:
   push:
     tags:
       - '*'
-#  pull_request:
-#    branches:
-#      - main
-#  push:
-#    branches:
-#      - main
 
 jobs:
   publish:
-    name: Publish for Windows
-    runs-on: windows-latest
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+#          - os: ubuntu-latest
+#            artifact_name: mything
+#            asset_name: mything-linux-amd64
+          - os: windows-latest
+            artifact_name: FirstBreaksPicking-0.4.1.msi
+            asset_name: FirstBreaksPicking.msi
+#          - os: macos-latest
+#            artifact_name: mything
+#            asset_name: mything-macos-amd64
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -22,25 +29,20 @@ jobs:
 #      uses: actions/setup-python@v3
 #      with:
 #        python-version: "3.8.0"
-#    - name: Basic checks
-#      uses: python checks.py
 #    - name: Install Builder
-#      run: python -m pip install briefcase==0.3.15
-#    - name: CPU - Create Package
+#      run: python -m pip install briefcase
+#    - name: Create Package
 #      run: briefcase create
-#    - name: CPU - Build Package
+#    - name: Build Package
 #      run: briefcase build
-#    - name: CPU - Create Installer
-#      run: briefcase package
-
+#    - name: Create installer
+#      run: briefcase package --adhoc-sign
     - name: Asset
-      run: New-Item test.txt
-
-    - name: CPU - Upload MSI binaries to release
+      run: "release" > test.txt
+    - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: test.txt
         asset_name: test.txt
-        overwrite: true
         tag: ${{ github.ref }}
