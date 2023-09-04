@@ -46,7 +46,6 @@ jobs:
       shell: powershell
       run: |
         $RELEASE_BODY = [IO.File]::ReadAllText("last_release.md")
-#        echo $RELEASE_BODY
         echo "::set-output name=file_content::$RELEASE_BODY"
     - name: Asset1
       run: New-Item test.txt
