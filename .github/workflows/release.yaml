@@ -47,5 +47,5 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: test.txt
         asset_name: test.txt
-#        body: $RELEASE_BODY = [IO.File]::ReadAllText("last_release.md")
+        body: ${{ [IO.File]::ReadAllText("last_release.md") }}
         tag: ${{ github.ref }}
