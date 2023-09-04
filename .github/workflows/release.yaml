@@ -47,8 +47,11 @@ jobs:
 #      run: |
 #        $RELEASE_BODY = [IO.File]::ReadAllText("last_release.md")
 #        echo "::set-output name=file_content::$RELEASE_BODY"
-    - name: Asset1
-      run: New-Item test.txt
+    - name: Create sample file for release
+      shell: pwsh
+      run: |
+        $sampleText = "This is the content of my sample file."
+        New-Item -Path .\ -Name test.txt -ItemType "file" -Value $sampleText
     - name: Read release.md and use it as a body of new release
       id: read_release
       shell: pwsh
