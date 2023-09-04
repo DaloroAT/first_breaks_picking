@@ -38,11 +38,11 @@ jobs:
 #    - name: Create installer
 #      run: briefcase package --adhoc-sign
     - name: Asset
-      run: New-Item new.txt
+      run: "release" > test.txt
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: new.txt
-        asset_name: new.txt
+        file: test.txt
+        asset_name: test.txt
         tag: ${{ github.ref }}
