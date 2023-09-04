@@ -55,5 +55,5 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: test.txt
         asset_name: test.txt
-        body: ${{ steps.read_release.outputs.RELEASE_BODY }}
+        body: "sdfkljdl;skjg"
         tag: ${{ github.ref }}
