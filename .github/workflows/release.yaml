@@ -47,6 +47,8 @@ jobs:
 #      run: |
 #        $RELEASE_BODY = [IO.File]::ReadAllText("last_release.md")
 #        echo "::set-output name=file_content::$RELEASE_BODY"
+    - name: Asset1
+      run: New-Item test.txt
     - name: Read release.md and use it as a body of new release
       id: read_release
       shell: pwsh
@@ -61,6 +63,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
+        file: test.txt
         body: |
           ${{ steps.read_release.outputs.RELEASE_BODY }}
 
