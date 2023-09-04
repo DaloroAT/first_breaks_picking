@@ -51,7 +51,8 @@ jobs:
       shell: pwsh
       run: |
         $sampleText = "This is the content of my sample file."
-        New-Item -Path .\ -Name test.txt -ItemType "file" -Value $sampleText
+        New-Item -Path .\dist -Name test1.txt -ItemType "file" -Value $sampleText
+        New-Item -Path .\dist -Name test2.txt -ItemType "file" -Value $sampleText
     - name: Read release.md and use it as a body of new release
       id: read_release
       shell: pwsh
@@ -66,7 +67,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file: test.txt
+        file: dist/*
         body: |
           ${{ steps.read_release.outputs.RELEASE_BODY }}
 
