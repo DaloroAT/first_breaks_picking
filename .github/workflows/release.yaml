@@ -37,7 +37,7 @@ jobs:
 #      run: briefcase build
 #    - name: Create installer
 #      run: briefcase package --adhoc-sign
-    - name: Asset
+    - name: Asset1
       run: New-Item test.txt
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
