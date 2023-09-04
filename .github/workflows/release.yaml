@@ -55,7 +55,7 @@ jobs:
         $r = $r -replace '%', '%25'                        # Multiline escape sequences for %
         $r = $r -replace "`n", '%0A'                       # Multiline escape sequences for '\n'
         $r = $r -replace "`r", '%0D'                       # Multiline escape sequences for '\r'
-        echo "::set-output name=RELEASE_BODY::$r"          # <--- Set output variable
+        echo "RELEASE_BODY=$r" >> $env:GITHUB_OUTPUT          # <--- Set output variable
     - name: Upload Binaries to Release
       uses: svenstaro/upload-release-action@v2
       with:
