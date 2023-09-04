@@ -59,6 +59,8 @@ def compare_main_and_gpu_tomls() -> None:
     if pyproject_main != pyproject_gpu:
         raise EnvironmentError('')
 
+    print("TOMLs are correct")
+
 
 def compare_versions_of_repo() -> None:
     with open(Path(__file__).parent / "first_breaks/VERSION", 'r') as fin:
@@ -70,6 +72,8 @@ def compare_versions_of_repo() -> None:
     if project_version != briefcase_version:
         raise EnvironmentError(f"Version in 'briefcase' config and version of project are different. "
                                f"Briefcase: {briefcase_version}, project: {project_version}")
+
+    print("Versions are the same")
 
 
 if __name__ == "__main__":
