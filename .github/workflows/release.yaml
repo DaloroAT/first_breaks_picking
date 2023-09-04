@@ -45,4 +45,5 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: test.txt
         asset_name: test.txt
+        body: [IO.File]::ReadAllText("last_release.md")
         tag: ${{ github.ref }}
