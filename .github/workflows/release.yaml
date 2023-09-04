@@ -22,6 +22,8 @@ jobs:
 #            artifact_name: mything
 #            asset_name: mything-macos-amd64
 
+    env:
+      RELEASE_BODY: ""
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -39,6 +41,9 @@ jobs:
 #      run: briefcase package --adhoc-sign
 #    - name: Body
 #      run:
+    - name: read release
+      shell: powershell
+      run: '$RELEASE_BODY = [IO.File]::ReadAllText("last_release.md")'
     - name: Asset1
       run: New-Item test.txt
     - name: Upload binaries to release
@@ -47,5 +52,5 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: test.txt
         asset_name: test.txt
-        body: ${{ [IO.File]::ReadAllText("last_release.md") }}
+        body: ${{ env.RELEASE_BODY }}
         tag: ${{ github.ref }}
