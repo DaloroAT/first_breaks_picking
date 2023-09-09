@@ -53,14 +53,17 @@ def compare_main_and_gpu_tomls() -> None:
 
     # Compare app names
 
-    # app_name_main = pyproject_main["tool"]["briefcase"]["app"]["first_breaks"].pop("formal_name")
-    # app_name_gpu = pyproject_gpu["tool"]["briefcase"]["app"]["first_breaks"].pop("formal_name")
-
     app_name_main = pyproject_main["tool"]["briefcase"].pop("project_name")
     app_name_gpu = pyproject_gpu["tool"]["briefcase"].pop("project_name")
 
-    if (app_name_main + "GPU" != app_name_gpu):
+    if app_name_main + "GPU" != app_name_gpu:
         raise EnvironmentError(f"Wrong app names: {app_name_main} and {app_name_gpu}")
+
+    app_formal_name_main = pyproject_main["tool"]["briefcase"]["app"]["first_breaks"].pop("formal_name")
+    app_formal_name_gpu = pyproject_gpu["tool"]["briefcase"]["app"]["first_breaks"].pop("formal_name")
+
+    if app_formal_name_main + "GPU" != app_formal_name_gpu:
+        raise EnvironmentError(f"Wrong app names: {app_formal_name_main} and {app_formal_name_gpu}")
 
     # Compare rest of the tomls
 
@@ -68,9 +71,7 @@ def compare_main_and_gpu_tomls() -> None:
     del pyproject_gpu["project"]["description"]
 
     if pyproject_main != pyproject_gpu:
-        from deepdiff import DeepDiff
-        print(DeepDiff(pyproject_main, pyproject_gpu))
-        raise EnvironmentError('')
+        raise EnvironmentError('Main config and gpu config are different')
 
     print("TOMLs are correct")
 

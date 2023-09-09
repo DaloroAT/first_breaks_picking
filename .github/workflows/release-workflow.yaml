@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - "Version and toml checks"
+    types:
+      - completed
+
+jobs:
+  autotag:
+    name: Create tag if the commit has new version implemented
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      tagcreated: ${{ steps.autotag.outputs.tagcreated }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Autotag
+        id: autotag
+        uses: butlerlogic/action-autotag@1.1.1
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          strategy: regex
+          root: "first_breaks/VERSION"
+          regex_pattern: "^((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)$"
+          tag_prefix: "v"
+#
+#  publish:
+#    name: Build and publish assets
+#    runs-on: windows-latest
+#    env:
+#      RELEASE_BODY: ""
+#    steps:
+#    - name: Checkout
+#      uses: actions/checkout@v3
+#    - name: Set up Python
+#      uses: actions/setup-python@v3
+#      with:
+#        python-version: "3.8.0"
+#    - name: Check versions
+#      run: |
+#        pip install tomli==2.0.1
+#        python checks.py
+#    - name: Install Builder
+#      run: |
+#        python -m pip install briefcase
+#    - name: CPU - Create Package
+#      run: |
+#        briefcase create
+#    - name: CPU - Build Package
+#      run: |
+#        briefcase build
+#    - name: CPU - Create Installer MSI
+#      run: |
+#        briefcase package --adhoc-sign --packaging-format msi
+#    - name: CPU - Create Installer ZIP
+#      run: |
+#        briefcase package --adhoc-sign --packaging-format zip
+#    - name: Remove Build of previous package
+#      run: |
+#        Remove-Item -Path .\build -Recurse -Force
+#    - name: Replace TOML from CPU to GPU version
+#      run: |
+#        Move-Item -Path .\pyproject_gpu.toml -Destination .\pyproject.toml -Force
+#    - name: GPU - Create Package
+#      run: |
+#        briefcase create
+#    - name: GPU - Build Package
+#      run: |
+#        briefcase build
+#    - name: GPU - Create Installer MSI
+#      run: |
+#        briefcase package --adhoc-sign --packaging-format msi
+#    - name: GPU - Create Installer ZIP
+#      run: |
+#        briefcase package --adhoc-sign --packaging-format zip
+#    - name: Upload files to Release
+#      uses: svenstaro/upload-release-action@v2
+#      with:
+#        repo_token: ${{ secrets.GITHUB_TOKEN }}
+#        tag: ${{ github.ref }}
+#        file_glob: true
+#        file: dist/*
