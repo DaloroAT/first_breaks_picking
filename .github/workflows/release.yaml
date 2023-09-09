@@ -63,13 +63,20 @@ jobs:
         $r = $r -replace "`n", '%0A'                       # Multiline escape sequences for '\n'
         $r = $r -replace "`r", '%0D'                       # Multiline escape sequences for '\r'
         echo "RELEASE_BODY=$r" >> $env:GITHUB_OUTPUT          # <--- Set output variable
-    - name: Upload Binaries to Release
+    - name: Upload Binaries1 to Release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file_glob: true
-        file: dist\*
+        file: .\dist\test1.txt
+        body: |
+          ${{ steps.read_release.outputs.RELEASE_BODY }}
+    - name: Upload Binaries2 to Release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: .\dist\test2.txt
         body: |
           ${{ steps.read_release.outputs.RELEASE_BODY }}
 
