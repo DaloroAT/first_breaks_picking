@@ -70,7 +70,7 @@ url = "https://github.com/DaloroAT/first_breaks_picking"
 license = {file = "LICENSE"}
 
 [tool.briefcase.app.first_breaks]
-formal_name = "FirstBreaksPicking"
+#formal_name = "FirstBreaksPicking"
 #description = "Project is devoted to pick waves that are the first to be detected on a seismogram with neural network"
 #icon = "src/mypysideapp/resources/appicon" # Briecase will choose the right extension depending the os (png,ico,...)
 sources = ['first_breaks']
