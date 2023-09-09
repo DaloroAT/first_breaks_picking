@@ -1,9 +1,15 @@
 name: Release
 
+#on:
+#  workflow_run:
+#    workflows:
+#      - "Version and toml checks"
+#    types:
+#      - completed
+
 on:
   workflow_run:
-    workflows:
-      - "Version and toml checks"
+    workflows: ["Version and toml checks"] # Name of your Tests workflow
     types:
       - completed
 
@@ -11,7 +17,7 @@ jobs:
   autotag:
     name: Create tag if the commit has new version implemented
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: github.event.workflow_run.conclusion == 'success'
     outputs:
       tagcreated: ${{ steps.autotag.outputs.tagcreated }}
     steps:
@@ -25,7 +31,8 @@ jobs:
         with:
           strategy: regex
           root: "first_breaks/VERSION"
-          regex_pattern: ^((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)$
+          regex_pattern: >
+            \d+\.\d+\.\d+[a-z]?
           tag_prefix: "v"
 #
 #  publish:
