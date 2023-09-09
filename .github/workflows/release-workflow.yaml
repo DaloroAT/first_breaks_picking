@@ -30,7 +30,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           strategy: regex
-          root: "first_breaks\VERSION"
+          root: "first_breaks/VERSION"
           regex_pattern: >
             \d+\.\d+\.\d+[a-z]?
           tag_prefix: "v"
