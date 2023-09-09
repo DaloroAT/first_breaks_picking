@@ -1,4 +1,4 @@
-name: "Version and toml checks"
+name: Tomls
 
 
 on:

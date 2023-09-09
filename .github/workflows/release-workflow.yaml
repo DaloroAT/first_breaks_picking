@@ -9,15 +9,15 @@ name: Release
 
 on:
   workflow_run:
-    workflows: ["Version and toml checks"] # Name of your Tests workflow
+    workflows: ["Tomls"] # Name of your Tests workflow
     types:
       - completed
 
 jobs:
   autotag:
     name: Create tag if the commit has new version implemented
-    runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     outputs:
       tagcreated: ${{ steps.autotag.outputs.tagcreated }}
     steps:
@@ -27,10 +27,10 @@ jobs:
         id: autotag
         uses: butlerlogic/action-autotag@1.1.1
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           strategy: regex
-          root: "first_breaks/VERSION"
+          root: "first_breaks\VERSION"
           regex_pattern: >
             \d+\.\d+\.\d+[a-z]?
           tag_prefix: "v"
