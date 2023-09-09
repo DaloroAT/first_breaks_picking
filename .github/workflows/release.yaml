@@ -8,7 +8,7 @@ on:
 jobs:
   publish:
     name: Build and publish assets
-    run-on: windows-latest
+    runs-on: windows-latest
     env:
       RELEASE_BODY: ""
     steps:
