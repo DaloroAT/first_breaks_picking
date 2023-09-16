@@ -87,7 +87,7 @@ You can use the capabilities of GPU to significantly reduce picking time. Before
 
 Install GPU supported version of library:
 ```shell
-pip install -U first-breaks-picking[gpu]
+pip install -U first-breaks-picking-gpu
 ```
 
 The following steps are operating system dependent and must be performed manually:
