@@ -4,9 +4,13 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - 'VERSION'
   push:
     branches:
       - main
+    paths:
+      - 'VERSION'
 
 jobs:
   autotag:
@@ -69,7 +73,7 @@ jobs:
         python -m pip install briefcase
     - name: ${{ matrix.type }} - Create Package
       run: |
-        Remove-Item -Path .\dist -Recurse -Force
+        Remove-Item -Path .\build -Recurse -Force
         briefcase create
     - name: ${{ matrix.type }} - Build Package
       run: |
