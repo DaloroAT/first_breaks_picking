@@ -34,8 +34,9 @@ jobs:
     needs: autotag
     if: ${{ needs.autotag.outputs.tagcreated == 'yes' }}
     runs-on: windows-latest
-    env:
-      RELEASE_BODY: ""
+    strategy:
+      matrix:
+        type: [ 'CPU', 'GPU' ]
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -47,43 +48,33 @@ jobs:
       run: |
         pip install tomli==2.0.1
         python checks.py
+    - name: Setup for ${{ matrix.type }} Build
+      run: |
+        if (${{ matrix.type }} -eq 'GPU') {
+          Move-Item -Path .\pyproject_gpu.toml -Destination .\pyproject.toml -Force
+        }
     - name: Install Builder
       run: |
         python -m pip install briefcase
-    - name: CPU - Create Package
+    - name: ${{ matrix.type }} - Create Package
       run: |
         briefcase create
-    - name: CPU - Build Package
+    - name: ${{ matrix.type }} - Build Package
       run: |
         briefcase build
-    - name: CPU - Create Installer MSI
+    - name: ${{ matrix.type }} - Create Installer MSI
       run: |
         briefcase package --adhoc-sign --packaging-format msi
-    - name: CPU - Create Installer ZIP
+    - name: ${{ matrix.type }} - Create Installer ZIP
       run: |
         briefcase package --adhoc-sign --packaging-format zip
-    - name: Remove Build of previous package
-      run: |
-        Remove-Item -Path .\build -Recurse -Force
-    - name: Replace TOML from CPU to GPU version
-      run: |
-        Move-Item -Path .\pyproject_gpu.toml -Destination .\pyproject.toml -Force
-    - name: GPU - Create Package
-      run: |
-        briefcase create
-    - name: GPU - Build Package
-      run: |
-        briefcase build
-    - name: GPU - Create Installer MSI
-      run: |
-        briefcase package --adhoc-sign --packaging-format msi
-    - name: GPU - Create Installer ZIP
-      run: |
-        briefcase package --adhoc-sign --packaging-format zip
-    - name: Upload files to Release
+    - name: Get version from file
+      id: version
+      run: echo "::set-output name=version::v$(cat first_breaks/VERSION)"
+    - name: ${{ matrix.type }} - Upload files to Release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ github.ref }}
+        tag: ${{ steps.version.outputs.version }}
         file_glob: true
         file: dist/*
