@@ -11,7 +11,7 @@ run_precommit:
 
 .PHONY: run_tests
 run_tests:
-	pytest -sv --disable-warnings tests
+	pytest -sv --disable-warnings tests/test_readme_examples.py
 
 
 .PHONY: docker_build

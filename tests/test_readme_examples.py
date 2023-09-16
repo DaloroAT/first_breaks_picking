@@ -55,6 +55,7 @@ def test_code_blocks_in_readme(block_name: str,
         f.write(code)
 
     try:
-        os.system(f"python {tmp_fname}")
+        code = os.system(f"python {tmp_fname}")
+        assert code == 0
     finally:
         Path(tmp_fname).unlink()
