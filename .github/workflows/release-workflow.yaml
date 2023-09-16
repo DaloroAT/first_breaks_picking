@@ -1,13 +1,38 @@
 name: Release
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
-    tags:
-      - '*'
+    branches:
+      - main
 
 jobs:
+  autotag:
+    name: Create tag if the commit has new version implemented
+    runs-on: ubuntu-latest
+    outputs:
+      tagcreated: ${{ steps.autotag.outputs.tagcreated }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Autotag
+        id: autotag
+        uses: butlerlogic/action-autotag@1.1.1
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          strategy: regex
+          root: "first_breaks/VERSION"
+          regex_pattern: >
+            \d+\.\d+\.\d+[a-z]?
+          tag_prefix: "v"
+
   publish_assets:
     name: Build and publish assets
+    needs: autotag
+    if: ${{ needs.autotag.outputs.tagcreated == 'yes' }}
     runs-on: windows-latest
     env:
       RELEASE_BODY: ""
