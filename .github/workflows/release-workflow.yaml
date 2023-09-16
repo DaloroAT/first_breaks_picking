@@ -26,7 +26,7 @@ jobs:
           strategy: regex
           root: "first_breaks/VERSION"
           regex_pattern: >
-            \d+\.\d+\.\d+[a-z]?
+            (\d+\.\d+\.\d+[a-z]?)
           tag_prefix: "v"
 
   publish_assets:
