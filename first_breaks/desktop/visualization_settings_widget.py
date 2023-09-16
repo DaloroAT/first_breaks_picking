@@ -2,7 +2,7 @@ import warnings
 from typing import Any, Dict, Optional, Tuple
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QCloseEvent
+from PyQt5.QtGui import QCloseEvent, QDoubleValidator
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
 )
 
 from first_breaks.const import HIGH_DPI
@@ -21,10 +22,10 @@ from first_breaks.data_models.independent import (
     Normalize,
     PicksUnit,
 )
+from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.byte_encode_unit_widget import QByteEncodeUnitWidget
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.radioset_widget import QRadioSetWidget
-from first_breaks.desktop.slider_with_values import QSliderWithValues
 from first_breaks.desktop.utils import QHSeparationLine, set_geometry
 
 if HIGH_DPI:
@@ -69,6 +70,18 @@ class PicksFromFileSettings(TraceHeaderParams, PicksUnit):
     pass
 
 
+def get_value(qline: QLineEdit, minimum: Optional[float] = None, default: Optional[float] = 1.0) -> float:
+    value = qline.text()
+    qline.setPlaceholderText(str(default))
+    if value.lstrip("-").lstrip("+").lstrip(".").lstrip(","):
+        value = float(value)
+        if minimum:
+            value = max(minimum, value)
+        return value
+    else:
+        return default
+
+
 class VisualizationSettingsWidget(QDialog):
     export_plotseis_settings_signal = pyqtSignal(PlotseisSettings)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
@@ -88,11 +101,6 @@ class VisualizationSettingsWidget(QDialog):
         hide_on_close: bool = False,
     ):
         super().__init__()
-        min_gain = -10
-        max_gain = 10
-        min_clip = 0.1
-        max_clip = 5
-        slider_space_fraction = 0.9
         self.hide_on_close = hide_on_close
 
         self.setWindowTitle("Visualization settings")
@@ -105,19 +113,26 @@ class VisualizationSettingsWidget(QDialog):
         self.setLayout(self.layout)
 
         self.gain_label = QLabel("Gain")
-        self.gain_widget = QSliderWithValues(
-            value=gain, min_value=min_gain, max_value=max_gain, slider_space_fraction=slider_space_fraction, margins=0
-        )
-        self.gain_widget.slider_released_signal.connect(self.export_plotseis_settings)
+        self.gain_widget = QLineEdit()
+        gain_validator = QDoubleValidator()
+        self.gain_widget.setValidator(gain_validator)
+        self.gain_widget.setText(str(gain))
+        self.gain_widget.value = lambda *args, **kwargs: get_value(self.gain_widget, default=DEFAULTS.gain)
+        self.gain_widget.textChanged.connect(self.export_plotseis_settings)
+
         self.storage_plotseis["gain"] = self.gain_widget
         self.layout.addWidget(self.gain_label, 0, 0)
         self.layout.addWidget(self.gain_widget, 0, 1)
 
         self.clip_label = QLabel("Clip")
-        self.clip_widget = QSliderWithValues(
-            value=clip, min_value=min_clip, max_value=max_clip, slider_space_fraction=slider_space_fraction, margins=0
-        )
-        self.clip_widget.slider_released_signal.connect(self.export_plotseis_settings)
+        self.clip_widget = QLineEdit()
+        clip_validator = QDoubleValidator()
+        clip_validator.setBottom(0.1)
+        self.clip_widget.setValidator(clip_validator)
+        self.clip_widget.setText(str(clip))
+        self.clip_widget.value = lambda *args, **kwargs: get_value(self.clip_widget, minimum=0.1, default=DEFAULTS.clip)
+        self.clip_widget.textEdited.connect(self.export_plotseis_settings)
+
         self.storage_plotseis["clip"] = self.clip_widget
         self.layout.addWidget(self.clip_label, 1, 0)
         self.layout.addWidget(self.clip_widget, 1, 1)

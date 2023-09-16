@@ -1,11 +1,10 @@
 import os
-import warnings
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
 
-from first_breaks import is_windows, is_linux, is_macos
+from first_breaks import is_linux, is_macos, is_windows
 
 ONNX_DEVICE2PROVIDER = {"cuda": "CUDAExecutionProvider", "cpu": "CPUExecutionProvider"}
 
@@ -81,7 +80,7 @@ def is_onnx_cuda_initializable() -> bool:
 
 def is_zlib_installed() -> bool:
     if is_windows():
-        for path in os.environ['PATH'].split(";"):
+        for path in os.environ["PATH"].split(";"):
             if (Path(path) / "zlibwapi.dll").exists():
                 return True
     if is_linux():

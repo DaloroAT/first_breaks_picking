@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from sys import platform
 
-
 with open(Path(__file__).parent / "VERSION") as fin:
     VERSION = fin.read()
 
