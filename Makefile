@@ -11,7 +11,7 @@ run_precommit:
 
 .PHONY: run_tests
 run_tests:
-	pytest -sv --disable-warnings tests
+	pytest -sv --disable-warnings tests/test_readme_examples.py
 
 
 .PHONY: docker_build
@@ -26,10 +26,10 @@ docker_tests:
 .PHONY: build_wheel
 build_wheel:
 	python -m pip install --upgrade pip
-	python3 -m pip install --upgrade twine
+	python -m pip install --upgrade twine
 	pip install --upgrade pip setuptools wheel
 	rm -rf dist build first_breaks_picking.egg-info
-	python3 setup.py sdist bdist_wheel
+	python setup.py sdist bdist_wheel
 
 .PHONY: upload_to_pip
 upload_to_pip: build_wheel

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
-import onnxruntime as ort
 import requests
 
 from first_breaks.const import (
@@ -149,13 +148,3 @@ class UnitsConverter:
 
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
-
-
-ONNX_DEVICE2PROVIDER = {"cuda": "CUDAExecutionProvider", "cpu": "CPUExecutionProvider"}
-
-
-def is_onnx_cuda_available() -> bool:
-    try:
-        return ONNX_DEVICE2PROVIDER["cuda"] in ort.get_available_providers()
-    except Exception:
-        return False

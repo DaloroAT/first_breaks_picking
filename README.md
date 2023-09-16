@@ -94,7 +94,8 @@ The following steps are operating system dependent and must be performed manuall
 
 - Install [latest NVIDIA drivers](https://www.nvidia.com/Download/index.aspx).
 - Install [CUDA toolkit](https://developer.nvidia.com/cuda-downloads).
-**The version must be between 11.x, starting with 11.6. Version 12 is not supported**.
+**The version must be between 11.x, starting with 11.6.
+Version 12 also may work, but versions >=11.6 are recommended**.
 - Install ZLib and CuDNN:
 [Windows](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-windows) and
 [Linux](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-linux).

@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 from first_breaks.const import HIGH_DPI
 from first_breaks.desktop.utils import MessageBox, QHSeparationLine, set_geometry
 from first_breaks.picking.task import Task
-from first_breaks.utils.utils import is_onnx_cuda_available
+from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -34,7 +34,7 @@ class PickingWindow(QDialog):
     def __init__(
         self,
         task: Optional[Task] = None,
-        device: str = "cuda" if is_onnx_cuda_available else "cpu",
+        device: str = "cuda" if ONNX_CUDA_AVAILABLE else "cpu",
         batch_size: int = 1,
     ):
         assert device in ["cuda", "cpu"]
@@ -108,11 +108,11 @@ class PickingWindow(QDialog):
         self.device_idx2labelvalue = {0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}
         self.device.addItem("GPU/CUDA")
         self.device.addItem("CPU")
-        if device == "cuda" and is_onnx_cuda_available():
+        if device == "cuda" and ONNX_CUDA_AVAILABLE:
             self.device.setCurrentIndex(0)
         else:
             self.device.setCurrentIndex(1)
-        if not is_onnx_cuda_available():
+        if not ONNX_CUDA_AVAILABLE:
             self.device.setEnabled(False)
         self.device.activated.connect(self.set_enabled_batch_size_depend_on_device)
         self.layout.addWidget(self.device_label, 5, 0)

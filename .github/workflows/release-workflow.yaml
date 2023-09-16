@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'first_breaks/VERSION'
+  push:
+    branches:
+      - main
+    paths:
+      - 'first_breaks/VERSION'
+
+jobs:
+  autotag:
+    name: Create tag if the commit has new version implemented
+    runs-on: ubuntu-latest
+    outputs:
+      tagcreated: ${{ steps.autotag.outputs.tagcreated }}
+      tagname: ${{ steps.autotag.outputs.tagname }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Autotag
+        id: autotag
+        uses: butlerlogic/action-autotag@1.1.1
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          strategy: regex
+          root: "first_breaks/VERSION"
+          regex_pattern: >
+            (\d+\.\d+\.\d+[a-z]?)
+          tag_prefix: "v"
+
+  publish_assets:
+    name: Build and publish assets
+    needs: autotag
+    if: ${{ needs.autotag.outputs.tagcreated == 'yes' }}
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        type: [ 'CPU', 'GPU' ]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.8.0"
+    - name: Check versions
+      run: |
+        pip install tomli==2.0.1
+        python checks.py
+    - name: Setup for ${{ matrix.type }} Build
+      env:
+        BUILD_TYPE: ${{ matrix.type }}
+      run: |
+        if ($env:BUILD_TYPE -eq 'GPU') {
+          Move-Item -Path .\pyproject_gpu.toml -Destination .\pyproject.toml -Force
+        }
+    - name: ${{ matrix.type }} - Install Wheels
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools wheel build twine
+        python -m build --sdist --wheel
+    - name: ${{ matrix.type }} - Upload to PyPi
+      run: |
+        twine upload dist/* --username __token__ --password ${{ secrets.PY_PI_TOKEN }}
+    - name: ${{ matrix.type }} - Install Builder
+      run: |
+        python -m pip install briefcase
+    - name: ${{ matrix.type }} - Create Package
+      run: |
+        Remove-Item -Path .\build -Recurse -Force
+        briefcase create
+    - name: ${{ matrix.type }} - Build Package
+      run: |
+        briefcase build
+    - name: ${{ matrix.type }} - Create Installer MSI
+      run: |
+        briefcase package --adhoc-sign --packaging-format msi
+        Remove-Item -Path .\dist\*.wixpdb -Force
+    - name: ${{ matrix.type }} - Create Installer ZIP
+      run: |
+        briefcase package --adhoc-sign --packaging-format zip
+    - name: ${{ matrix.type }} - Upload assets to Release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ needs.autotag.outputs.tagname }}
+        file_glob: true
+        file: dist/*
