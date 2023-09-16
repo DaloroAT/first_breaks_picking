@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tagcreated: ${{ steps.autotag.outputs.tagcreated }}
+      tagname: ${{ steps.autotag.outputs.tagname }}
     steps:
       - uses: actions/checkout@v3
 
@@ -68,13 +69,14 @@ jobs:
     - name: ${{ matrix.type }} - Create Installer ZIP
       run: |
         briefcase package --adhoc-sign --packaging-format zip
-    - name: Get version from file
-      id: version
-      run: echo "::set-output name=version::v$(cat first_breaks/VERSION)"
+#    - name: Get version from file
+#      id: version
+#      run: echo "::set-output name=version::v$(cat first_breaks/VERSION)"
     - name: ${{ matrix.type }} - Upload files to Release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ steps.version.outputs.version }}
+        tag: ${{ needs.autotag.outputs.tagname }}
+#        tag: ${{ steps.version.outputs.version }}
         file_glob: true
         file: dist/*
