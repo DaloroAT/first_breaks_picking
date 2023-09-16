@@ -50,8 +50,10 @@ jobs:
         pip install tomli==2.0.1
         python checks.py
     - name: Setup for ${{ matrix.type }} Build
+      env:
+        BUILD_TYPE: ${{ matrix.type }}
       run: |
-        if (${{ matrix.type }} -eq 'GPU') {
+        if ($env:BUILD_TYPE -eq 'GPU') {
           Move-Item -Path .\pyproject_gpu.toml -Destination .\pyproject.toml -Force
         }
     - name: Install Builder
