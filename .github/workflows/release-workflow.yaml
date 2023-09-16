@@ -72,7 +72,7 @@ jobs:
 #    - name: Get version from file
 #      id: version
 #      run: echo "::set-output name=version::v$(cat first_breaks/VERSION)"
-    - name: ${{ matrix.type }} - Upload files to Release
+    - name: ${{ matrix.type }} - Upload assets to Release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
