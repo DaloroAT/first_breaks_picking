@@ -6,7 +6,7 @@ on:
       - '*'
 
 jobs:
-  publish:
+  publish_assets:
     name: Build and publish assets
     runs-on: windows-latest
     env:
