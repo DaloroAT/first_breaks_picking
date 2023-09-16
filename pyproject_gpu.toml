@@ -65,7 +65,7 @@ include = ["first_breaks*"]
 [tool.briefcase]
 project_name = "FirstBreaksPickingGPU"
 bundle = "com.example"
-version = "0.4.0b"
+version = "0.3.100"
 url = "https://github.com/DaloroAT/first_breaks_picking"
 license = {file = "LICENSE"}
 
