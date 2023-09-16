@@ -62,9 +62,8 @@ jobs:
         python -m pip install --upgrade setuptools wheel build twine
         python -m build --sdist --wheel
     - name: ${{ matrix.type }} - Upload to PyPi
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        twine upload dist/* --username __token__ --password ${{ secrets.PY_PI_TOKEN }}
     - name: ${{ matrix.type }} - Install Builder
       run: |
         python -m pip install briefcase
