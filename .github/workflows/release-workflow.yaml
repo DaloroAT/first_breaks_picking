@@ -5,12 +5,12 @@ on:
     branches:
       - main
     paths:
-      - 'VERSION'
+      - 'first_breaks/VERSION'
   push:
     branches:
       - main
     paths:
-      - 'VERSION'
+      - 'first_breaks/VERSION'
 
 jobs:
   autotag:
