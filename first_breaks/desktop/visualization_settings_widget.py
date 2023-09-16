@@ -2,14 +2,14 @@ import warnings
 from typing import Any, Dict, Optional, Tuple
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QCloseEvent
+from PyQt5.QtGui import QCloseEvent, QDoubleValidator
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialog,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
+    QLabel, QLineEdit,
 )
 
 from first_breaks.const import HIGH_DPI
@@ -69,6 +69,16 @@ class PicksFromFileSettings(TraceHeaderParams, PicksUnit):
     pass
 
 
+def get_value(qline: QLineEdit) -> float:
+    value = qline.text()
+    if value.lstrip("-").lstrip("+").lstrip(".").lstrip(","):
+        return float(value)
+    else:
+        value = "1.0"
+        qline.setPlaceholderText(value)
+        return float(value)
+
+
 class VisualizationSettingsWidget(QDialog):
     export_plotseis_settings_signal = pyqtSignal(PlotseisSettings)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
@@ -105,19 +115,36 @@ class VisualizationSettingsWidget(QDialog):
         self.setLayout(self.layout)
 
         self.gain_label = QLabel("Gain")
-        self.gain_widget = QSliderWithValues(
-            value=gain, min_value=min_gain, max_value=max_gain, slider_space_fraction=slider_space_fraction, margins=0
-        )
-        self.gain_widget.slider_released_signal.connect(self.export_plotseis_settings)
+        # self.gain_widget = QSliderWithValues(
+        #     value=gain, min_value=min_gain, max_value=max_gain, slider_space_fraction=slider_space_fraction, margins=0
+        # )
+        # self.gain_widget.slider_released_signal.connect(self.export_plotseis_settings)
+
+        self.gain_widget = QLineEdit()
+        gain_validator = QDoubleValidator()
+        self.gain_widget.setValidator(gain_validator)
+        self.gain_widget.setText(str(gain))
+        self.gain_widget.value = lambda *args, **kwargs: get_value(self.gain_widget)
+        self.gain_widget.textChanged.connect(self.export_plotseis_settings)
+
         self.storage_plotseis["gain"] = self.gain_widget
         self.layout.addWidget(self.gain_label, 0, 0)
         self.layout.addWidget(self.gain_widget, 0, 1)
 
         self.clip_label = QLabel("Clip")
-        self.clip_widget = QSliderWithValues(
-            value=clip, min_value=min_clip, max_value=max_clip, slider_space_fraction=slider_space_fraction, margins=0
-        )
-        self.clip_widget.slider_released_signal.connect(self.export_plotseis_settings)
+        # self.clip_widget = QSliderWithValues(
+        #     value=clip, min_value=min_clip, max_value=max_clip, slider_space_fraction=slider_space_fraction, margins=0
+        # )
+        # self.clip_widget.slider_released_signal.connect(self.export_plotseis_settings)
+
+        self.clip_widget = QLineEdit()
+        clip_validator = QDoubleValidator()
+        clip_validator.setBottom(0.1)
+        self.clip_widget.setValidator(clip_validator)
+        self.clip_widget.setText(str(clip))
+        self.clip_widget.value = lambda *args, **kwargs: get_value(self.clip_widget)
+        self.clip_widget.textEdited.connect(self.export_plotseis_settings)
+
         self.storage_plotseis["clip"] = self.clip_widget
         self.layout.addWidget(self.clip_label, 1, 0)
         self.layout.addWidget(self.clip_widget, 1, 1)
