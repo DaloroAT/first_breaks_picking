@@ -59,8 +59,7 @@ jobs:
     - name: ${{ matrix.type }} - Install Wheels
       run: |
         python -m pip install --upgrade pip
-        python -m pip install --upgrade 
-        pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade setuptools wheel twine
         python -m build --sdist --wheel
     - name: ${{ matrix.type }} - Upload to PyPi
       uses: pypa/gh-action-pypi-publish@release/v1
