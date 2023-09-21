@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from PyQt5.QtCore import QSize, Qt, QThreadPool
+from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
@@ -472,6 +473,10 @@ class MainWindow(QMainWindow):
                     window_err.exec_()
                 if self.graph.is_picks_modified_manually:
                     self.last_task.picks_in_samples = picks_in_samples_prev
+
+    def closeEvent(self, e: QCloseEvent) -> None:
+        self.graph.spectrum_window.close()
+        e.accept()
 
 
 def run_app() -> None:

@@ -1,6 +1,8 @@
+import colorsys
 import hashlib
 import inspect
 import io
+import random
 from itertools import islice
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
@@ -148,3 +150,20 @@ class UnitsConverter:
 
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
+
+
+def _color_generator():
+    golden_ratio = 0.618033988749895
+    hue = random.random()  # start from a random position
+    while True:
+        hue += golden_ratio
+        hue %= 1
+        yield [int(255 * v) for v in colorsys.hsv_to_rgb(hue, 0.5, 0.95)]
+
+
+cgen = _color_generator()
+
+
+def generate_color():
+    return next(cgen)
+

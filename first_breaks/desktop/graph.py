@@ -7,7 +7,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
-from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen
+from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen, QCloseEvent
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph import AxisItem
 from pyqtgraph.exporters import ImageExporter
@@ -16,9 +16,12 @@ from pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 from first_breaks.const import HIGH_DPI
 from first_breaks.data_models.independent import TColor, TNormalize
 from first_breaks.data_models.initialised_defaults import DEFAULTS
+from first_breaks.desktop.roi_manager import RoiManager
+from first_breaks.desktop.spectrum_window import SpectrumWindow
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
+from first_breaks.utils.fourier_transforms import get_filtered_data
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -59,7 +62,20 @@ class GraphWidget(pg.PlotWidget):
         self.is_picks_modified_manually = False
         self.x_ax_header: Optional[str] = None
 
+        # self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl)
+
+        self.spectrum_roi_manager = RoiManager(self.getViewBox())
+
+        self.spectrum_window = SpectrumWindow(roi_manager=self.spectrum_roi_manager)
+
+        # self.spectrum_window.rois = self.spectrum_roi_manager.rois
+        self.spectrum_roi_manager.roi_changing_signal.connect(self.check_roi)
+
         self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
+
+    def check_roi(self, roi):
+        pass
+        # print(roi, self.spectrum_roi_manager.rois)
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
@@ -96,8 +112,15 @@ class GraphWidget(pg.PlotWidget):
         self.x_ax_header = x_axis
 
         self.sgy = sgy
+        self.spectrum_window.set_sgy(sgy)
 
         traces = self.sgy.read()
+
+        # traces = get_filtered_data(traces, fs=self.sgy.fs,
+        #                            # f1_f2=[0, 50],
+        #                            f3_f4=[200, 600]
+        #                            )
+
         traces = preprocess_gather(traces, gain=gain, clip=clip, normalize=normalize, copy=True)
 
         self.clear()
@@ -259,6 +282,10 @@ class GraphWidget(pg.PlotWidget):
 
         self.addItem(picks)
         self.extra_picks_as_item_list.append(picks)
+
+    def closeEvent(self, e: QCloseEvent) -> None:
+        self.spectrum_window.close()
+        e.accept()
 
 
 class HighMemoryConsumption(Exception):
