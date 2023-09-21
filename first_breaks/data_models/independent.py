@@ -31,6 +31,10 @@ class Clip(DefaultModel):
     )
 
 
+class _FreqsPair(DefaultModel):
+
+
+
 class FillBlack(DefaultModel):
     fill_black: Optional[Literal["left", "right"]] = Field(
         "left",

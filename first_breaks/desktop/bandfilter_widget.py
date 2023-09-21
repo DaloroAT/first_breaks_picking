@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QWidget, QLineEdit, QCheckBox
 
@@ -7,7 +8,12 @@ from first_breaks.desktop.tooltip_widget import TextToolTip, ShakeToolTip, Highl
 
 
 class QBandFilterWidget(QWidget):
-    def __init__(self, margins: Optional[int] = None, debug: bool = False, *args: Any, **kwargs: Any):
+    def __init__(self,
+                 f1: Optional[float] = None,
+                 f2: Optional[float] = None,
+                 f3: Optional[float] = None,
+                 f4: Optional[float] = None,
+                 margins: Optional[int] = None, debug: bool = False, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
 
         self.layout = QHBoxLayout()
@@ -15,8 +21,8 @@ class QBandFilterWidget(QWidget):
             self.layout.setContentsMargins(margins, margins, margins, margins)
         self.setLayout(self.layout)
 
-        self.storage = {}
-        for i in range(1, 5):
+        self.freq_widgets = {}
+        for i, f in enumerate([f1, f2, f3, f4], 1):
             label = QLabel(self._get_freq_str(i))
             self.layout.addWidget(label)
 
@@ -24,21 +30,34 @@ class QBandFilterWidget(QWidget):
             validator = QDoubleValidator()
             validator.setBottom(0.0)
             freq_widget.setValidator(validator)
+
             self.layout.addWidget(freq_widget)
-            self.storage[i] = freq_widget
+            self.freq_widgets[i] = freq_widget
             if debug:
                 freq_widget.textChanged.connect(self.validate_and_get_values)
+
+    def enbale_fields(self):
+        for v in self.freq_widgets.values():
+            v.setEnabled(True)
+
+    def disable_fields(self):
+        for v in self.freq_widgets.values():
+            v.setEnabled(False)
 
     @staticmethod
     def _get_freq_str(index: int):
         return f"f<sub>{index}</sub>"
 
-    def validate_and_get_values(self):
+    def get_raw_freqs(self):
         freqs = {}
         for i in range(1, 5):
-            value = self.storage[i].text()
+            value = self.freq_widgets[i].text()
             value = float(value) if value else None
             freqs[i] = value
+        return freqs
+
+    def validate_and_get_values(self):
+        freqs = self.get_raw_freqs()
 
         problematic_widgets = set()
         recommendation_tips = []
@@ -48,20 +67,20 @@ class QBandFilterWidget(QWidget):
                 text = (f"Parameters {self._get_freq_str(idx1)} and {self._get_freq_str(idx2)} must "
                         f"either be both specified or both empty")
                 recommendation_tips.append(text)
-                problematic_widgets.add(self.storage[idx1])
-                problematic_widgets.add(self.storage[idx2])
+                problematic_widgets.add(self.freq_widgets[idx1])
+                problematic_widgets.add(self.freq_widgets[idx2])
             elif (freqs[idx1] is not None and freqs[idx2] is not None) and (freqs[idx1] > freqs[idx2]):
                 text = f"{self._get_freq_str(idx2)} must be greater than or equal to {self._get_freq_str(idx1)}"
                 recommendation_tips.append(text)
-                problematic_widgets.add(self.storage[idx1])
-                problematic_widgets.add(self.storage[idx2])
+                problematic_widgets.add(self.freq_widgets[idx1])
+                problematic_widgets.add(self.freq_widgets[idx2])
 
         if (freqs[2] is not None and freqs[3] is not None) and (freqs[2] > freqs[3]):
             text = (f"{self._get_freq_str(3)} must be greater than or equal to {self._get_freq_str(2)} if both of "
                     f"them are not empty")
             recommendation_tips.append(text)
-            problematic_widgets.add(self.storage[2])
-            problematic_widgets.add(self.storage[3])
+            problematic_widgets.add(self.freq_widgets[2])
+            problematic_widgets.add(self.freq_widgets[3])
 
         if problematic_widgets:
             if len(recommendation_tips) > 1:
@@ -83,6 +102,6 @@ class QBandFilterWidget(QWidget):
 
 if __name__ == "__main__":
     app = QApplication([])
-    window = QBandFilterWidget(debug=True)
+    window = QBandFilterWidget()
     window.show()
     app.exec_()

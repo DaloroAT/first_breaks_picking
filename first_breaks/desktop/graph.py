@@ -105,6 +105,8 @@ class GraphWidget(pg.PlotWidget):
         clip: float = DEFAULTS.clip,
         gain: float = DEFAULTS.gain,
         normalize: TNormalize = DEFAULTS.normalize,
+        f1_f2: Optional[Tuple[float, float]] = None,
+        f3_f4: Optional[Tuple[float, float]] = None,
         x_axis: Optional[str] = DEFAULTS.x_axis,
         fill_black: Optional[str] = DEFAULTS.fill_black,
         refresh_view: bool = True,
@@ -121,7 +123,7 @@ class GraphWidget(pg.PlotWidget):
         #                            f3_f4=[200, 600]
         #                            )
 
-        traces = preprocess_gather(traces, gain=gain, clip=clip, normalize=normalize, copy=True)
+        traces = preprocess_gather(traces, gain=gain, clip=clip, normalize=normalize, f1_f2=f1_f2, f3_f4=f3_f4, copy=True)
 
         self.clear()
 
