@@ -21,7 +21,7 @@ from first_breaks.data_models.independent import (
     FillBlack,
     Gain,
     Normalize,
-    PicksUnit,
+    PicksUnit, F1F2, F3F4,
 )
 from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.bandfilter_widget import QBandFilterWidget
@@ -64,7 +64,7 @@ def build_x_axis_mapping() -> Dict[int, Tuple[str, str]]:
 X_AXIS_MAPPING = build_x_axis_mapping()
 
 
-class PlotseisSettings(Gain, Clip, Normalize, XAxis, FillBlack):
+class PlotseisSettings(Gain, Clip, Normalize, XAxis, FillBlack, F1F2, F3F4):
     pass
 
 
@@ -150,7 +150,9 @@ class NormalizationLine(QComboBoxMapping, _Dictable):
 class BandfilterLine(QWidget, _Dictable):
     changed_signal = pyqtSignal()
 
-    def __init__(self, f1_f2: Optional[Tuple[float, float]] = None, f3_f4: Optional[Tuple[float, float]] = None):
+    def __init__(self,
+                 f1_f2: Optional[Tuple[float, float]] = DEFAULTS.f1_f2,
+                 f3_f4: Optional[Tuple[float, float]] = DEFAULTS.f3_f4):
         super().__init__()
         self.bandfilter_toogle = QCheckBox()
         self.bandfilter_toogle.setCheckState(False)

@@ -1,11 +1,11 @@
 from math import ceil, floor
-from typing import Any
+from typing import Any, Optional, Tuple
 
 import pyqtgraph as pg
 from PyQt5.QtGui import QCloseEvent, QFont
 
 from first_breaks.desktop.roi_manager import RoiManager, get_rect_of_roi
-from first_breaks.utils.fourier_transforms import get_mean_amplitude_spectrum
+from first_breaks.utils.fourier_transforms import get_mean_amplitude_spectrum, build_amplitude_filter
 
 
 class SpectrumWindow(pg.PlotWidget):
@@ -31,6 +31,8 @@ class SpectrumWindow(pg.PlotWidget):
         self.roi2max_spec = {}
         self.roi2max_freq = {}
         self.sgy = None
+        self.f1_f2 = None
+        self.f3_f4 = None
 
         self.roi_manager.roi_added_signal.connect(self.add_placeholder_line)
         self.roi_manager.roi_clicked_signal.connect(lambda roi: self.show())
@@ -46,6 +48,13 @@ class SpectrumWindow(pg.PlotWidget):
 
     def set_sgy(self, sgy):
         self.sgy = sgy
+
+    def set_filter_params(self, f1_f2: Optional[Tuple[float, float]], f3_f4: Optional[Tuple[float, float]]):
+        self.f1_f2 = f1_f2
+        self.f3_f4 = f3_f4
+
+        for roi in self.roi2line.keys():
+            self.update_line(roi)
 
     def add_placeholder_line(self, roi: pg.ROI):
         line = pg.PlotCurveItem([], [], pen=roi.currentPen)
@@ -67,6 +76,9 @@ class SpectrumWindow(pg.PlotWidget):
                                                  max_sample=y_max_idx)
 
             frequencies, spectrum = get_mean_amplitude_spectrum(traces, fs=self.sgy.fs)
+            amp_filter = build_amplitude_filter(frequencies, f1_f2=self.f1_f2, f3_f4=self.f3_f4)
+            spectrum = amp_filter * spectrum
+
             self.roi2max_freq[roi] = max(frequencies)
             self.roi2max_spec[roi] = max(spectrum)
         else:

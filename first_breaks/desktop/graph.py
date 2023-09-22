@@ -115,6 +115,7 @@ class GraphWidget(pg.PlotWidget):
 
         self.sgy = sgy
         self.spectrum_window.set_sgy(sgy)
+        self.spectrum_window.set_filter_params(f1_f2, f3_f4)
 
         traces = self.sgy.read()
 
@@ -123,7 +124,14 @@ class GraphWidget(pg.PlotWidget):
         #                            f3_f4=[200, 600]
         #                            )
 
-        traces = preprocess_gather(traces, gain=gain, clip=clip, normalize=normalize, f1_f2=f1_f2, f3_f4=f3_f4, copy=True)
+        traces = preprocess_gather(traces,
+                                   gain=gain,
+                                   clip=clip,
+                                   normalize=normalize,
+                                   f1_f2=f1_f2,
+                                   f3_f4=f3_f4,
+                                   fs=self.sgy.fs,
+                                   copy=True)
 
         self.clear()
 

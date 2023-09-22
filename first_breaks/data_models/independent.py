@@ -31,8 +31,12 @@ class Clip(DefaultModel):
     )
 
 
-class _FreqsPair(DefaultModel):
+class F1F2(DefaultModel):
+    f1_f2: Optional[Tuple[float, float]] = Field(None, description="Frequency pair for growing part band filter")
 
+
+class F3F4(DefaultModel):
+    f3_f4: Optional[Tuple[float, float]] = Field(None, description="Frequency pair for decreasing part band filter")
 
 
 class FillBlack(DefaultModel):
