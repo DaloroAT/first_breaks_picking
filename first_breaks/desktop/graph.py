@@ -330,11 +330,12 @@ class GraphWidget(pg.PlotWidget):
             mouse_xy = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
             mouse_pos, mouse_time = self.resolve_xy2postime(mouse_xy.x(), mouse_xy.y())
 
-            picks_pos, picks_time = self.nn_picks_as_item.getData()
+            picks_x, picks_y = self.nn_picks_as_item.getData()
+            picks_pos, picks_time = self.resolve_xy2postime(picks_x, picks_y)
 
             closest = np.argmin(np.abs(picks_pos - mouse_pos))
-            mouse_pos = np.clip(mouse_pos, 0, self.sgy.max_time_ms)
-            picks_time[closest] = mouse_pos
+            mouse_time = np.clip(mouse_time, 0, self.sgy.max_time_ms)
+            picks_time[closest] = mouse_time
 
             picks_x, picks_y = self.resolve_postime2xy(picks_pos, picks_time)
             self.nn_picks_as_item.setData(picks_x, picks_y)
