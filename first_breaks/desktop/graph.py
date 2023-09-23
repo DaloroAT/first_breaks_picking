@@ -31,9 +31,9 @@ if HIGH_DPI:
 class GraphWidget(pg.PlotWidget):
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
-        # self.getPlotItem().disableAutoRange()
+        self.getPlotItem().disableAutoRange()
         self.setAntialiasing(False)
-        # self.getPlotItem().setClipToView(True)
+        self.getPlotItem().setClipToView(True)
         self.getPlotItem().setDownsampling(mode="peak")
 
         self.getPlotItem().invertY(True)
@@ -125,36 +125,16 @@ class GraphWidget(pg.PlotWidget):
         num_sample, num_traces = self.sgy.shape
         t = np.arange(num_sample) * self.sgy.dt_ms
 
-        # self.getViewBox().setLimits(xMin=0, xMax=num_traces + 1, yMin=0, yMax=t[-1])
+        self.getViewBox().setLimits(xMin=0, xMax=num_traces + 1, yMin=0, yMax=t[-1])
 
-        # if refresh_view:
-        #     self.getPlotItem().setYRange(0, t[-1])
-        #     self.getPlotItem().setXRange(0, num_traces + 1)
+        if refresh_view:
+            self.getPlotItem().setYRange(0, t[-1])
+            self.getPlotItem().setXRange(0, num_traces + 1)
 
         for idx in range(num_traces):
             self._plot_trace_fast(traces[:, idx], t, idx + 1, fill_black)
 
         self.x_ax.showLabel()
-
-    def replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
-        self.x_ax.setLabel(self.x_ax_header, **self.label_style)
-        previous_labels = AxisItem.tickStrings(self.x_ax, *args, **kwargs)
-
-        if self.x_ax_header is not None:
-            labels_from_headers = []
-            for v in previous_labels:
-                v = ast.literal_eval(v)
-                if v % 1 == 0:
-                    v = int(v) - 1
-                    if 0 <= v < self.sgy.num_traces:
-                        labels_from_headers.append(str(self.sgy.traces_headers[self.x_ax_header].iloc[v]))
-                    else:
-                        labels_from_headers.append("")
-                else:
-                    labels_from_headers.append("")
-            return labels_from_headers
-        else:
-            return previous_labels
 
     def _plot_trace_fast(self, trace: np.ndarray, t: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
         connect = np.ones(len(t), dtype=np.int32)
@@ -193,6 +173,26 @@ class GraphWidget(pg.PlotWidget):
             item.setBrush(Qt.black)
             self.addItem(item)
             self.traces_as_items.append(item)
+
+    def replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
+        self.x_ax.setLabel(self.x_ax_header, **self.label_style)
+        previous_labels = AxisItem.tickStrings(self.x_ax, *args, **kwargs)
+
+        if self.x_ax_header is not None:
+            labels_from_headers = []
+            for v in previous_labels:
+                v = ast.literal_eval(v)
+                if v % 1 == 0:
+                    v = int(v) - 1
+                    if 0 <= v < self.sgy.num_traces:
+                        labels_from_headers.append(str(self.sgy.traces_headers[self.x_ax_header].iloc[v]))
+                    else:
+                        labels_from_headers.append("")
+                else:
+                    labels_from_headers.append("")
+            return labels_from_headers
+        else:
+            return previous_labels
 
     def remove_nn_picks(self) -> None:
         self.is_picks_modified_manually = False
