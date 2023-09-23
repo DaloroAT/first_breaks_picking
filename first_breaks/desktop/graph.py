@@ -28,9 +28,6 @@ if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 
-VSP_VIEW = True
-
-
 class GraphWidget(pg.PlotWidget):
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
@@ -40,7 +37,9 @@ class GraphWidget(pg.PlotWidget):
         self.plotItem.setDownsampling(mode="peak")
         self.plotItem.ctrlMenu = None
 
-        self.vsp_view = VSP_VIEW
+        self.invert_x = DEFAULTS.invert_x
+        self.invert_y = DEFAULTS.invert_y
+        self.vsp_view = DEFAULTS.vsp_view
         self.sgy: Optional[SGY] = None
         self.nn_picks_in_ms: Optional[np.ndarray] = None
         self.nn_picks_as_item: Optional[pg.PlotCurveItem] = None
@@ -58,7 +57,7 @@ class GraphWidget(pg.PlotWidget):
 
         self.spectrum_roi_manager = RoiManager(self.getViewBox())
         self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
-        # self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
+        self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
     def resolve_postime2xy(self, position: Any, time: Any):
         if self.vsp_view:
@@ -73,7 +72,8 @@ class GraphWidget(pg.PlotWidget):
             return x, y
 
     def setup_axes(self):
-        self.getPlotItem().invertY(True)
+        self.getPlotItem().invertX(self.invert_x)
+        self.getPlotItem().invertY(self.invert_y)
         self.getPlotItem().showAxis("top", True)
         self.getPlotItem().showAxis("bottom", False)
 
@@ -112,8 +112,10 @@ class GraphWidget(pg.PlotWidget):
             f3_f4: Optional[Tuple[float, float]] = None,
             x_axis: Optional[str] = DEFAULTS.x_axis,
             fill_black: Optional[str] = DEFAULTS.fill_black,
-            vsp_view: bool = VSP_VIEW,
+            vsp_view: bool = DEFAULTS.vsp_view,
             refresh_view: bool = True,
+            invert_x: bool = DEFAULTS.invert_x,
+            invert_y: bool = DEFAULTS.invert_y
     ) -> None:
         self.pos_ax_header = x_axis
 
@@ -134,12 +136,25 @@ class GraphWidget(pg.PlotWidget):
 
         # we put clearing after preprocessing to reduce time when user see nothing
         self.clear()
+        # axes related checks
         if self.vsp_view != vsp_view:
             self.vsp_view = vsp_view
-            self.setup_axes()
             need_to_refresh = True
         else:
             need_to_refresh = False
+        if self.invert_x != invert_x:
+            self.invert_x = invert_x
+            need_to_refresh |= True
+        else:
+            need_to_refresh |= False
+        if self.invert_y != invert_y:
+            self.invert_y = invert_y
+            need_to_refresh |= True
+        else:
+            need_to_refresh |= False
+
+        if need_to_refresh:
+            self.setup_axes()
 
         num_sample, num_traces = self.sgy.shape
         t = np.arange(num_sample) * self.sgy.dt_ms
@@ -280,6 +295,55 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items.append(poly_item)
         self.addItem(poly_item)
 
+    def get_picks_as_item(
+        self,
+        picks_ms: Sequence[float],
+        color: TColor = DEFAULTS.picks_color,
+    ) -> pg.PlotCurveItem:
+        x, y = self.resolve_postime2xy(np.arange(self.sgy.num_traces) + 1, np.array(picks_ms))
+
+        line = pg.PlotCurveItem()
+        line.setData(x, y)
+        pen = pg.mkPen(color=color, width=3)
+        line.setPen(pen)
+
+        return line
+
+    def plot_nn_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
+        self.remove_nn_picks()
+        self.is_picks_modified_manually = False
+
+        self.nn_picks_in_ms = np.array(picks_ms)
+        self.nn_picks_as_item = self.get_picks_as_item(self.nn_picks_in_ms, color)
+
+        self.addItem(self.nn_picks_as_item)
+
+    def plot_extra_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
+        picks = self.get_picks_as_item(picks_ms, color)
+
+        self.addItem(picks)
+        self.extra_picks_as_item_list.append(picks)
+
+    def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
+        ev = ev[0]
+        if self.nn_picks_as_item is not None and ev.button() == 1:
+            mouse_xy = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
+            mouse_pos, mouse_time = self.resolve_xy2postime(mouse_xy.x(), mouse_xy.y())
+
+            picks_pos, picks_time = self.nn_picks_as_item.getData()
+
+            closest = np.argmin(np.abs(picks_pos - mouse_pos))
+            mouse_pos = np.clip(mouse_pos, 0, self.sgy.max_time_ms)
+            picks_time[closest] = mouse_pos
+
+            picks_x, picks_y = self.resolve_postime2xy(picks_pos, picks_time)
+            self.nn_picks_as_item.setData(picks_x, picks_y)
+            self.nn_picks_in_ms = picks_time
+            self.is_picks_modified_manually = True
+
+    def closeEvent(self, e: QCloseEvent) -> None:
+        self.spectrum_window.close()
+        e.accept()
 
 
 class HighMemoryConsumption(Exception):

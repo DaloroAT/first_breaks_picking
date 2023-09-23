@@ -88,3 +88,11 @@ class VSPView(DefaultModel):
         False,
         description="Set the view when the vertical axis is the trace number and the horizontal axis is time"
     )
+
+
+class InvertX(DefaultModel):
+    invert_x: bool = Field(False, description="If True, the X-axis values will increase from right to the left")
+
+
+class InvertY(DefaultModel):
+    invert_y: bool = Field(True, description="If True, the Y-axis values will increase from top to bottom")
