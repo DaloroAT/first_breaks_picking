@@ -31,9 +31,9 @@ if HIGH_DPI:
 class GraphWidget(pg.PlotWidget):
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
-        self.getPlotItem().disableAutoRange()
+        # self.getPlotItem().disableAutoRange()
         self.setAntialiasing(False)
-        self.getPlotItem().setClipToView(True)
+        # self.getPlotItem().setClipToView(True)
         self.getPlotItem().setDownsampling(mode="peak")
 
         self.getPlotItem().invertY(True)
@@ -61,21 +61,13 @@ class GraphWidget(pg.PlotWidget):
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.is_picks_modified_manually = False
         self.x_ax_header: Optional[str] = None
-
-        # self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl)
+        self.axis_swapped = False
 
         self.spectrum_roi_manager = RoiManager(self.getViewBox())
 
-        self.spectrum_window = SpectrumWindow(roi_manager=self.spectrum_roi_manager)
-
-        # self.spectrum_window.rois = self.spectrum_roi_manager.rois
-        self.spectrum_roi_manager.roi_changing_signal.connect(self.check_roi)
+        self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
 
         self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
-
-    def check_roi(self, roi):
-        pass
-        # print(roi, self.spectrum_roi_manager.rois)
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
@@ -119,11 +111,6 @@ class GraphWidget(pg.PlotWidget):
 
         traces = self.sgy.read()
 
-        # traces = get_filtered_data(traces, fs=self.sgy.fs,
-        #                            # f1_f2=[0, 50],
-        #                            f3_f4=[200, 600]
-        #                            )
-
         traces = preprocess_gather(traces,
                                    gain=gain,
                                    clip=clip,
@@ -138,11 +125,11 @@ class GraphWidget(pg.PlotWidget):
         num_sample, num_traces = self.sgy.shape
         t = np.arange(num_sample) * self.sgy.dt_ms
 
-        self.getViewBox().setLimits(xMin=0, xMax=num_traces + 1, yMin=0, yMax=t[-1])
+        # self.getViewBox().setLimits(xMin=0, xMax=num_traces + 1, yMin=0, yMax=t[-1])
 
-        if refresh_view:
-            self.getPlotItem().setYRange(0, t[-1])
-            self.getPlotItem().setXRange(0, num_traces + 1)
+        # if refresh_view:
+        #     self.getPlotItem().setYRange(0, t[-1])
+        #     self.getPlotItem().setXRange(0, num_traces + 1)
 
         for idx in range(num_traces):
             self._plot_trace_fast(traces[:, idx], t, idx + 1, fill_black)
