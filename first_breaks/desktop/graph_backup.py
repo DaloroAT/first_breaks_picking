@@ -28,19 +28,31 @@ if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 
-VSP_VIEW = True
-
-
 class GraphWidget(pg.PlotWidget):
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
-        self.plotItem.disableAutoRange()
+        self.getPlotItem().disableAutoRange()
         self.setAntialiasing(False)
-        self.plotItem.setClipToView(True)
-        self.plotItem.setDownsampling(mode="peak")
+        self.getPlotItem().setClipToView(True)
+        self.getPlotItem().setDownsampling(mode="peak")
+
+        self.getPlotItem().invertY(True)
+        self.getPlotItem().showAxis("top", True)
+        self.getPlotItem().showAxis("bottom", False)
+        self.x_ax = self.getPlotItem().getAxis("top")
+        self.y_ax = self.getPlotItem().getAxis("left")
+        text_size = 12
+        self.label_style = {"font-size": f"{text_size}pt"}
+        font = QFont()
+        font.setPointSize(text_size)
+        self.x_ax.setLabel(None, **self.label_style)
+        self.y_ax.setLabel("t, ms", **self.label_style)
+        self.x_ax.setTickFont(font)
+        self.y_ax.setTickFont(font)
         self.plotItem.ctrlMenu = None
 
-        self.vsp_view = VSP_VIEW
+        self.x_ax.tickStrings = self.replace_tick_labels
+
         self.sgy: Optional[SGY] = None
         self.nn_picks_in_ms: Optional[np.ndarray] = None
         self.nn_picks_as_item: Optional[pg.PlotCurveItem] = None
@@ -48,50 +60,27 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.is_picks_modified_manually = False
-        self.pos_ax_header: Optional[str] = None
-
-        self.x_ax = None
-        self.y_ax = None
-        self.pos_ax = None
-        self.time_ax = None
-        self.setup_axes()
+        self.x_ax_header: Optional[str] = None
+        self.axis_swapped = False
 
         self.spectrum_roi_manager = RoiManager(self.getViewBox())
+
         self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
-        # self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
-    def resolve_postime2xy(self, position: Any, time: Any):
-        if self.vsp_view:
-            return time, position
-        else:
-            return position, time
+        self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
-    def resolve_xy2postime(self, x: Any, y: Any):
-        if self.vsp_view:
-            return y, x
-        else:
-            return x, y
-
-    def setup_axes(self):
-        self.getPlotItem().invertY(True)
-        self.getPlotItem().showAxis("top", True)
-        self.getPlotItem().showAxis("bottom", False)
-
-        self.x_ax = self.getPlotItem().getAxis("top")
-        self.y_ax = self.getPlotItem().getAxis("left")
-
-        self.pos_ax, self.time_ax = self.resolve_xy2postime(self.x_ax, self.y_ax)
-
-        self.pos_ax.tickStrings = self.replace_tick_labels
-
-        text_size = 12
-        self.label_style = {"font-size": f"{text_size}pt"}
-        font = QFont()
-        font.setPointSize(text_size)
-        self.pos_ax.setLabel(None, **self.label_style)
-        self.time_ax.setLabel("t, ms", **self.label_style)
-        self.pos_ax.setTickFont(font)
-        self.time_ax.setTickFont(font)
+    def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
+        ev = ev[0]
+        if self.nn_picks_as_item is not None and ev.button() == 1:
+            mouse_point = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
+            x, y = mouse_point.x(), mouse_point.y()
+            ids, picks = self.nn_picks_as_item.getData()
+            closest = np.argmin(np.abs(ids - x))
+            y = np.clip(y, 0, self.sgy.max_time_ms)
+            picks[closest] = y
+            self.nn_picks_as_item.setData(ids, picks)
+            self.nn_picks_in_ms = picks
+            self.is_picks_modified_manually = True
 
     def full_clean(self) -> None:
         self.remove_nn_picks()
@@ -103,19 +92,18 @@ class GraphWidget(pg.PlotWidget):
         self.clear()
 
     def plotseis(
-            self,
-            sgy: SGY,
-            clip: float = DEFAULTS.clip,
-            gain: float = DEFAULTS.gain,
-            normalize: TNormalize = DEFAULTS.normalize,
-            f1_f2: Optional[Tuple[float, float]] = None,
-            f3_f4: Optional[Tuple[float, float]] = None,
-            x_axis: Optional[str] = DEFAULTS.x_axis,
-            fill_black: Optional[str] = DEFAULTS.fill_black,
-            vsp_view: bool = VSP_VIEW,
-            refresh_view: bool = True,
+        self,
+        sgy: SGY,
+        clip: float = DEFAULTS.clip,
+        gain: float = DEFAULTS.gain,
+        normalize: TNormalize = DEFAULTS.normalize,
+        f1_f2: Optional[Tuple[float, float]] = None,
+        f3_f4: Optional[Tuple[float, float]] = None,
+        x_axis: Optional[str] = DEFAULTS.x_axis,
+        fill_black: Optional[str] = DEFAULTS.fill_black,
+        refresh_view: bool = True,
     ) -> None:
-        self.pos_ax_header = x_axis
+        self.x_ax_header = x_axis
 
         self.sgy = sgy
         self.spectrum_window.set_sgy(sgy)
@@ -132,47 +120,35 @@ class GraphWidget(pg.PlotWidget):
                                    fs=self.sgy.fs,
                                    copy=True)
 
-        # we put clearing after preprocessing to reduce time when user see nothing
         self.clear()
-        if self.vsp_view != vsp_view:
-            self.vsp_view = vsp_view
-            self.setup_axes()
-            need_to_refresh = True
-        else:
-            need_to_refresh = False
 
         num_sample, num_traces = self.sgy.shape
         t = np.arange(num_sample) * self.sgy.dt_ms
 
-        pos_max = num_traces + 1
-        time_max = t[-1]
-        x_max, y_max = self.resolve_postime2xy(pos_max, time_max)
+        self.getViewBox().setLimits(xMin=0, xMax=num_traces + 1, yMin=0, yMax=t[-1])
 
-        self.getViewBox().setLimits(xMin=0, xMax=x_max, yMin=0, yMax=y_max)
-
-        if refresh_view or need_to_refresh:
-            self.getPlotItem().setYRange(min=0, max=y_max)
-            self.getPlotItem().setXRange(min=0, max=x_max)
+        if refresh_view:
+            self.getPlotItem().setYRange(0, t[-1])
+            self.getPlotItem().setXRange(0, num_traces + 1)
 
         for idx in range(num_traces):
-            self._plot_trace_fast(trace=traces[:, idx], time=t, shift=idx + 1, fill_black=fill_black)
+            self._plot_trace_fast(traces[:, idx], t, idx + 1, fill_black)
 
-        self.pos_ax.showLabel()
+        self.x_ax.showLabel()
 
-    def _plot_trace_fast(self, trace: np.ndarray, time: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
-        connect = np.ones(len(time), dtype=np.int32)
+    def _plot_trace_fast(self, trace: np.ndarray, t: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
+        connect = np.ones(len(t), dtype=np.int32)
         connect[-1] = 0
 
         trace[0] = 0
         trace[-1] = 0
 
         shifted_trace = trace + shift
-
-        path_x, path_y = self.resolve_postime2xy(shifted_trace, time)
-        path = pg.arrayToQPath(x=path_x, y=path_y, connect=connect)
+        path = pg.arrayToQPath(shifted_trace, t, connect)
 
         item = pg.QtWidgets.QGraphicsPathItem(path)
         pen = QPen(Qt.black, 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
+        # pen.setWidthF(0.01)
         pen.setWidth(0.1)
         item.setPen(pen)
         item.setBrush(Qt.white)
@@ -184,16 +160,14 @@ class GraphWidget(pg.PlotWidget):
         else:
             sign = -1 if fill_black == "left" else 1
 
-            x, y = self.resolve_postime2xy(shift, time[0])
-            w, h = self.resolve_postime2xy(sign * 1.1 * max(np.abs(shifted_trace)), time[-1])
-
             rect = QPainterPath()
-            rect.addRect(x, y, w, h)
+            rect.addRect(shift, t[0], sign * 1.1 * max(np.abs(shifted_trace)), t[-1])
 
             patch = path.intersected(rect)
             item = pg.QtWidgets.QGraphicsPathItem(patch)
 
             pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
+            # pen.setWidthF(0.01)
             pen.setWidth(0.1)
             item.setPen(pen)
             item.setBrush(Qt.black)
@@ -201,17 +175,17 @@ class GraphWidget(pg.PlotWidget):
             self.traces_as_items.append(item)
 
     def replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
-        self.pos_ax.setLabel(self.pos_ax_header, **self.label_style)
-        previous_labels = AxisItem.tickStrings(self.pos_ax, *args, **kwargs)
+        self.x_ax.setLabel(self.x_ax_header, **self.label_style)
+        previous_labels = AxisItem.tickStrings(self.x_ax, *args, **kwargs)
 
-        if self.pos_ax_header is not None:
+        if self.x_ax_header is not None:
             labels_from_headers = []
             for v in previous_labels:
                 v = ast.literal_eval(v)
                 if v % 1 == 0:
                     v = int(v) - 1
                     if 0 <= v < self.sgy.num_traces:
-                        labels_from_headers.append(str(self.sgy.traces_headers[self.pos_ax_header].iloc[v]))
+                        labels_from_headers.append(str(self.sgy.traces_headers[self.x_ax_header].iloc[v]))
                     else:
                         labels_from_headers.append("")
                 else:
@@ -259,27 +233,56 @@ class GraphWidget(pg.PlotWidget):
         poly_brush = QColor(*region_poly_color)
 
         # Vertical lines
-        line_time = np.array([0, region_start_time])
+        line_t = np.array([0, region_start_time])
         for idx in np.arange(traces_per_gather + 0.5, num_traces - 1, traces_per_gather):
-            line_pos = np.array([idx, idx])
-            line_x, line_y = self.resolve_postime2xy(line_pos, line_time)
-            line_path = pg.arrayToQPath(line_x, line_y, np.ones(2, dtype=np.int32))
+            line_x = np.array([idx, idx])
+            line_path = pg.arrayToQPath(line_x, line_t, np.ones(2, dtype=np.int32))
             line_item = pg.QtWidgets.QGraphicsPathItem(line_path)
             line_item.setPen(contour_pen)
             self.processing_region_as_items.append(line_item)
             self.addItem(line_item)
 
-        # Transparent polygon on ignored part
-        poly_pos = np.array([-2, num_traces + 2, num_traces + 2, -2])
-        poly_time = np.array([region_start_time, region_start_time, sgy_end_time, sgy_end_time])
-        poly_x, poly_y = self.resolve_postime2xy(poly_pos, poly_time)
-        poly_path = pg.arrayToQPath(poly_x, poly_y, np.ones(4, dtype=np.int32))
+        # Transparent polygon on bottom part
+        poly_x = np.array([-2, num_traces + 2, num_traces + 2, -2])
+        poly_t = np.array([region_start_time, region_start_time, sgy_end_time, sgy_end_time])
+        poly_path = pg.arrayToQPath(poly_x, poly_t, np.ones(4, dtype=np.int32))
         poly_item = pg.QtWidgets.QGraphicsPathItem(poly_path)
         poly_item.setPen(contour_pen)
         poly_item.setBrush(poly_brush)
         self.processing_region_as_items.append(poly_item)
         self.addItem(poly_item)
 
+    def get_picks_as_item(
+        self,
+        picks_ms: Sequence[float],
+        color: TColor = DEFAULTS.picks_color,
+    ) -> pg.PlotCurveItem:
+        ids = np.arange(self.sgy.num_traces) + 1
+        line = pg.PlotCurveItem()
+        line.setData(ids, np.array(picks_ms))
+        pen = pg.mkPen(color=color, width=3)
+        line.setPen(pen)
+
+        return line
+
+    def plot_nn_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
+        self.remove_nn_picks()
+        self.is_picks_modified_manually = False
+
+        self.nn_picks_in_ms = np.array(picks_ms)
+        self.nn_picks_as_item = self.get_picks_as_item(self.nn_picks_in_ms, color)
+
+        self.addItem(self.nn_picks_as_item)
+
+    def plot_extra_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
+        picks = self.get_picks_as_item(picks_ms, color)
+
+        self.addItem(picks)
+        self.extra_picks_as_item_list.append(picks)
+
+    def closeEvent(self, e: QCloseEvent) -> None:
+        self.spectrum_window.close()
+        e.accept()
 
 
 class HighMemoryConsumption(Exception):
@@ -535,13 +538,7 @@ def export_image(
 
 
 if __name__ == "__main__":
-    from first_breaks.sgy.reader import SGY
     from first_breaks.utils.utils import download_demo_sgy
 
     demo_sgy = download_demo_sgy()
-    # export_image(demo_sgy, "demo_sgy.png")
-    app = QApplication([])
-    window = GraphWidget(background="w")
-    window.show()
-    window.plotseis(SGY(demo_sgy))
-    app.exec_()
+    export_image(demo_sgy, "demo_sgy.png")

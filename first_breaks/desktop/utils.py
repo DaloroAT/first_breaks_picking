@@ -1,15 +1,16 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent, QPointF, QPoint
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QDialog,
     QDialogButtonBox,
     QLabel,
     QVBoxLayout,
-    QWidget,
+    QWidget, QGraphicsSceneMouseEvent,
 )
+from pyqtgraph import ViewBox
 
 
 class MessageBox(QDialog):
@@ -127,3 +128,18 @@ def validate_mapping_setup_and_get_current_index(
         current_index = 0
 
     return current_index
+
+
+def get_mouse_position_in_scene_coords(
+    event_or_point: Union[QGraphicsSceneMouseEvent, QEvent, QPointF, QPoint],
+    viewbox: ViewBox
+) -> QPointF:
+    if isinstance(event_or_point, QGraphicsSceneMouseEvent):
+        point = event_or_point.scenePos()
+    elif isinstance(event_or_point, QEvent):
+        point = event_or_point.localPos()
+    elif isinstance(event_or_point, (QPointF, QPoint)):
+        point = event_or_point
+    else:
+        raise TypeError("Only events and points are available")
+    return viewbox.mapSceneToView(point)

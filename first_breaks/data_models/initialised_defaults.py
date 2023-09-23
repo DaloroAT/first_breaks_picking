@@ -7,7 +7,7 @@ from first_breaks.data_models.independent import (
     PicksColor,
     RegionContourColor,
     RegionContourWidth,
-    RegionPolyColor, F1F2, F3F4,
+    RegionPolyColor, F1F2, F3F4, VSPView,
 )
 
 
@@ -22,7 +22,8 @@ class Defaults(
     RegionContourWidth,
     XAxis,
     F1F2,
-    F3F4
+    F3F4,
+    VSPView
 ):
     pass
 

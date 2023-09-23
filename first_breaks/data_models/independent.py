@@ -81,3 +81,10 @@ class PicksValue(DefaultModel):
         ...,
         description="Values of first breaks",
     )
+
+
+class VSPView(DefaultModel):
+    vsp_view: bool = Field(
+        False,
+        description="Set the view when the vertical axis is the trace number and the horizontal axis is time"
+    )

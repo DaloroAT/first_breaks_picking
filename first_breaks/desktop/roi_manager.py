@@ -2,6 +2,7 @@ from PyQt5.QtCore import QObject, QEvent, QPointF, QPoint, Qt, pyqtSignal
 import pyqtgraph as pg
 from PyQt5.QtWidgets import QGraphicsSceneMouseEvent
 
+from first_breaks.desktop.utils import get_mouse_position_in_scene_coords
 from first_breaks.utils.utils import generate_color
 
 
@@ -34,21 +35,10 @@ class RoiManager(QObject):
 
         self.mouse_move_signal = pg.SignalProxy(self.viewbox.scene().sigMouseMoved, rateLimit=60, slot=self.mouse_moved)
 
-    def _get_mouse_position_in_scene_coords(self, event_or_point):
-        if isinstance(event_or_point, QGraphicsSceneMouseEvent):
-            point = event_or_point.scenePos()
-        elif isinstance(event_or_point, QEvent):
-            point = event_or_point.localPos()
-        elif isinstance(event_or_point, (QPointF, QPoint)):
-            point = event_or_point
-        else:
-            raise TypeError("Only events and points are available")
-        return self.viewbox.mapSceneToView(point)
-
     def mouse_moved(self, pos):
         pos = pos[0]
         if self.creating_roi:
-            self.update_roi_size(self._get_mouse_position_in_scene_coords(pos))
+            self.update_roi_size(get_mouse_position_in_scene_coords(pos, self.viewbox))
 
     def eventFilter(self, obj, event):
         # event_dict = {value: name for name, value in vars(QEvent).items() if isinstance(value, int)}
@@ -57,7 +47,7 @@ class RoiManager(QObject):
             if event.type() == QEvent.GraphicsSceneMousePress:
                 if event.button() == Qt.LeftButton and event.modifiers() == Qt.ShiftModifier:
                     self.creating_roi = True
-                    self.start_roi_creation(self._get_mouse_position_in_scene_coords(event))
+                    self.start_roi_creation(get_mouse_position_in_scene_coords(event, self.viewbox))
                     return True
                 self.select_roi()  # we want to accept other action by regular clicking, so we don't return True
             elif event.type() == QEvent.GraphicsSceneMouseRelease:
