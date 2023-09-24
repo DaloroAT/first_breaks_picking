@@ -21,7 +21,7 @@ from first_breaks.desktop.spectrum_window import SpectrumWindow
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.fourier_transforms import get_filtered_data
+from first_breaks.utils.utils import resolve_postime2xy as postime2xy, resolve_xy2postime as xy2postime
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -55,21 +55,15 @@ class GraphWidget(pg.PlotWidget):
         self.time_ax = None
         self.setup_axes()
 
-        self.spectrum_roi_manager = RoiManager(self.getViewBox())
+        self.spectrum_roi_manager = RoiManager(viewbox=self.getViewBox())
         self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
         self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
     def resolve_postime2xy(self, position: Any, time: Any):
-        if self.vsp_view:
-            return time, position
-        else:
-            return position, time
+        return postime2xy(vsp_view=self.vsp_view, position=position, time=time)
 
     def resolve_xy2postime(self, x: Any, y: Any):
-        if self.vsp_view:
-            return y, x
-        else:
-            return x, y
+        return xy2postime(vsp_view=self.vsp_view, x=x, y=y)
 
     def setup_axes(self):
         self.getPlotItem().invertX(self.invert_x)
@@ -601,7 +595,7 @@ def export_image(
 
 if __name__ == "__main__":
     from first_breaks.sgy.reader import SGY
-    from first_breaks.utils.utils import download_demo_sgy
+    from first_breaks.utils.utils import download_demo_sgy, resolve_postime2xy, resolve_xy2postime
 
     demo_sgy = download_demo_sgy()
     # export_image(demo_sgy, "demo_sgy.png")

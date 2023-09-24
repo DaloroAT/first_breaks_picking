@@ -167,3 +167,18 @@ cgen = _color_generator()
 def generate_color():
     return next(cgen)
 
+
+def resolve_postime2xy(vsp_view: bool, position: Any, time: Any) -> Tuple[Any, Any]:
+    if vsp_view:
+        return time, position
+    else:
+        return position, time
+
+
+def resolve_xy2postime(vsp_view: bool, x: Any, y: Any) -> Tuple[Any, Any]:
+    if vsp_view:
+        return y, x
+    else:
+        return x, y
+
+

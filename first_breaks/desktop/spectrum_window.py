@@ -6,11 +6,14 @@ from PyQt5.QtGui import QCloseEvent, QFont
 
 from first_breaks.desktop.roi_manager import RoiManager, get_rect_of_roi
 from first_breaks.utils.fourier_transforms import get_mean_amplitude_spectrum, build_amplitude_filter
+from first_breaks.utils.utils import resolve_xy2postime
 
 
 class SpectrumWindow(pg.PlotWidget):
-    def __init__(self, roi_manager: RoiManager, use_open_gl: bool = True, *args: Any, **kwargs: Any):
+    def __init__(self, roi_manager: RoiManager, vsp_view: bool = False, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
+        self.setWindowTitle("Amplitude spectrum")
+
         self.getPlotItem().disableAutoRange()
         self.setAntialiasing(True)
         self.getPlotItem().setClipToView(True)
@@ -33,6 +36,7 @@ class SpectrumWindow(pg.PlotWidget):
         self.sgy = None
         self.f1_f2 = None
         self.f3_f4 = None
+        self.vsp_view = vsp_view
 
         self.roi_manager.roi_added_signal.connect(self.add_placeholder_line)
         self.roi_manager.roi_clicked_signal.connect(lambda roi: self.show())
@@ -46,15 +50,21 @@ class SpectrumWindow(pg.PlotWidget):
         self.raise_()
         self.activateWindow()
 
+    def update_all(self):
+        for roi in self.roi2line.keys():
+            self.update_line(roi)
+
     def set_sgy(self, sgy):
         self.sgy = sgy
 
     def set_filter_params(self, f1_f2: Optional[Tuple[float, float]], f3_f4: Optional[Tuple[float, float]]):
         self.f1_f2 = f1_f2
         self.f3_f4 = f3_f4
+        self.update_all()
 
-        for roi in self.roi2line.keys():
-            self.update_line(roi)
+    def set_vsp_view(self, vsp_view: bool):
+        self.vsp_view = vsp_view
+        self.update_all()
 
     def add_placeholder_line(self, roi: pg.ROI):
         line = pg.PlotCurveItem([], [], pen=roi.currentPen)
@@ -65,6 +75,12 @@ class SpectrumWindow(pg.PlotWidget):
 
     def update_line(self, roi: pg.ROI):
         x_min, y_min, x_max, y_max = get_rect_of_roi(roi)
+        print(self.vsp_view, x_min, y_min, x_max, y_max)
+        x_min, y_min = resolve_xy2postime(self.vsp_view, x_min, y_min)
+        x_max, y_max = resolve_xy2postime(self.vsp_view, x_max, y_max)
+
+        print(self.vsp_view, x_min, y_min, x_max, y_max)
+
         x_min_idx = max(0, ceil(x_min - 1))
         x_max_idx = min(self.sgy.num_traces, floor(x_max - 1))
 
