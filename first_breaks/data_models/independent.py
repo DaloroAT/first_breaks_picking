@@ -1,7 +1,7 @@
 from typing import List, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
 TNormalize = Union[Literal["trace", "gather"], float, int, np.ndarray, None]
@@ -146,3 +146,7 @@ class InvertX(DefaultModel):
 
 class InvertY(DefaultModel):
     invert_y: bool = Field(True, description="If True, the Y-axis values will increase from top to bottom")
+
+
+class BatchSize(DefaultModel):
+    batch_size: int = Field(1, ge=1, description="Batch size")

@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QWidget,
+    QWidget, QSpinBox,
 )
 
 from first_breaks.const import HIGH_DPI
@@ -35,6 +35,7 @@ from first_breaks.desktop.byte_encode_unit_widget import QByteEncodeUnitWidget
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.radioset_widget import QRadioSetWidget
 from first_breaks.desktop.utils import QHSeparationLine, set_geometry
+from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -295,6 +296,84 @@ class PicksFromFileLine(QWidget):
         else:
             self.picks_from_file_widget.setEnabled(True)
             self.toggle_picks_from_file_signal.emit(False)
+
+
+class TracesPerGatherLine(QSpinBox, _Dictable):
+    changed_signal = pyqtSignal()
+
+    def __init__(self, traces_per_gather: int = DEFAULTS.traces_per_gather, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self.setRange(1, 99999999999)
+        self.setValue(traces_per_gather)
+
+    def dict(self) -> Dict[str, Any]:
+        return {"traces_per_gather": int(self.text())}
+
+
+class MaximumTimeLine(QLineEdit, _Dictable):
+    changed_signal = pyqtSignal()
+
+    def __init__(self, maximum_time: int = DEFAULTS.maximum_time, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        validator = QDoubleValidator()
+        validator.setBottom(0.0)
+        self.setValidator(validator)
+        self.setText(str(maximum_time))
+
+    def dict(self) -> Dict[str, Any]:
+        return {"maximum_time": float(self.text())}
+
+
+class DeviceBatchSizeLine(QWidget, _Dictable):
+    changed_signal = pyqtSignal()
+
+    def __init__(self, device: str = DEFAULTS.device, batch_size: int = DEFAULTS.batch_size):
+        super().__init__()
+        # super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=device)
+
+
+        self.layout = QHBoxLayout()
+        self.setLayout(self.layout)
+
+        if device == "cuda" and ONNX_CUDA_AVAILABLE:
+            current_value = device
+        else:
+            current_value = "cpu"
+
+
+        # self.layout = QHBoxLayout()
+        # self.setLayout(self.layout)
+        #
+        # self.widgets = [
+        #     ["VSP view", QCheckBox(), vsp_view, "vsp_view"],
+        #     ["Invert X", QCheckBox(), invert_x, "invert_x"],
+        #     ["Invert Y", QCheckBox(), invert_y, "invert_y"],
+        # ]
+        #
+        # for label, widget, init, _ in self.widgets:
+        #     label = QLabel(label)
+        #     widget.setChecked(init)
+        #     widget.stateChanged.connect(self.changed_signal.emit)
+        #     sub_layout = QHBoxLayout()
+        #     sub_layout.addWidget(widget, alignment=Qt.AlignRight)
+        #     sub_layout.addWidget(label, alignment=Qt.AlignLeft)
+        #     sub_layout.setSpacing(15)  # set spacing to 0
+        #     sub_layout.setContentsMargins(0, 0, 0, 0)
+        #     self.layout.addLayout(sub_layout)
+
+        self.device_
+
+
+# class DeviceLine(QComboBoxMapping, _Dictable):
+#     def __init__(self, device: str = DEFAULTS.device):
+#         super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=device)
+#         if not ONNX_CUDA_AVAILABLE:
+#             self.device.setEnabled(False)
+#
+#
+#     def dict(self) -> Dict[str, Any]:
+#         return {"device": self.value()}
+
 
 
 class VisualizationSettingsWidget(QDialog):

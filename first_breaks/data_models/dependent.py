@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Literal
 
 from pydantic import AfterValidator, Field, field_validator, model_validator
 from pydantic_core.core_schema import FieldValidationInfo
@@ -7,6 +7,7 @@ from pydantic_core.core_schema import FieldValidationInfo
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
 from first_breaks.sgy.headers import Headers, TraceHeaders
 from first_breaks.sgy.reader import SGY
+from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE
 
 TRACE_HEADER_NAMES = [v[1] for v in TraceHeaders().headers_schema]
 
@@ -51,3 +52,10 @@ class TraceHeaderParams(TraceBytePosition, Encoding):
 
 class SGYModel(DefaultModel):
     sgy: Union[SGY, str, Path, bytes] = Field(..., description="Source of SGY data")
+
+
+class Device(DefaultModel):
+    device: Literal["cpu", "cuda"] = Field(
+        "cuda" if ONNX_CUDA_AVAILABLE else "cpu",
+        description="Device to compute first breaks"
+    )

@@ -1,4 +1,4 @@
-from first_breaks.data_models.dependent import XAxis
+from first_breaks.data_models.dependent import XAxis, Device
 from first_breaks.data_models.independent import (
     Clip,
     FillBlack,
@@ -7,7 +7,7 @@ from first_breaks.data_models.independent import (
     PicksColor,
     RegionContourColor,
     RegionContourWidth,
-    RegionPolyColor, F1F2, F3F4, VSPView, InvertY, InvertX,
+    RegionPolyColor, F1F2, F3F4, VSPView, InvertY, InvertX, TracesPerGather, BatchSize, MaximumTime,
 )
 
 
@@ -25,7 +25,11 @@ class Defaults(
     F3F4,
     VSPView,
     InvertX,
-    InvertY
+    InvertY,
+    TracesPerGather,
+    Device,
+    BatchSize,
+    MaximumTime
 ):
     pass
 
