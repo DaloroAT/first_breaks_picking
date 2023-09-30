@@ -7,7 +7,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QTimer, pyqtSlot
-from PyQt5.QtGui import QColor, QFont, QPainterPath, QPen, QCloseEvent
+from PyQt5.QtGui import QCloseEvent, QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph import AxisItem
 from pyqtgraph.exporters import ImageExporter
@@ -21,7 +21,8 @@ from first_breaks.desktop.spectrum_window import SpectrumWindow
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import resolve_postime2xy as postime2xy, resolve_xy2postime as xy2postime
+from first_breaks.utils.utils import resolve_postime2xy as postime2xy
+from first_breaks.utils.utils import resolve_xy2postime as xy2postime
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -97,19 +98,19 @@ class GraphWidget(pg.PlotWidget):
         self.clear()
 
     def plotseis(
-            self,
-            sgy: SGY,
-            clip: float = DEFAULTS.clip,
-            gain: float = DEFAULTS.gain,
-            normalize: TNormalize = DEFAULTS.normalize,
-            f1_f2: Optional[Tuple[float, float]] = None,
-            f3_f4: Optional[Tuple[float, float]] = None,
-            x_axis: Optional[str] = DEFAULTS.x_axis,
-            fill_black: Optional[str] = DEFAULTS.fill_black,
-            vsp_view: bool = DEFAULTS.vsp_view,
-            refresh_view: bool = True,
-            invert_x: bool = DEFAULTS.invert_x,
-            invert_y: bool = DEFAULTS.invert_y
+        self,
+        sgy: SGY,
+        clip: float = DEFAULTS.clip,
+        gain: float = DEFAULTS.gain,
+        normalize: TNormalize = DEFAULTS.normalize,
+        f1_f2: Optional[Tuple[float, float]] = None,
+        f3_f4: Optional[Tuple[float, float]] = None,
+        x_axis: Optional[str] = DEFAULTS.x_axis,
+        fill_black: Optional[str] = DEFAULTS.fill_black,
+        vsp_view: bool = DEFAULTS.vsp_view,
+        refresh_view: bool = True,
+        invert_x: bool = DEFAULTS.invert_x,
+        invert_y: bool = DEFAULTS.invert_y,
     ) -> None:
         self.pos_ax_header = x_axis
 
@@ -119,20 +120,17 @@ class GraphWidget(pg.PlotWidget):
 
         traces = self.sgy.read()
 
-        traces = preprocess_gather(traces,
-                                   gain=gain,
-                                   clip=clip,
-                                   normalize=normalize,
-                                   f1_f2=f1_f2,
-                                   f3_f4=f3_f4,
-                                   fs=self.sgy.fs,
-                                   copy=True)
+        traces = preprocess_gather(
+            traces, gain=gain, clip=clip, normalize=normalize, f1_f2=f1_f2, f3_f4=f3_f4, fs=self.sgy.fs, copy=True
+        )
 
         # we put clearing after preprocessing to reduce time when user see nothing
         self.clear()
         # axes related checks
         if self.vsp_view != vsp_view:
             self.vsp_view = vsp_view
+            self.spectrum_roi_manager.change_rois_view()
+            self.spectrum_window.set_vsp_view(self.vsp_view)
             need_to_refresh = True
         else:
             need_to_refresh = False
@@ -459,8 +457,8 @@ class GraphExporter(GraphWidget):
 
         if task is not None and show_processing_region:
             self.plot_processing_region(
-                maximum_time=task.maximum_time_parsed,
-                traces_per_gather=task.traces_per_gather_parsed,
+                maximum_time=task.maximum_time_,
+                traces_per_gather=task.traces_per_gather,
                 region_contour_color=contour_color,
                 region_poly_color=poly_color,
                 region_contour_width=contour_width,
@@ -595,7 +593,11 @@ def export_image(
 
 if __name__ == "__main__":
     from first_breaks.sgy.reader import SGY
-    from first_breaks.utils.utils import download_demo_sgy, resolve_postime2xy, resolve_xy2postime
+    from first_breaks.utils.utils import (
+        download_demo_sgy,
+        resolve_postime2xy,
+        resolve_xy2postime,
+    )
 
     demo_sgy = download_demo_sgy()
     # export_image(demo_sgy, "demo_sgy.png")

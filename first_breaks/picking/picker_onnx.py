@@ -18,6 +18,10 @@ class IteratorOfTask:
     def __init__(self, task: Task):
         self.task = task
         self.idx2gather_ids = {idx: gather_ids for idx, gather_ids in enumerate(self.task.get_gathers_ids())}
+        if self.task.normalize == "gather" and len(self.idx2gather_ids) > 1:
+            raise AssertionError(
+                "'gather' normalization can't be used for picking when number of gathers > 1. Use 'gather' normalization it only for visualization"
+            )
 
     def __len__(self) -> int:
         return len(self.idx2gather_ids)
@@ -28,7 +32,15 @@ class IteratorOfTask:
             [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
         )
         gather = self.task.sgy.read_traces_by_ids(gather_ids)
-        gather = preprocess_gather(gather, self.task.gain, self.task.clip)
+        gather = preprocess_gather(
+            data=gather,
+            gain=self.task.gain,
+            clip=self.task.clip,
+            normalize=self.task.normalize,
+            f1_f2=self.task.f1_f2,
+            f3_f4=self.task.f3_f4,
+        )
+
         gather = amplitudes[None, :] * gather
         gather = gather[: self.task.maximum_time_sample, :]
 

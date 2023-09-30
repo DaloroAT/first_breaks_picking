@@ -1,10 +1,12 @@
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Optional, Union
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import AfterValidator, Field, field_validator, model_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
 from first_breaks.sgy.headers import Headers, TraceHeaders
+from first_breaks.sgy.reader import SGY
 
 TRACE_HEADER_NAMES = [v[1] for v in TraceHeaders().headers_schema]
 
@@ -18,7 +20,7 @@ class XAxis(DefaultModel):
             return v
         else:
             if v not in TRACE_HEADER_NAMES:
-                raise ValidationError(f"'x_axis' must be None or one of trace header name, got {v}")
+                raise ValueError(f"'x_axis' must be None or one of trace header name, got {v}")
             else:
                 return v
 
@@ -29,7 +31,7 @@ class Encoding(DefaultModel):
     @field_validator("encoding")
     def validate_encoding(cls, v: str) -> str:
         if v not in Headers().format2size.keys():
-            raise ValidationError(f"'encoding' must be one of {Headers().format2size.keys()}")
+            raise ValueError(f"'encoding' must be one of {Headers().format2size.keys()}")
         else:
             return v
 
@@ -40,8 +42,12 @@ class TraceHeaderParams(TraceBytePosition, Encoding):
         encoding = based_validation_info.data["encoding"]
         size = Headers.format2size[encoding]
         if v + size > 240:
-            raise ValidationError(
+            raise ValueError(
                 f"'byte_position' is greater than allowed for '{encoding}' encoding. "
                 f"Maximum allowed: {240 - size}, got {v}"
             )
         return v
+
+
+class SGYModel(DefaultModel):
+    sgy: Union[SGY, str, Path, bytes] = Field(..., description="Source of SGY data")

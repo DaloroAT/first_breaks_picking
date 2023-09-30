@@ -5,12 +5,17 @@ import pyqtgraph as pg
 from PyQt5.QtGui import QCloseEvent, QFont
 
 from first_breaks.desktop.roi_manager import RoiManager, get_rect_of_roi
-from first_breaks.utils.fourier_transforms import get_mean_amplitude_spectrum, build_amplitude_filter
+from first_breaks.utils.fourier_transforms import (
+    build_amplitude_filter,
+    get_mean_amplitude_spectrum,
+)
 from first_breaks.utils.utils import resolve_xy2postime
 
 
 class SpectrumWindow(pg.PlotWidget):
-    def __init__(self, roi_manager: RoiManager, vsp_view: bool = False, use_open_gl: bool = True, *args: Any, **kwargs: Any):
+    def __init__(
+        self, roi_manager: RoiManager, vsp_view: bool = False, use_open_gl: bool = True, *args: Any, **kwargs: Any
+    ):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
         self.setWindowTitle("Amplitude spectrum")
 
@@ -27,7 +32,7 @@ class SpectrumWindow(pg.PlotWidget):
         self.getPlotItem().getAxis("bottom").setLabel("Frequency, Hz", **self.label_style)
         self.getPlotItem().getAxis("left").setLabel("Amplitude", **self.label_style)
 
-        self.setBackground('w')
+        self.setBackground("w")
 
         self.roi_manager = roi_manager
         self.roi2line = {}
@@ -75,11 +80,8 @@ class SpectrumWindow(pg.PlotWidget):
 
     def update_line(self, roi: pg.ROI):
         x_min, y_min, x_max, y_max = get_rect_of_roi(roi)
-        print(self.vsp_view, x_min, y_min, x_max, y_max)
         x_min, y_min = resolve_xy2postime(self.vsp_view, x_min, y_min)
         x_max, y_max = resolve_xy2postime(self.vsp_view, x_max, y_max)
-
-        print(self.vsp_view, x_min, y_min, x_max, y_max)
 
         x_min_idx = max(0, ceil(x_min - 1))
         x_max_idx = min(self.sgy.num_traces, floor(x_max - 1))
@@ -87,9 +89,9 @@ class SpectrumWindow(pg.PlotWidget):
         y_min_idx = max(0, ceil(self.sgy.ms2index(y_min)))
         y_max_idx = min(self.sgy.num_samples, ceil(self.sgy.ms2index(y_max)))
         if x_max_idx >= x_min_idx and y_max_idx > y_min_idx:
-            traces = self.sgy.read_traces_by_ids(list(range(x_min_idx, x_max_idx + 1)),
-                                                 min_sample=y_min_idx,
-                                                 max_sample=y_max_idx)
+            traces = self.sgy.read_traces_by_ids(
+                list(range(x_min_idx, x_max_idx + 1)), min_sample=y_min_idx, max_sample=y_max_idx
+            )
 
             frequencies, spectrum = get_mean_amplitude_spectrum(traces, fs=self.sgy.fs)
             amp_filter = build_amplitude_filter(frequencies, f1_f2=self.f1_f2, f3_f4=self.f3_f4)

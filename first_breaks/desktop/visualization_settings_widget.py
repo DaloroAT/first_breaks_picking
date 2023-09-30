@@ -11,17 +11,23 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit, QWidget,
+    QLineEdit,
+    QWidget,
 )
 
 from first_breaks.const import HIGH_DPI
 from first_breaks.data_models.dependent import TraceHeaderParams, XAxis
 from first_breaks.data_models.independent import (
+    F1F2,
+    F3F4,
     Clip,
     FillBlack,
     Gain,
+    InvertX,
+    InvertY,
     Normalize,
-    PicksUnit, F1F2, F3F4, VSPView, InvertX, InvertY,
+    PicksUnit,
+    VSPView,
 )
 from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.bandfilter_widget import QBandFilterWidget
@@ -139,9 +145,9 @@ class ClipLine(QLineEdit, _Dictable):
 
 class NormalizationLine(QComboBoxMapping, _Dictable):
     def __init__(self, normalize: Optional[str] = DEFAULTS.normalize):
-        super().__init__({0: ["Individual traces", "trace"],
-                          1: ["Gather", "gather"],
-                          2: ["Raw", None]}, current_value=normalize)
+        super().__init__(
+            {0: ["Individual traces", "trace"], 1: ["Gather", "gather"], 2: ["Raw", None]}, current_value=normalize
+        )
 
     def dict(self) -> Dict[str, Any]:
         return {"normalize": self.value()}
@@ -150,9 +156,11 @@ class NormalizationLine(QComboBoxMapping, _Dictable):
 class BandfilterLine(QWidget, _Dictable):
     changed_signal = pyqtSignal()
 
-    def __init__(self,
-                 f1_f2: Optional[Tuple[float, float]] = DEFAULTS.f1_f2,
-                 f3_f4: Optional[Tuple[float, float]] = DEFAULTS.f3_f4):
+    def __init__(
+        self,
+        f1_f2: Optional[Tuple[float, float]] = DEFAULTS.f1_f2,
+        f3_f4: Optional[Tuple[float, float]] = DEFAULTS.f3_f4,
+    ):
         super().__init__()
         self.bandfilter_toogle = QCheckBox()
         self.bandfilter_toogle.setCheckState(False)
@@ -207,9 +215,8 @@ class BandfilterLine(QWidget, _Dictable):
 class WigglesLine(QRadioSetWidget, _Dictable):
     def __init__(self, fill_black: Optional[str] = DEFAULTS.fill_black):
         super().__init__(
-            {0: ["Left", "left"], 1: ["Right", "right"], 2: ["No fill", None]},
-            current_value=fill_black,
-            margins=0)
+            {0: ["Left", "left"], 1: ["Right", "right"], 2: ["No fill", None]}, current_value=fill_black, margins=0
+        )
 
     def dict(self) -> Dict[str, Any]:
         return {"fill_black": self.value()}
@@ -227,19 +234,19 @@ class OrientationLine(QWidget, _Dictable):
     changed_signal = pyqtSignal()
 
     def __init__(
-            self,
-            vsp_view: bool = DEFAULTS.vsp_view,
-            invert_x: bool = DEFAULTS.invert_x,
-            invert_y: bool = DEFAULTS.invert_y):
+        self, vsp_view: bool = DEFAULTS.vsp_view, invert_x: bool = DEFAULTS.invert_x, invert_y: bool = DEFAULTS.invert_y
+    ):
         super().__init__()
 
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
 
-        self.widgets = [["VSP view", QCheckBox(), vsp_view, "vsp_view"],
-                        ["Invert X", QCheckBox(), invert_x, "invert_x"],
-                        ["Invert Y", QCheckBox(), invert_y, "invert_y"]]
-        # QCheckBox().isChecked()
+        self.widgets = [
+            ["VSP view", QCheckBox(), vsp_view, "vsp_view"],
+            ["Invert X", QCheckBox(), invert_x, "invert_x"],
+            ["Invert Y", QCheckBox(), invert_y, "invert_y"],
+        ]
+
         for label, widget, init, _ in self.widgets:
             label = QLabel(label)
             widget.setChecked(init)
@@ -247,7 +254,7 @@ class OrientationLine(QWidget, _Dictable):
             sub_layout = QHBoxLayout()
             sub_layout.addWidget(widget, alignment=Qt.AlignRight)
             sub_layout.addWidget(label, alignment=Qt.AlignLeft)
-            sub_layout.setSpacing(5)  # set spacing to 0
+            sub_layout.setSpacing(15)  # set spacing to 0
             sub_layout.setContentsMargins(0, 0, 0, 0)
             self.layout.addLayout(sub_layout)
 
@@ -259,11 +266,7 @@ class PicksFromFileLine(QWidget):
     toggle_picks_from_file_signal = pyqtSignal(bool)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
 
-    def __init__(self,
-                 byte_position: int = 1,
-                 first_byte: int = 1,
-                 encoding: str = "I",
-                 picks_unit: str = "mcs"):
+    def __init__(self, byte_position: int = 1, first_byte: int = 1, encoding: str = "I", picks_unit: str = "mcs"):
 
         super().__init__()
         self.picks_from_file_toggle = QCheckBox()
@@ -315,26 +318,27 @@ class VisualizationSettingsWidget(QDialog):
         hide_on_close: bool = False,
         vsp_view: bool = False,
         invert_x: bool = False,
-        invert_y: bool = True
+        invert_y: bool = True,
     ):
         super().__init__()
         self.hide_on_close = hide_on_close
 
         self.setWindowTitle("Visualization settings")
         self.setWindowModality(Qt.ApplicationModal)
-        set_geometry(self, width_rel=0.35, height_rel=0.35, fix_size=True, centralize=True)
+        set_geometry(self, width_rel=0.35, height_rel=0.4, fix_size=False, centralize=True)
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
-        self._plotseis_inputs = [["Gain", GainLine(gain=gain), 0],
-                                 ["Clip", ClipLine(clip=clip), 1],
-                                 ["Normalization", NormalizationLine(normalize=normalize), 2],
-                                 ["Band filter", BandfilterLine(f1_f2=f1_f2, f3_f4=f3_f4), 3],
-                                 ["Filling wiggles with color", WigglesLine(fill_black=fill_black), 5],
-                                 ["X Axis", XAxisLine(x_axis=x_axis), 6],
-                                 ["Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 7]
-                                 ]
+        self._plotseis_inputs = [
+            ["Gain", GainLine(gain=gain), 0],
+            ["Clip", ClipLine(clip=clip), 1],
+            ["Normalization", NormalizationLine(normalize=normalize), 2],
+            ["Band filter", BandfilterLine(f1_f2=f1_f2, f3_f4=f3_f4), 3],
+            ["Filling wiggles with color", WigglesLine(fill_black=fill_black), 5],
+            ["X Axis", XAxisLine(x_axis=x_axis), 6],
+            ["Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 7],
+        ]
 
         for label, widget, line in self._plotseis_inputs:
             label = QLabel(label)
@@ -342,20 +346,19 @@ class VisualizationSettingsWidget(QDialog):
             self.layout.addWidget(label, line, 0)
             self.layout.addWidget(widget, line, 1)
 
-        self._separators = [[QHSeparationLine(), 4],
-                            [QHSeparationLine(), 8]]
+        self._separators = [[QHSeparationLine(), 4], [QHSeparationLine(), 8]]
 
         for sep, line in self._separators:
             self.layout.addWidget(sep, line, 0, 1, 2)
 
         picks_from_file_label = QLabel("Show picks from file")
         picks_from_file_widget = PicksFromFileLine(
-            byte_position=byte_position,
-            first_byte=first_byte,
-            encoding=encoding,
-            picks_unit=picks_unit)
+            byte_position=byte_position, first_byte=first_byte, encoding=encoding, picks_unit=picks_unit
+        )
         picks_from_file_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file_signal)
-        picks_from_file_widget.export_picks_from_file_settings_signal.connect(self.export_picks_from_file_settings_signal)
+        picks_from_file_widget.export_picks_from_file_settings_signal.connect(
+            self.export_picks_from_file_settings_signal
+        )
         self.layout.addWidget(picks_from_file_label, 9, 0)
         self.layout.addWidget(picks_from_file_widget, 9, 1)
 

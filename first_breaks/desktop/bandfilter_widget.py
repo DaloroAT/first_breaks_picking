@@ -2,18 +2,34 @@ from typing import Any, Optional
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QWidget, QLineEdit, QCheckBox
+from PyQt5.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QWidget,
+)
 
-from first_breaks.desktop.tooltip_widget import TextToolTip, ShakeToolTip, HighlightToolTip
+from first_breaks.desktop.tooltip_widget import (
+    HighlightToolTip,
+    ShakeToolTip,
+    TextToolTip,
+)
 
 
 class QBandFilterWidget(QWidget):
-    def __init__(self,
-                 f1: Optional[float] = None,
-                 f2: Optional[float] = None,
-                 f3: Optional[float] = None,
-                 f4: Optional[float] = None,
-                 margins: Optional[int] = None, debug: bool = False, *args: Any, **kwargs: Any):
+    def __init__(
+        self,
+        f1: Optional[float] = None,
+        f2: Optional[float] = None,
+        f3: Optional[float] = None,
+        f4: Optional[float] = None,
+        margins: Optional[int] = None,
+        debug: bool = False,
+        *args: Any,
+        **kwargs: Any,
+    ):
         super().__init__(*args, **kwargs)
 
         self.layout = QHBoxLayout()
@@ -64,20 +80,24 @@ class QBandFilterWidget(QWidget):
 
         for idx1, idx2 in [[1, 2], [3, 4]]:
             if (freqs[idx1] is None and freqs[idx2] is not None) or (freqs[idx1] is not None and freqs[idx2] is None):
-                text = (f"Parameters {self._get_freq_str(idx1)} and {self._get_freq_str(idx2)} must "
-                        f"either be both specified or both empty")
+                text = (
+                    f"Parameters {self._get_freq_str(idx1)} and {self._get_freq_str(idx2)} must "
+                    f"either be both specified or both empty"
+                )
                 recommendation_tips.append(text)
                 problematic_widgets.add(self.freq_widgets[idx1])
                 problematic_widgets.add(self.freq_widgets[idx2])
-            elif (freqs[idx1] is not None and freqs[idx2] is not None) and (freqs[idx1] > freqs[idx2]):
+            elif (freqs[idx1] is not None and freqs[idx2] is not None) and (freqs[idx1] >= freqs[idx2]):
                 text = f"{self._get_freq_str(idx2)} must be greater than or equal to {self._get_freq_str(idx1)}"
                 recommendation_tips.append(text)
                 problematic_widgets.add(self.freq_widgets[idx1])
                 problematic_widgets.add(self.freq_widgets[idx2])
 
-        if (freqs[2] is not None and freqs[3] is not None) and (freqs[2] > freqs[3]):
-            text = (f"{self._get_freq_str(3)} must be greater than or equal to {self._get_freq_str(2)} if both of "
-                    f"them are not empty")
+        if (freqs[2] is not None and freqs[3] is not None) and (freqs[2] >= freqs[3]):
+            text = (
+                f"{self._get_freq_str(3)} must be greater than or equal to {self._get_freq_str(2)} if both of "
+                f"them are not empty"
+            )
             recommendation_tips.append(text)
             problematic_widgets.add(self.freq_widgets[2])
             problematic_widgets.add(self.freq_widgets[3])

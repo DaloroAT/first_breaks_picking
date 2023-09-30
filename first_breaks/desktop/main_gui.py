@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
 
         try:
             task_kwargs = remove_unused_kwargs(self.settings, Task)
-            task = Task(self.sgy, **task_kwargs)
+            task = Task(sgy=self.sgy, **task_kwargs)
             change_settings_kwargs = remove_unused_kwargs(self.settings, self.picker_class.change_settings)
             self.picker.change_settings(**change_settings_kwargs)
             self.process_task(task)
@@ -319,9 +319,7 @@ class MainWindow(QMainWindow):
 
     def show_processing_region(self) -> None:
         if self.last_task and self.last_task.success:
-            self.graph.plot_processing_region(
-                self.last_task.traces_per_gather_parsed, self.last_task.maximum_time_parsed
-            )
+            self.graph.plot_processing_region(self.last_task.traces_per_gather, self.last_task.maximum_time)
 
     def hide_processing_region(self) -> None:
         if self.last_task and self.last_task.success:

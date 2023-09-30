@@ -5,9 +5,29 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from pydantic import model_validator
 
+from first_breaks.data_models.dependent import SGYModel
+from first_breaks.data_models.independent import (
+    F1F2,
+    F3F4,
+    Clip,
+    ConfidenceOptional,
+    DefaultModel,
+    Gain,
+    MaximumTime,
+    ModelHashOptional,
+    Normalize,
+    PicksInSamplesOptional,
+    TracesPerGather,
+    TracesToInverse,
+)
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import chunk_iterable, multiply_iterable_by
+from first_breaks.utils.utils import (
+    chunk_iterable,
+    download_demo_sgy,
+    multiply_iterable_by,
+)
 
 MINIMUM_TRACES_PER_GATHER = 2
 
@@ -16,88 +36,49 @@ class ProcessingParametersException(Exception):
     pass
 
 
-class Task:
-    def __init__(
-        self,
-        sgy: Union[SGY, str, Path, bytes],
-        traces_per_gather: int = 24,
-        maximum_time: float = 0.0,
-        traces_to_inverse: Sequence[int] = (),
-        gain: float = 1,
-        clip: float = 1,
-    ) -> None:
-        self.sgy = sgy if isinstance(sgy, SGY) else SGY(sgy)
+class Success(DefaultModel):
+    success: Optional[bool] = None
 
-        self.traces_per_gather = traces_per_gather
-        self.maximum_time = maximum_time
-        self.traces_to_inverse = traces_to_inverse
-        self.gain = gain
-        self.clip = clip
 
-        self.traces_per_gather_parsed = self.validate_and_parse_traces_per_gather(traces_per_gather)
-        self.maximum_time_parsed = self.validate_and_parse_maximum_time(maximum_time)
-        self.maximum_time_sample = self.sgy.ms2index(self.maximum_time_parsed)
-        self.traces_to_inverse_parsed = self.validate_and_parse_traces_to_inverse(traces_to_inverse)
-        self.gain_parsed = self.validate_and_parse_gain(gain)
-        self.clip_parsed = self.validate_and_parse_clip(clip)
+class ErrorMessage(DefaultModel):
+    error_message: Optional[str] = None
 
-        self.picks_in_samples: Optional[Union[Sequence[float], np.ndarray]] = None
-        self.confidence: Optional[Union[Sequence[float], np.ndarray]] = None
-        self.success: Optional[bool] = None
-        self.error_message: Optional[str] = None
-        self.model_hash: Optional[str] = None
 
-    @classmethod
-    def validate_traces_per_gather(cls, traces_per_gather: int) -> None:
-        if not isinstance(traces_per_gather, int):
-            raise ProcessingParametersException("`traces_per_gather` must be integer")
-        if traces_per_gather < MINIMUM_TRACES_PER_GATHER:
-            raise ProcessingParametersException(
-                f"`traces_per_gather` must be greater or " f"equal to {MINIMUM_TRACES_PER_GATHER}"
-            )
+class Task(
+    SGYModel,
+    TracesPerGather,
+    MaximumTime,
+    TracesToInverse,
+    F1F2,
+    F3F4,
+    Gain,
+    Clip,
+    Normalize,
+    PicksInSamplesOptional,
+    ConfidenceOptional,
+    ErrorMessage,
+    Success,
+    ModelHashOptional,
+):
+    @property
+    def maximum_time_sample(self) -> int:
+        return self.sgy.ms2index(self.maximum_time)
 
-    @classmethod
-    def validate_maximum_time(cls, maximum_time: float) -> None:
-        if not isinstance(maximum_time, (int, float)):
-            raise ProcessingParametersException("`maximum_time` must be real")
+    @model_validator(mode="after")
+    def align_parameters(self) -> "Task":
+        prev_assignment = self.model_config.get("validate_assignment", None)
+        self.model_config["validate_assignment"] = False
 
-        if maximum_time < 0.0:
-            raise ProcessingParametersException("`maximum_time` must be positive or equal to 0")
+        # sgy
+        self.sgy = self.sgy if isinstance(self.sgy, SGY) else SGY(self.sgy)
 
-    @classmethod
-    def validate_traces_to_inverse(cls, traces_to_inverse: Sequence[int]) -> None:
-        if not isinstance(traces_to_inverse, (tuple, list)):
-            raise ProcessingParametersException("`traces_to_inverse` must be tuple or list")
+        # traces_per_gather
+        self.traces_per_gather = min(self.sgy.num_traces, self.traces_per_gather)
 
-        if not all(isinstance(val, int) for val in traces_to_inverse):
-            raise ProcessingParametersException("Elements of `traces_to_inverse` must be int")
-
-        if not all(val >= 1 for val in traces_to_inverse):
-            raise ProcessingParametersException("Elements of `traces_to_inverse` must be greater or equal to 1")
-
-    @classmethod
-    def validate_gain(cls, gain: float) -> None:
-        if not isinstance(gain, (int, float)):
-            raise ProcessingParametersException("`gain` must be real")
-        if gain == 0:
-            raise ProcessingParametersException("`gain` must not be zero")
-
-    @classmethod
-    def validate_clip(cls, clip: float) -> None:
-        if not isinstance(clip, (int, float)):
-            raise ProcessingParametersException("`clip` must be real")
-        if clip <= 0:
-            raise ProcessingParametersException("`clip` must be positive")
-
-    def validate_and_parse_traces_per_gather(self, traces_per_gather: int) -> int:
-        self.validate_traces_per_gather(traces_per_gather)
-        ntr = self.sgy.shape[1]
-        return min(ntr, traces_per_gather)
-
-    def validate_and_parse_maximum_time(self, maximum_time: float) -> float:
-        self.validate_maximum_time(maximum_time)
+        # maximum_time
+        maximum_time = self.maximum_time
         if maximum_time == 0.0:
-            maximum_time = self.sgy.max_time_ms
+            self.maximum_time = self.sgy.max_time_ms
         else:
             index = self.sgy.ms2index(maximum_time)
             if index == 0:
@@ -105,30 +86,20 @@ class Task:
                     "The maximum time is not zero and is less than the duration of one sample, "
                     "so the maximum time will be equal to the length of the trace."
                 )
-                maximum_time = self.sgy.max_time_ms
+                self.maximum_time = self.sgy.max_time_ms
             else:
-                maximum_time = min(maximum_time, self.sgy.max_time_ms)
-        return maximum_time
+                self.maximum_time = min(maximum_time, self.sgy.max_time_ms)
 
-    def validate_and_parse_traces_to_inverse(self, traces_to_inverse: Sequence[int]) -> Sequence[int]:
-        self.validate_traces_to_inverse(traces_to_inverse)
+        # traces_to_inverse
         # to python indices
-        traces_to_inverse = [tr - 1 for tr in traces_to_inverse if tr <= self.traces_per_gather_parsed]
-        traces_to_inverse = sorted(set(traces_to_inverse))
-        return traces_to_inverse
+        traces_to_inverse = [tr - 1 for tr in self.traces_to_inverse if tr <= self.traces_per_gather]
+        self.traces_to_inverse = sorted(set(traces_to_inverse))
 
-    @classmethod
-    def validate_and_parse_gain(cls, gain: float) -> float:
-        cls.validate_gain(gain)
-        return float(gain)
-
-    @classmethod
-    def validate_and_parse_clip(cls, clip: float) -> float:
-        cls.validate_clip(clip)
-        return float(clip)
+        self.model_config["validate_assignment"] = prev_assignment
+        return self
 
     def get_gathers_ids(self) -> List[Tuple[int]]:
-        return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather_parsed))  # type: ignore
+        return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather))  # type: ignore
 
     @property
     def num_gathers(self) -> int:
@@ -137,14 +108,16 @@ class Task:
     @property
     def picks_in_ms(self) -> Optional[List[float]]:
         if self.picks_in_samples is not None:
-            return multiply_iterable_by(self.picks_in_samples, self.sgy.dt_ms)  # type: ignore
+            picks_in_samples_list = self._check_and_convert_picks()
+            return multiply_iterable_by(picks_in_samples_list, self.sgy.dt_ms)  # type: ignore
         else:
             return None
 
     @property
     def picks_in_mcs(self) -> Optional[List[int]]:
         if self.picks_in_samples is not None:
-            return multiply_iterable_by(self.picks_in_samples, self.sgy.dt_mcs, cast_to=int)  # type: ignore
+            picks_in_samples_list = self._check_and_convert_picks()
+            return multiply_iterable_by(picks_in_samples_list, self.sgy.dt_mcs, cast_to=int)  # type: ignore
         else:
             return None
 
@@ -182,11 +155,11 @@ class Task:
             "dt_ms": self.sgy.dt_ms,
             "is_picked_with_model": bool(self.success),
             "model_hash": self.model_hash,
-            "traces_per_gather": self.traces_per_gather_parsed,
-            "maximum_time": self.maximum_time_parsed,
-            "traces_to_inverse": self.traces_to_inverse_parsed,
-            "gain": self.gain_parsed,
-            "clip": self.clip_parsed,
+            "traces_per_gather": self.traces_per_gather,
+            "maximum_time": self.maximum_time,
+            "traces_to_inverse": self.traces_to_inverse,
+            "gain": self.gain,
+            "clip": self.clip,
         }
         data = {
             "trace": list(range(1, len(picks_in_samples) + 1)),
