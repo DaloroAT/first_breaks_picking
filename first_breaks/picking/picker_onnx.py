@@ -7,7 +7,7 @@ import onnxruntime as ort
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, ONNX_DEVICE2PROVIDER
+from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, ONNX_DEVICE2PROVIDER, get_recommended_device
 from first_breaks.utils.utils import calc_hash, chunk_iterable, download_model_onnx
 
 
@@ -66,7 +66,7 @@ class PickerONNX(IPicker):
         self,
         model_path: Optional[Union[str, Path]] = None,
         show_progressbar: bool = True,
-        device: str = "cuda" if ONNX_CUDA_AVAILABLE else "cpu",
+        device: str = get_recommended_device(),
         batch_size: int = 1,
     ):
         super().__init__(show_progressbar=show_progressbar)

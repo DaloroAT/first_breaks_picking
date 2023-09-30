@@ -12,11 +12,11 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QWidget, QSpinBox,
+    QWidget, QSpinBox, QDialogButtonBox, QPushButton,
 )
 
 from first_breaks.const import HIGH_DPI
-from first_breaks.data_models.dependent import TraceHeaderParams, XAxis
+from first_breaks.data_models.dependent import TraceHeaderParams, XAxis, Device
 from first_breaks.data_models.independent import (
     F1F2,
     F3F4,
@@ -27,7 +27,7 @@ from first_breaks.data_models.independent import (
     InvertY,
     Normalize,
     PicksUnit,
-    VSPView,
+    VSPView, MaximumTime, TracesPerGather,
 )
 from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.bandfilter_widget import QBandFilterWidget
@@ -35,7 +35,7 @@ from first_breaks.desktop.byte_encode_unit_widget import QByteEncodeUnitWidget
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.radioset_widget import QRadioSetWidget
 from first_breaks.desktop.utils import QHSeparationLine, set_geometry
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE
+from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, get_recommended_device
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -72,6 +72,10 @@ X_AXIS_MAPPING = build_x_axis_mapping()
 
 
 class PlotseisSettings(Gain, Clip, Normalize, XAxis, FillBlack, F1F2, F3F4, VSPView, InvertX, InvertY):
+    pass
+
+
+class PickingSettings(Gain, Clip, Normalize, F1F2, F3F4, MaximumTime, TracesPerGather, Device):
     pass
 
 
@@ -255,7 +259,7 @@ class OrientationLine(QWidget, _Dictable):
             sub_layout = QHBoxLayout()
             sub_layout.addWidget(widget, alignment=Qt.AlignRight)
             sub_layout.addWidget(label, alignment=Qt.AlignLeft)
-            sub_layout.setSpacing(15)  # set spacing to 0
+            sub_layout.setSpacing(15)
             sub_layout.setContentsMargins(0, 0, 0, 0)
             self.layout.addLayout(sub_layout)
 
@@ -303,7 +307,7 @@ class TracesPerGatherLine(QSpinBox, _Dictable):
 
     def __init__(self, traces_per_gather: int = DEFAULTS.traces_per_gather, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        self.setRange(1, 99999999999)
+        self.setMinimum(1)
         self.setValue(traces_per_gather)
 
     def dict(self) -> Dict[str, Any]:
@@ -313,7 +317,7 @@ class TracesPerGatherLine(QSpinBox, _Dictable):
 class MaximumTimeLine(QLineEdit, _Dictable):
     changed_signal = pyqtSignal()
 
-    def __init__(self, maximum_time: int = DEFAULTS.maximum_time, *args: Any, **kwargs: Any):
+    def __init__(self, maximum_time: float = DEFAULTS.maximum_time, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         validator = QDoubleValidator()
         validator.setBottom(0.0)
@@ -324,62 +328,26 @@ class MaximumTimeLine(QLineEdit, _Dictable):
         return {"maximum_time": float(self.text())}
 
 
-class DeviceBatchSizeLine(QWidget, _Dictable):
-    changed_signal = pyqtSignal()
-
-    def __init__(self, device: str = DEFAULTS.device, batch_size: int = DEFAULTS.batch_size):
-        super().__init__()
-        # super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=device)
-
-
-        self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
-
+class DeviceLine(QComboBoxMapping, _Dictable):
+    def __init__(self, device: str = DEFAULTS.device):
         if device == "cuda" and ONNX_CUDA_AVAILABLE:
             current_value = device
         else:
             current_value = "cpu"
+        super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=current_value)
+        if not ONNX_CUDA_AVAILABLE:
+            self.device.setEnabled(False)
 
-
-        # self.layout = QHBoxLayout()
-        # self.setLayout(self.layout)
-        #
-        # self.widgets = [
-        #     ["VSP view", QCheckBox(), vsp_view, "vsp_view"],
-        #     ["Invert X", QCheckBox(), invert_x, "invert_x"],
-        #     ["Invert Y", QCheckBox(), invert_y, "invert_y"],
-        # ]
-        #
-        # for label, widget, init, _ in self.widgets:
-        #     label = QLabel(label)
-        #     widget.setChecked(init)
-        #     widget.stateChanged.connect(self.changed_signal.emit)
-        #     sub_layout = QHBoxLayout()
-        #     sub_layout.addWidget(widget, alignment=Qt.AlignRight)
-        #     sub_layout.addWidget(label, alignment=Qt.AlignLeft)
-        #     sub_layout.setSpacing(15)  # set spacing to 0
-        #     sub_layout.setContentsMargins(0, 0, 0, 0)
-        #     self.layout.addLayout(sub_layout)
-
-        self.device_
-
-
-# class DeviceLine(QComboBoxMapping, _Dictable):
-#     def __init__(self, device: str = DEFAULTS.device):
-#         super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=device)
-#         if not ONNX_CUDA_AVAILABLE:
-#             self.device.setEnabled(False)
-#
-#
-#     def dict(self) -> Dict[str, Any]:
-#         return {"device": self.value()}
-
+    def dict(self) -> Dict[str, Any]:
+        return {"device": self.value()}
 
 
 class VisualizationSettingsWidget(QDialog):
     export_plotseis_settings_signal = pyqtSignal(PlotseisSettings)
+    export_picking_settings_signal = pyqtSignal(PickingSettings)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
     toggle_picks_from_file_signal = pyqtSignal(bool)
+    stop_picking_signal = pyqtSignal()
 
     def __init__(
         self,
@@ -398,6 +366,9 @@ class VisualizationSettingsWidget(QDialog):
         vsp_view: bool = False,
         invert_x: bool = False,
         invert_y: bool = True,
+        traces_per_gather: int = 12,
+        maximum_time: float = 0.0,
+        device: str = get_recommended_device(),
     ):
         super().__init__()
         self.hide_on_close = hide_on_close
@@ -409,26 +380,33 @@ class VisualizationSettingsWidget(QDialog):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
-        self._plotseis_inputs = [
-            ["Gain", GainLine(gain=gain), 0],
-            ["Clip", ClipLine(clip=clip), 1],
-            ["Normalization", NormalizationLine(normalize=normalize), 2],
-            ["Band filter", BandfilterLine(f1_f2=f1_f2, f3_f4=f3_f4), 3],
-            ["Filling wiggles with color", WigglesLine(fill_black=fill_black), 5],
-            ["X Axis", XAxisLine(x_axis=x_axis), 6],
-            ["Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 7],
-        ]
-
-        for label, widget, line in self._plotseis_inputs:
-            label = QLabel(label)
-            widget.changed_signal.connect(self.export_plotseis_settings)
-            self.layout.addWidget(label, line, 0)
-            self.layout.addWidget(widget, line, 1)
-
-        self._separators = [[QHSeparationLine(), 4], [QHSeparationLine(), 8]]
+        self._separators = [[QHSeparationLine("Processing"), 0],
+                            [QHSeparationLine("View"), 5],
+                            [QHSeparationLine("External"), 9],
+                            [QHSeparationLine("NN picking"), 11]]
 
         for sep, line in self._separators:
             self.layout.addWidget(sep, line, 0, 1, 2)
+
+        self._inputs = [
+            ["Gain", GainLine(gain=gain), 1, True],
+            ["Clip", ClipLine(clip=clip), 2, True],
+            ["Normalization", NormalizationLine(normalize=normalize), 3, True],
+            ["Band filter", BandfilterLine(f1_f2=f1_f2, f3_f4=f3_f4), 4, True],
+            ["Filling wiggles with color", WigglesLine(fill_black=fill_black), 6, True],
+            ["X Axis", XAxisLine(x_axis=x_axis), 7, True],
+            ["Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 8, True],
+            ["Traces per gather", TracesPerGatherLine(traces_per_gather=traces_per_gather), 12, False],
+            ["Maximum time", MaximumTimeLine(maximum_time=maximum_time), 13, False],
+            ["Runtime", DeviceLine(device=device), 14, False]
+        ]
+
+        for label, widget, line, is_plotseis_param in self._inputs:
+            label = QLabel(label)
+            if is_plotseis_param:
+                widget.changed_signal.connect(self.export_plotseis_settings)
+            self.layout.addWidget(label, line, 0)
+            self.layout.addWidget(widget, line, 1)
 
         picks_from_file_label = QLabel("Show picks from file")
         picks_from_file_widget = PicksFromFileLine(
@@ -438,19 +416,61 @@ class VisualizationSettingsWidget(QDialog):
         picks_from_file_widget.export_picks_from_file_settings_signal.connect(
             self.export_picks_from_file_settings_signal
         )
-        self.layout.addWidget(picks_from_file_label, 9, 0)
-        self.layout.addWidget(picks_from_file_widget, 9, 1)
+        self.layout.addWidget(picks_from_file_label, 10, 0)
+        self.layout.addWidget(picks_from_file_widget, 10, 1)
+
+        self.picking_run = False
+        self.run_button = QPushButton("Run picking", self)
+        self.run_button.clicked.connect(self.toggle_picking)
+        self.layout.addWidget(self.run_button)
+
+        self.previous_states = {}
 
         self.show()
 
-    def get_plotseis_values(self) -> Dict[str, Any]:
+    def save_states(self):
+        self.previous_states = {}
+        for widget in self.findChildren(QWidget):
+            self.previous_states[widget] = widget.isEnabled()
+        self.run_button.setEnabled(True)
+
+    def restore_states(self):
+        for widget, state in self.previous_states.items():
+            widget.setEnabled(state)
+        self.previous_states = {}
+        self.run_button.setEnabled(True)
+
+    def disable_all_widgets(self):
+        for widget in self.findChildren(QWidget):
+            widget.setEnabled(False)
+        self.run_button.setEnabled(True)
+
+    def start_picking(self):
+        self.save_states()
+        self.disable_all_widgets()
+        self.run_button.setText("Stop")
+        self.export_picking_settings_signal.emit(PickingSettings(**self.get_settings()))
+        self.picking_run = True
+
+    def finish_picking(self):
+        self.restore_states()
+        self.run_button.setText("Run picking")
+        self.picking_run = False
+
+    # def toggle_picking(self):
+    #     if self.processing:
+    #
+    #     else:
+    #
+
+    def get_settings(self) -> Dict[str, Any]:
         output = {}
-        for _, w, _ in self._plotseis_inputs:
+        for _, w, _ in self._inputs:
             output.update(w.dict())
         return output
 
     def export_plotseis_settings(self) -> None:
-        settings = self.get_plotseis_values()
+        settings = self.get_settings()
         print(settings)
         self.export_plotseis_settings_signal.emit(PlotseisSettings(**settings))
 
@@ -460,6 +480,10 @@ class VisualizationSettingsWidget(QDialog):
             self.hide()
         else:
             e.accept()
+
+    def accept(self):
+        pass
+
 
 
 # class VisualizationSettingsWidget(QDialog):

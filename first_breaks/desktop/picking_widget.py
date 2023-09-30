@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 from first_breaks.const import HIGH_DPI
 from first_breaks.desktop.utils import MessageBox, QHSeparationLine, set_geometry
 from first_breaks.picking.task import Task
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE
+from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, get_recommended_device
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -34,7 +34,7 @@ class PickingWindow(QDialog):
     def __init__(
         self,
         task: Optional[Task] = None,
-        device: str = "cuda" if ONNX_CUDA_AVAILABLE else "cpu",
+        device: str = get_recommended_device(),
         batch_size: int = 1,
     ):
         assert device in ["cuda", "cpu"]

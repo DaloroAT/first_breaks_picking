@@ -47,7 +47,10 @@ class PickerQRunnable(QRunnable):
         self.signals.message.emit("Started")
 
         try:
+            import time
+            st = time.perf_counter()
             self.task = self.picker.process_task(self.task)
+            print(time.perf_counter() - st, "duration")
         except Exception as e:
             self.task.success = False
             self.task.error_message = str(e)

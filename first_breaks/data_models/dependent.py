@@ -7,7 +7,7 @@ from pydantic_core.core_schema import FieldValidationInfo
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
 from first_breaks.sgy.headers import Headers, TraceHeaders
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE
+from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, get_recommended_device
 
 TRACE_HEADER_NAMES = [v[1] for v in TraceHeaders().headers_schema]
 
@@ -55,7 +55,4 @@ class SGYModel(DefaultModel):
 
 
 class Device(DefaultModel):
-    device: Literal["cpu", "cuda"] = Field(
-        "cuda" if ONNX_CUDA_AVAILABLE else "cpu",
-        description="Device to compute first breaks"
-    )
+    device: Literal["cpu", "cuda"] = Field(get_recommended_device(), description="Device to compute first breaks")

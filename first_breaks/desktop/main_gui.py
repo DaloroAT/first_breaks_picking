@@ -110,7 +110,8 @@ class MainWindow(QMainWindow):
         icon_fb = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
         # icon_fb = QIcon(str(self.main_folder / "icons" / "picking.png"))
         self.button_fb = QAction(icon_fb, "Neural network FB picking", self)
-        self.button_fb.triggered.connect(self.pick_fb)
+        # self.button_fb.triggered.connect(self.pick_fb)
+
         self.button_fb.setEnabled(False)
         self.toolbar.addAction(self.button_fb)
 
@@ -176,6 +177,7 @@ class MainWindow(QMainWindow):
         )
         self.visual_settings_widget.hide()
         self.visual_settings_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
+        self.visual_settings_widget.export_picking_settings_signal.connect(self.pick_fb)
         self.visual_settings_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
         self.visual_settings_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
         self.is_toggled_picks_from_file = False
@@ -266,6 +268,44 @@ class MainWindow(QMainWindow):
         except Exception as e:
             window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
             window_err.exec_()
+
+    # def pick_fb(self) -> None:
+    #     if self.graph.is_picks_modified_manually:
+    #         overwrite_manual_changes_dialog = MessageBox(
+    #             self,
+    #             title="Overwrite manual picking",
+    #             message="There are manual modifications in the current picks. "
+    #             "They will be lost when the new picking starts. "
+    #             "Do you agree?",
+    #             add_cancel_option=True,
+    #         )
+    #         reply = overwrite_manual_changes_dialog.exec_()
+    #         if reply == QDialog.Accepted:
+    #             is_accepted_open_picking_settings = True
+    #         else:
+    #             is_accepted_open_picking_settings = False
+    #     else:
+    #         is_accepted_open_picking_settings = True
+    #
+    #     if is_accepted_open_picking_settings:
+    #         picking_settings = self.picking_window_class(task=self.last_task, **self.picking_window_extra_kwargs)
+    #         picking_settings.export_settings_signal.connect(self.receive_settings)
+    #         picking_settings.exec_()
+    #     else:
+    #         return
+    #
+    #     if not self.settings:
+    #         return
+    #
+    #     try:
+    #         task_kwargs = remove_unused_kwargs(self.settings, Task)
+    #         task = Task(sgy=self.sgy, **task_kwargs)
+    #         change_settings_kwargs = remove_unused_kwargs(self.settings, self.picker_class.change_settings)
+    #         self.picker.change_settings(**change_settings_kwargs)
+    #         self.process_task(task)
+    #     except Exception as e:
+    #         window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
+    #         window_err.exec_()
 
     def process_task(self, task: Task) -> None:
         self.button_fb.setEnabled(False)

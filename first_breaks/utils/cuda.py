@@ -90,3 +90,7 @@ def is_onnx_cuda_available() -> bool:
 
 
 ONNX_CUDA_AVAILABLE = is_onnx_cuda_available()
+
+
+def get_recommended_device() -> str:
+    return "cuda" if ONNX_CUDA_AVAILABLE else "cpu"

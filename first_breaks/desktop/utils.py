@@ -73,14 +73,43 @@ def set_geometry(
     widget.move(monitor.left(), monitor.top())
 
 
-class QHSeparationLine(QtWidgets.QFrame):
-    def __init__(self) -> None:
+class QHSeparationLine(QtWidgets.QWidget):
+    def __init__(self, text=''):
         super().__init__()
-        self.setMinimumWidth(1)
-        self.setFixedHeight(20)
-        self.setFrameShape(QtWidgets.QFrame.HLine)
-        self.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+
+        # Create the horizontal line (QFrame)
+        self.line = QtWidgets.QFrame(self)
+        self.line.setFrameShape(QtWidgets.QFrame.HLine)
+        self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.line.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Create the label for the text
+        self.label = QtWidgets.QLabel(text, self)
+        self.label.setStyleSheet("background-color: transparent; color: grey;")
+        self.label.setAlignment(Qt.AlignCenter)
+
+        # Create a horizontal layout to hold the line and the label
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.line, 1)
+        layout.addWidget(self.label, 0)
+        layout.addWidget(self.line, 1)
+
+        # Adjust margins and spacing
+        layout.setSpacing(10)  # space between label and line
+        layout.setContentsMargins(0, 10, 0, 0)  # top margin to position label above line
+
+        self.setLayout(layout)
+
+
+# class QHSeparationLine(QtWidgets.QFrame):
+#     def __init__(self) -> None:
+#         super().__init__()
+#         self.setMinimumWidth(1)
+#         self.setFixedHeight(20)
+#         self.setFrameShape(QtWidgets.QFrame.HLine)
+#         self.setFrameShadow(QtWidgets.QFrame.Sunken)
+#         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
 
 
 TMappingSetup = Dict[int, Union[Tuple[str, Any], List[Any]]]
