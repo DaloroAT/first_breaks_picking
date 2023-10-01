@@ -347,7 +347,7 @@ class VisualizationSettingsWidget(QDialog):
     export_picking_settings_signal = pyqtSignal(PickingSettings)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
     toggle_picks_from_file_signal = pyqtSignal(bool)
-    stop_picking_signal = pyqtSignal()
+    interrupt_signal = pyqtSignal()
 
     def __init__(
         self,
@@ -421,20 +421,21 @@ class VisualizationSettingsWidget(QDialog):
 
         self.picking_run = False
         self.run_button = QPushButton("Run picking", self)
-        self.run_button.clicked.connect(self.toggle_picking)
+        self.run_button.clicked.connect(self.picking_click)
         self.layout.addWidget(self.run_button)
 
         self.previous_states = {}
+        self.set_selection_mode()
 
         self.show()
 
-    def save_states(self):
+    def save_widgets_state(self):
         self.previous_states = {}
         for widget in self.findChildren(QWidget):
             self.previous_states[widget] = widget.isEnabled()
         self.run_button.setEnabled(True)
 
-    def restore_states(self):
+    def restore_widgets_state(self):
         for widget, state in self.previous_states.items():
             widget.setEnabled(state)
         self.previous_states = {}
@@ -445,27 +446,28 @@ class VisualizationSettingsWidget(QDialog):
             widget.setEnabled(False)
         self.run_button.setEnabled(True)
 
-    def start_picking(self):
-        self.save_states()
-        self.disable_all_widgets()
-        self.run_button.setText("Stop")
-        self.export_picking_settings_signal.emit(PickingSettings(**self.get_settings()))
-        self.picking_run = True
+    def picking_click(self):
+        self.picking_run = not self.picking_run
+        if self.picking_run:
+            self.set_picking_mode()
+            self.export_picking_settings_signal.emit(PickingSettings(**self.get_settings()))
+        else:
+            self.interrupt_signal.emit()
 
-    def finish_picking(self):
-        self.restore_states()
-        self.run_button.setText("Run picking")
+    def set_picking_mode(self):
+        if self.picking_run:
+            self.save_widgets_state()
+            self.disable_all_widgets()
+            self.run_button.setText("Stop")
+
+    def set_selection_mode(self):
         self.picking_run = False
-
-    # def toggle_picking(self):
-    #     if self.processing:
-    #
-    #     else:
-    #
+        self.restore_widgets_state()
+        self.run_button.setText("Run picking")
 
     def get_settings(self) -> Dict[str, Any]:
         output = {}
-        for _, w, _ in self._inputs:
+        for _, w, _, _ in self._inputs:
             output.update(w.dict())
         return output
 
@@ -483,149 +485,6 @@ class VisualizationSettingsWidget(QDialog):
 
     def accept(self):
         pass
-
-
-
-# class VisualizationSettingsWidget(QDialog):
-#     export_plotseis_settings_signal = pyqtSignal(PlotseisSettings)
-#     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
-#     toggle_picks_from_file_signal = pyqtSignal(bool)
-#
-#     def __init__(
-#         self,
-#         gain: float = 1.0,
-#         clip: float = 1.0,
-#         normalize: Optional[str] = "trace",
-#         fill_black: Optional[str] = "left",
-#         x_axis: Optional[str] = None,
-#         byte_position: int = 1,
-#         first_byte: int = 1,
-#         encoding: str = "I",
-#         picks_unit: str = "mcs",
-#         hide_on_close: bool = False,
-#     ):
-#         super().__init__()
-#         self.hide_on_close = hide_on_close
-#
-#         self.setWindowTitle("Visualization settings")
-#         self.setWindowModality(Qt.ApplicationModal)
-#         set_geometry(self, width_rel=0.35, height_rel=0.3, fix_size=True, centralize=True)
-#
-#         self.storage_plotseis = {}
-#
-#         self.layout = QGridLayout()
-#         self.setLayout(self.layout)
-#
-#         self.gain_label = QLabel("Gain")
-#         self.gain_widget = QLineEdit()
-#         gain_validator = QDoubleValidator()
-#         self.gain_widget.setValidator(gain_validator)
-#         self.gain_widget.setText(str(gain))
-#         self.gain_widget.value = lambda *args, **kwargs: get_value(self.gain_widget, default=DEFAULTS.gain)
-#         self.gain_widget.textChanged.connect(self.export_plotseis_settings)
-#
-#         self.storage_plotseis["gain"] = self.gain_widget
-#         self.layout.addWidget(self.gain_label, 0, 0)
-#         self.layout.addWidget(self.gain_widget, 0, 1)
-#
-#         self.clip_label = QLabel("Clip")
-#         self.clip_widget = QLineEdit()
-#         clip_validator = QDoubleValidator()
-#         clip_validator.setBottom(0.1)
-#         self.clip_widget.setValidator(clip_validator)
-#         self.clip_widget.setText(str(clip))
-#         self.clip_widget.value = lambda *args, **kwargs: get_value(self.clip_widget, minimum=0.1, default=DEFAULTS.clip)
-#         self.clip_widget.textEdited.connect(self.export_plotseis_settings)
-#
-#         self.storage_plotseis["clip"] = self.clip_widget
-#         self.layout.addWidget(self.clip_label, 1, 0)
-#         self.layout.addWidget(self.clip_widget, 1, 1)
-#
-#         self.normalize_label = QLabel("Normalization")
-#         self.normalize_widget = QComboBoxMapping(
-#             {0: ["Individual traces", "trace"], 1: ["Gather", "gather"], 2: ["Raw", None]}, current_value=normalize
-#         )
-#         self.normalize_widget.changed_signal.connect(self.export_plotseis_settings)
-#         self.storage_plotseis["normalize"] = self.normalize_widget
-#         self.layout.addWidget(self.normalize_label, 2, 0)
-#         self.layout.addWidget(self.normalize_widget, 2, 1)
-#
-#         self.bandfilter_label = QLabel("Band filter")
-#         self.bandfilter_toogle = QCheckBox()
-#         self.bandfilter_toogle.setCheckState(False)
-#         self.bandfilter_toogle.stateChanged.connect(self.apply_bandfilter)
-#         self.bandfilter_widget = QBandFilterWidget()
-#         self.layout.addWidget(self.bandfilter_label, 3, 0)
-#         sub_layout = QHBoxLayout()
-#         sub_layout.addWidget(self.bandfilter_toogle)
-#         sub_layout.addWidget(self.bandfilter_widget)
-#         self.layout.addLayout(sub_layout, 3, 1)
-#
-#         self.layout.addWidget(QHSeparationLine(), 4, 0, 1, 2)
-#
-#         self.fill_black_label = QLabel("Filling wiggles with color")
-#         self.fill_black_widget = QRadioSetWidget(
-#             {0: ["Left", "left"], 1: ["Right", "right"], 2: ["No fill", None]}, current_value=fill_black, margins=0
-#         )
-#         self.fill_black_widget.changed_signal.connect(self.export_plotseis_settings)
-#         self.storage_plotseis["fill_black"] = self.fill_black_widget
-#         self.layout.addWidget(self.fill_black_label, 5, 0)
-#         self.layout.addWidget(self.fill_black_widget, 5, 1)
-#
-#         self.xaxis_label = QLabel("X Axis")
-#         self.xaxis_widget = QComboBoxMapping(X_AXIS_MAPPING, current_value=x_axis)  # type: ignore
-#         self.xaxis_widget.changed_signal.connect(self.export_plotseis_settings)
-#         self.storage_plotseis["x_axis"] = self.xaxis_widget
-#         self.layout.addWidget(self.xaxis_label, 6, 0)
-#         self.layout.addWidget(self.xaxis_widget, 6, 1)
-#
-#         self.layout.addWidget(QHSeparationLine(), 7, 0, 1, 2)
-#
-#         self.picks_from_file_label = QLabel("Show picks from file")
-#         self.picks_from_file_toggle = QCheckBox()
-#         self.picks_from_file_toggle.setCheckState(False)
-#         self.picks_from_file_toggle.stateChanged.connect(self.export_picks_from_file_settings)
-#         self.picks_from_file_widget = QByteEncodeUnitWidget(
-#             byte_position=byte_position, first_byte=first_byte, encoding=encoding, picks_unit=picks_unit, margins=0
-#         )
-#         self.picks_from_file_widget.values_changed_signal.connect(self.update_picks_from_file_settings)
-#         self.picks_from_file_settings = self.picks_from_file_widget.get_values()
-#
-#         self.layout.addWidget(self.picks_from_file_label, 8, 0)
-#         sub_layout = QHBoxLayout()
-#         sub_layout.addWidget(self.picks_from_file_toggle)
-#         sub_layout.addWidget(self.picks_from_file_widget)
-#         self.layout.addLayout(sub_layout, 8, 1)
-#
-#         self.show()
-#
-#     def update_picks_from_file_settings(self, params: Dict[str, Any]) -> None:
-#         self.picks_from_file_settings = params
-#
-#     def export_picks_from_file_settings(self) -> None:
-#         is_pressed = self.picks_from_file_toggle.checkState() == Qt.CheckState.Checked
-#         if is_pressed:
-#             self.picks_from_file_widget.setEnabled(False)
-#             self.export_picks_from_file_settings_signal.emit(PicksFromFileSettings(**self.picks_from_file_settings))
-#             self.toggle_picks_from_file_signal.emit(True)
-#         else:
-#             self.picks_from_file_widget.setEnabled(True)
-#             self.toggle_picks_from_file_signal.emit(False)
-#
-#     def get_plotseis_values(self) -> Dict[str, Any]:
-#         return {k: v.value() for k, v in self.storage_plotseis.items()}
-#
-#     def export_plotseis_settings(self) -> None:
-#         settings = self.get_plotseis_values()
-#         print(settings)
-#         self.export_plotseis_settings_signal.emit(PlotseisSettings(**settings))
-#
-#     def closeEvent(self, e: QCloseEvent) -> None:
-#         if self.hide_on_close:
-#             e.ignore()
-#             self.hide()
-#         else:
-#             e.accept()
 
 
 if __name__ == "__main__":

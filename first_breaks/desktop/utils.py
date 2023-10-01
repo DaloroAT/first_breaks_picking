@@ -8,20 +8,21 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QLabel,
     QVBoxLayout,
-    QWidget, QGraphicsSceneMouseEvent,
+    QWidget, QGraphicsSceneMouseEvent, QPushButton, QTextEdit,
 )
 from pyqtgraph import ViewBox
 
 
 class MessageBox(QDialog):
     def __init__(
-        self,
-        parent: QWidget,
-        title: str = "Error",
-        message: str = "Error",
-        add_cancel_option: bool = False,
-        label_ok: str = "Ok",
-        label_cancel: str = "Cancel",
+            self,
+            parent: QWidget,
+            title: str = "Error",
+            message: str = "Error",
+            detailed_message: str = None,
+            add_cancel_option: bool = False,
+            label_ok: str = "Ok",
+            label_cancel: str = "Cancel",
     ):
         super().__init__(parent=parent)
 
@@ -42,8 +43,29 @@ class MessageBox(QDialog):
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(error_label)
+
+        if detailed_message:
+            self.details_button = QPushButton("Show Details")
+            self.details_text = QTextEdit()
+            self.details_text.setPlainText(detailed_message)
+            self.details_text.setVisible(False)
+            self.details_text.setReadOnly(True)
+
+            self.details_button.clicked.connect(self.toggle_details)
+
+            self.layout.addWidget(self.details_button)
+            self.layout.addWidget(self.details_text)
+
         self.layout.addWidget(self.button_box)
         self.setLayout(self.layout)
+
+    def toggle_details(self):
+        if self.details_text.isVisible():
+            self.details_text.setVisible(False)
+            self.details_button.setText("Show Details")
+        else:
+            self.details_text.setVisible(True)
+            self.details_button.setText("Hide Details")
 
 
 def set_geometry(

@@ -1,3 +1,4 @@
+import traceback
 from typing import List, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -150,3 +151,15 @@ class InvertY(DefaultModel):
 
 class BatchSize(DefaultModel):
     batch_size: int = Field(1, ge=1, description="Batch size")
+
+
+class ExceptionOptional(DefaultModel):
+    exception: Optional[Exception] = None
+
+    def get_formatted_traceback(self) -> str:
+        formatted_traceback = traceback.format_exception(
+            type(self.exception),
+            self.exception,
+            self.exception.__traceback__
+        )
+        return "".join(formatted_traceback)

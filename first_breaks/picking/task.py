@@ -20,7 +20,7 @@ from first_breaks.data_models.independent import (
     Normalize,
     PicksInSamplesOptional,
     TracesPerGather,
-    TracesToInverse,
+    TracesToInverse, ExceptionOptional,
 )
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import (
@@ -59,6 +59,7 @@ class Task(
     ErrorMessage,
     Success,
     ModelHashOptional,
+    ExceptionOptional
 ):
     @property
     def maximum_time_sample(self) -> int:

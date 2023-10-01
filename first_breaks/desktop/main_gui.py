@@ -1,4 +1,5 @@
 import sys
+import traceback
 import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
@@ -24,13 +25,14 @@ from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_O
 from first_breaks.data_models.dependent import TraceHeaderParams
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
+from first_breaks.desktop.nn_manager import NNManager
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import CallInThread, PickerQRunnable
 from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.desktop.visualization_settings_widget import (
     PicksFromFileSettings,
     PlotseisSettings,
-    VisualizationSettingsWidget,
+    VisualizationSettingsWidget, PickingSettings,
 )
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
@@ -84,6 +86,8 @@ class MainWindow(QMainWindow):
 
         set_geometry(self, width_rel=0.6, height_rel=0.6, fix_size=False, centralize=True)
         self.setWindowTitle("First breaks picking")
+
+        self.threadpool = QThreadPool()
 
         # toolbar
         self.toolbar = QToolBar()
@@ -180,8 +184,17 @@ class MainWindow(QMainWindow):
         self.visual_settings_widget.export_picking_settings_signal.connect(self.pick_fb)
         self.visual_settings_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
         self.visual_settings_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
-        self.is_toggled_picks_from_file = False
 
+        # nn manager
+        self.nn_manager = NNManager(
+            status_progress=self.status_progress,
+            status_message=self.status_message,
+            threadpool=self.threadpool,
+            interrupt_on=self.visual_settings_widget.interrupt_signal
+        )
+        self.nn_manager.picking_finished_signal.connect(self.on_picking_finished)
+
+        self.is_toggled_picks_from_file = False
         # placeholders
         self.sgy: Optional[SGY] = None
         self.fn_sgy: Optional[Union[str, Path]] = None
@@ -190,16 +203,7 @@ class MainWindow(QMainWindow):
         self.settings: Optional[Dict[str, Any]] = None
         self.last_folder: Optional[Union[str, Path]] = None
         self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
-
-        self.picker_class: Type[IPicker] = PickerONNX
-        self.picker: Optional[IPicker] = None
         self.picker_hash = MODEL_ONNX_HASH
-        self.picker_extra_kwargs_init = {"show_progressbar": False, "device": "cpu"}
-
-        self.picking_window_class = PickingWindow
-        self.picking_window_extra_kwargs: Dict[str, Any] = {}
-
-        self.threadpool = QThreadPool()
 
         self.show()
 
@@ -219,129 +223,31 @@ class MainWindow(QMainWindow):
         else:
             self.last_folder = None
 
-    def _thread_init_net(self, weights: Union[str, Path]) -> None:
-        task = CallInThread(self.picker_class, model_path=weights, **self.picker_extra_kwargs_init)
-        task.signals.result.connect(self.init_net)
-        self.threadpool.start(task)
-
-    def init_net(self, picker: PickerONNX) -> None:
-        self.picker = picker
-
-    def receive_settings(self, settings: Dict[str, Any]) -> None:
-        self.picking_window_extra_kwargs = remove_unused_kwargs(settings, self.picker.change_settings)
-        self.settings = settings
-
-    def pick_fb(self) -> None:
-        if self.graph.is_picks_modified_manually:
-            overwrite_manual_changes_dialog = MessageBox(
-                self,
-                title="Overwrite manual picking",
-                message="There are manual modifications in the current picks. "
-                "They will be lost when the new picking starts. "
-                "Do you agree?",
-                add_cancel_option=True,
-            )
-            reply = overwrite_manual_changes_dialog.exec_()
-            if reply == QDialog.Accepted:
-                is_accepted_open_picking_settings = True
-            else:
-                is_accepted_open_picking_settings = False
-        else:
-            is_accepted_open_picking_settings = True
-
-        if is_accepted_open_picking_settings:
-            picking_settings = self.picking_window_class(task=self.last_task, **self.picking_window_extra_kwargs)
-            picking_settings.export_settings_signal.connect(self.receive_settings)
-            picking_settings.exec_()
-        else:
-            return
-
-        if not self.settings:
-            return
-
-        try:
-            task_kwargs = remove_unused_kwargs(self.settings, Task)
-            task = Task(sgy=self.sgy, **task_kwargs)
-            change_settings_kwargs = remove_unused_kwargs(self.settings, self.picker_class.change_settings)
-            self.picker.change_settings(**change_settings_kwargs)
-            self.process_task(task)
-        except Exception as e:
-            window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
-            window_err.exec_()
-
-    # def pick_fb(self) -> None:
-    #     if self.graph.is_picks_modified_manually:
-    #         overwrite_manual_changes_dialog = MessageBox(
-    #             self,
-    #             title="Overwrite manual picking",
-    #             message="There are manual modifications in the current picks. "
-    #             "They will be lost when the new picking starts. "
-    #             "Do you agree?",
-    #             add_cancel_option=True,
-    #         )
-    #         reply = overwrite_manual_changes_dialog.exec_()
-    #         if reply == QDialog.Accepted:
-    #             is_accepted_open_picking_settings = True
-    #         else:
-    #             is_accepted_open_picking_settings = False
-    #     else:
-    #         is_accepted_open_picking_settings = True
-    #
-    #     if is_accepted_open_picking_settings:
-    #         picking_settings = self.picking_window_class(task=self.last_task, **self.picking_window_extra_kwargs)
-    #         picking_settings.export_settings_signal.connect(self.receive_settings)
-    #         picking_settings.exec_()
-    #     else:
-    #         return
-    #
-    #     if not self.settings:
-    #         return
-    #
-    #     try:
-    #         task_kwargs = remove_unused_kwargs(self.settings, Task)
-    #         task = Task(sgy=self.sgy, **task_kwargs)
-    #         change_settings_kwargs = remove_unused_kwargs(self.settings, self.picker_class.change_settings)
-    #         self.picker.change_settings(**change_settings_kwargs)
-    #         self.process_task(task)
-    #     except Exception as e:
-    #         window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
-    #         window_err.exec_()
-
-    def process_task(self, task: Task) -> None:
+    def pick_fb(self, settings: PickingSettings):
         self.button_fb.setEnabled(False)
         self.button_get_filename.setEnabled(False)
-        worker = PickerQRunnable(self.picker, task)
-        worker.signals.started.connect(self.on_start_task)
-        worker.signals.result.connect(self.on_result_task)
-        worker.signals.progress.connect(self.on_progressbar_task)
-        worker.signals.message.connect(self.on_message_task)
-        worker.signals.result.connect(self.on_finish_task)
-        self.threadpool.start(worker)
+        self.nn_manager.pick_fb(self.sgy, settings)
 
-    def store_task(self, task: Task) -> None:
-        self.last_task = task
+    def on_picking_finished(self, result: Task) -> None:
+        self.visual_settings_widget.set_selection_mode()
+        self.last_task = result
 
-    def on_start_task(self) -> None:
-        self.status_progress.show()
-
-    def on_message_task(self, message: str) -> None:
-        self.status_message.setText(message)
-
-    def on_finish_task(self) -> None:
-        self.status_progress.hide()
-        self.button_fb.setEnabled(True)
-
-    def on_progressbar_task(self, value: int) -> None:
-        self.status_progress.setValue(value)
-
-    def on_result_task(self, result: Task) -> None:
-        self.store_task(result)
         if result.success:
             self.graph.plot_nn_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
             self.button_export.setEnabled(True)
         else:
-            window_error = MessageBox(self, title="InternalError", message=result.error_message)
+            if isinstance(result.exception, InterruptedError):
+                window_error = MessageBox(
+                    self,
+                    title="Interruption",
+                    message="The picking process has been interrupted. Intermediate results will not be saved")
+            else:
+                window_error = MessageBox(
+                    self,
+                    title=result.exception.__class__.__name__,
+                    message=result.error_message,
+                    detailed_message=result.get_formatted_traceback())
             window_error.exec_()
 
         self.button_get_filename.setEnabled(True)
@@ -424,7 +330,7 @@ class MainWindow(QMainWindow):
 
         if filename:
             if FileState.get_file_state(filename, self.picker_hash) == FileState.valid_file:
-                self._thread_init_net(weights=filename)
+                self.nn_manager.init_net(weights=filename)
                 self.button_load_nn.setEnabled(False)
                 self.ready_to_process.model_loaded = True
 

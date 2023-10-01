@@ -39,6 +39,7 @@ class IteratorOfTask:
             normalize=self.task.normalize,
             f1_f2=self.task.f1_f2,
             f3_f4=self.task.f3_f4,
+            fs=self.task.sgy.fs
         )
 
         gather = amplitudes[None, :] * gather
@@ -123,8 +124,9 @@ class PickerONNX(IPicker):
         counter_step_finished = 0
         self.callback_processing_started(len(task_iterator))
 
-        for batch in task_iterator.get_batch_generator(batch_size=self.batch_size):
-            data = batch["gather"]
+        for idx, batch in enumerate(task_iterator.get_batch_generator(batch_size=self.batch_size)):
+            self.interrupt_if_need()
+            data = batch["gather"].astype(np.float32)
             picks, confidence = self.pick_batch_of_gathers(data)
 
             indices = batch["gather_ids"]
@@ -140,5 +142,7 @@ class PickerONNX(IPicker):
         task.picks_in_samples = task_picks_in_sample.astype(int).tolist()
         task.confidence = task_confidence.tolist()
         task.model_hash = self.model_hash
+
+        self.need_interrupt = False
 
         return task
