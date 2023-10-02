@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 )
 
 from first_breaks.desktop.threads import CallInThread, PickerQRunnable
-from first_breaks.desktop.visualization_settings_widget import (
+from first_breaks.desktop.settings_processing_widget import (
     PickingSettings,
 )
 from first_breaks.picking.ipicker import IPicker

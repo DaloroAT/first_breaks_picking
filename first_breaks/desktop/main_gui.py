@@ -29,10 +29,10 @@ from first_breaks.desktop.nn_manager import NNManager
 from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.threads import CallInThread, PickerQRunnable
 from first_breaks.desktop.utils import MessageBox, set_geometry
-from first_breaks.desktop.visualization_settings_widget import (
+from first_breaks.desktop.settings_processing_widget import (
     PicksFromFileSettings,
     PlotseisSettings,
-    VisualizationSettingsWidget, PickingSettings,
+    SettingsAndProcessingWidget, PickingSettings,
 )
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
@@ -174,7 +174,7 @@ class MainWindow(QMainWindow):
         self.plotseis_settings = PlotseisSettings()
         first_byte = 1
         self.picks_from_file_settings = PicksFromFileSettings(byte_position=first_byte)
-        self.visual_settings_widget = VisualizationSettingsWidget(
+        self.visual_settings_widget = SettingsAndProcessingWidget(
             hide_on_close=True,
             first_byte=first_byte,
             **{**self.plotseis_settings.model_dump(), **self.picks_from_file_settings.model_dump()},

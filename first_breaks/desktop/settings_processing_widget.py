@@ -336,13 +336,13 @@ class DeviceLine(QComboBoxMapping, _Dictable):
             current_value = "cpu"
         super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=current_value)
         if not ONNX_CUDA_AVAILABLE:
-            self.device.setEnabled(False)
+            self.setEnabled(False)
 
     def dict(self) -> Dict[str, Any]:
         return {"device": self.value()}
 
 
-class VisualizationSettingsWidget(QDialog):
+class SettingsAndProcessingWidget(QDialog):
     export_plotseis_settings_signal = pyqtSignal(PlotseisSettings)
     export_picking_settings_signal = pyqtSignal(PickingSettings)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
@@ -489,5 +489,5 @@ class VisualizationSettingsWidget(QDialog):
 
 if __name__ == "__main__":
     app = QApplication([])
-    window = VisualizationSettingsWidget()
+    window = SettingsAndProcessingWidget()
     app.exec_()
