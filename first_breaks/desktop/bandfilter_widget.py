@@ -19,6 +19,7 @@ from first_breaks.desktop.tooltip_widget import (
 
 
 class QBandFilterWidget(QWidget):
+
     def __init__(
         self,
         f1: Optional[float] = None,
@@ -52,11 +53,11 @@ class QBandFilterWidget(QWidget):
             if debug:
                 freq_widget.textChanged.connect(self.validate_and_get_values)
 
-    def enbale_fields(self):
+    def enable_freqs_fields(self):
         for v in self.freq_widgets.values():
             v.setEnabled(True)
 
-    def disable_fields(self):
+    def disable_freqs_fields(self):
         for v in self.freq_widgets.values():
             v.setEnabled(False)
 

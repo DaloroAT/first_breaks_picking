@@ -95,13 +95,23 @@ def get_value(qline: QLineEdit, minimum: Optional[float] = None, default: Option
         return default
 
 
-class _Dictable:
+def default_set_enabled(widget: QWidget, enabled: bool):
+    widget.setEnabled(enabled)
+
+
+class _Extras:
     @abstractmethod
     def dict(self) -> Dict[str, Any]:
         raise NotImplementedError
 
+    def enable_fields(self):
+        default_set_enabled(self, True)
 
-class GainLine(QLineEdit, _Dictable):
+    def disable_fields(self):
+        default_set_enabled(self, False)
+
+
+class GainLine(QLineEdit, _Extras):
     changed_signal = pyqtSignal()
 
     def __init__(self, gain: float = DEFAULTS.gain, *args: Any, **kwargs: Any):
@@ -122,7 +132,7 @@ class GainLine(QLineEdit, _Dictable):
         return {"gain": value}
 
 
-class ClipLine(QLineEdit, _Dictable):
+class ClipLine(QLineEdit, _Extras):
     changed_signal = pyqtSignal()
 
     def __init__(self, clip: float = DEFAULTS.clip, *args: Any, **kwargs: Any):
@@ -148,7 +158,7 @@ class ClipLine(QLineEdit, _Dictable):
         return {"clip": value}
 
 
-class NormalizationLine(QComboBoxMapping, _Dictable):
+class NormalizationLine(QComboBoxMapping, _Extras):
     def __init__(self, normalize: Optional[str] = DEFAULTS.normalize):
         super().__init__(
             {0: ["Individual traces", "trace"], 1: ["Gather", "gather"], 2: ["Raw", None]}, current_value=normalize
@@ -158,7 +168,7 @@ class NormalizationLine(QComboBoxMapping, _Dictable):
         return {"normalize": self.value()}
 
 
-class BandfilterLine(QWidget, _Dictable):
+class BandfilterLine(QWidget, _Extras):
     changed_signal = pyqtSignal()
 
     def __init__(
@@ -185,7 +195,16 @@ class BandfilterLine(QWidget, _Dictable):
         self.setLayout(layout)
         self.f1_f2 = f1_f2
         self.f3_f4 = f3_f4
-        self.bandfilter_widget.enbale_fields()
+        self.bandfilter_widget.enable_freqs_fields()
+
+    def enable_fields(self):
+        self.bandfilter_toogle.setEnabled(True)
+        if not self.bandfilter_toogle.isChecked():
+            self.bandfilter_widget.enable_freqs_fields()
+
+    def disable_fields(self):
+        self.bandfilter_toogle.setEnabled(False)
+        self.bandfilter_widget.disable_freqs_fields()
 
     def apply_bandfilter(self, checked):
         if checked:
@@ -194,7 +213,7 @@ class BandfilterLine(QWidget, _Dictable):
                 self.bandfilter_toogle.setChecked(False)
                 self.f1_f2 = None
                 self.f3_f4 = None
-                self.bandfilter_widget.enbale_fields()
+                self.bandfilter_widget.enable_freqs_fields()
             else:
                 self.bandfilter_toogle.setChecked(True)
                 if freqs[1] is None and freqs[2] is None:
@@ -205,19 +224,19 @@ class BandfilterLine(QWidget, _Dictable):
                     self.f3_f4 = None
                 else:
                     self.f3_f4 = (freqs[3], freqs[4])
-                self.bandfilter_widget.disable_fields()
+                self.bandfilter_widget.disable_freqs_fields()
                 self.changed_signal.emit()
         else:
             self.f1_f2 = None
             self.f3_f4 = None
-            self.bandfilter_widget.enbale_fields()
+            self.bandfilter_widget.enable_freqs_fields()
             self.changed_signal.emit()
 
     def dict(self) -> Dict[str, Any]:
         return {"f1_f2": self.f1_f2, "f3_f4": self.f3_f4}
 
 
-class WigglesLine(QRadioSetWidget, _Dictable):
+class WigglesLine(QRadioSetWidget, _Extras):
     def __init__(self, fill_black: Optional[str] = DEFAULTS.fill_black):
         super().__init__(
             {0: ["Left", "left"], 1: ["Right", "right"], 2: ["No fill", None]}, current_value=fill_black, margins=0
@@ -227,7 +246,7 @@ class WigglesLine(QRadioSetWidget, _Dictable):
         return {"fill_black": self.value()}
 
 
-class XAxisLine(QComboBoxMapping, _Dictable):
+class XAxisLine(QComboBoxMapping, _Extras):
     def __init__(self, x_axis: Optional[str] = DEFAULTS.x_axis):
         super().__init__(X_AXIS_MAPPING, current_value=x_axis)
 
@@ -235,7 +254,7 @@ class XAxisLine(QComboBoxMapping, _Dictable):
         return {"x_axis": self.value()}
 
 
-class OrientationLine(QWidget, _Dictable):
+class OrientationLine(QWidget, _Extras):
     changed_signal = pyqtSignal()
 
     def __init__(
@@ -267,7 +286,7 @@ class OrientationLine(QWidget, _Dictable):
         return {k: w.isChecked() for _, w, _, k in self.widgets}
 
 
-class PicksFromFileLine(QWidget):
+class PicksFromFileLine(QWidget, _Extras):
     toggle_picks_from_file_signal = pyqtSignal(bool)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
 
@@ -293,7 +312,6 @@ class PicksFromFileLine(QWidget):
         self.picks_from_file_settings = params
 
     def export_picks_from_file_settings(self, checked) -> None:
-        print("Before", "IsEnabled", self.isEnabled(), "Widget", self.picks_from_file_widget.isEnabled())
         if checked:
             self.picks_from_file_widget.setEnabled(False)
             self.export_picks_from_file_settings_signal.emit(PicksFromFileSettings(**self.picks_from_file_settings))
@@ -301,21 +319,18 @@ class PicksFromFileLine(QWidget):
         else:
             self.toggle_picks_from_file_signal.emit(False)
             self.picks_from_file_widget.setEnabled(True)
-        print("After ", "IsEnabled", self.isEnabled(), "Widget", self.picks_from_file_widget.isEnabled())
-        print("--------")
 
-    # def export_picks_from_file_settings(self) -> None:
-    #     is_pressed = self.picks_from_file_toggle.checkState() == Qt.CheckState.Checked
-    #     if is_pressed:
-    #         self.picks_from_file_widget.setEnabled(False)
-    #         self.export_picks_from_file_settings_signal.emit(PicksFromFileSettings(**self.picks_from_file_settings))
-    #         self.toggle_picks_from_file_signal.emit(True)
-    #     else:
-    #         self.picks_from_file_widget.setEnabled(True)
-    #         self.toggle_picks_from_file_signal.emit(False)
+    def enable_fields(self):
+        self.picks_from_file_toggle.setEnabled(True)
+        if not self.picks_from_file_toggle.isChecked():
+            self.picks_from_file_widget.setEnabled(True)
+
+    def disable_fields(self):
+        self.picks_from_file_toggle.setEnabled(False)
+        self.picks_from_file_widget.setEnabled(False)
 
 
-class TracesPerGatherLine(QSpinBox, _Dictable):
+class TracesPerGatherLine(QSpinBox, _Extras):
     changed_signal = pyqtSignal()
 
     def __init__(self, traces_per_gather: int = DEFAULTS.traces_per_gather, *args: Any, **kwargs: Any):
@@ -327,7 +342,7 @@ class TracesPerGatherLine(QSpinBox, _Dictable):
         return {"traces_per_gather": int(self.text())}
 
 
-class MaximumTimeLine(QLineEdit, _Dictable):
+class MaximumTimeLine(QLineEdit, _Extras):
     changed_signal = pyqtSignal()
 
     def __init__(self, maximum_time: float = DEFAULTS.maximum_time, *args: Any, **kwargs: Any):
@@ -341,7 +356,7 @@ class MaximumTimeLine(QLineEdit, _Dictable):
         return {"maximum_time": float(self.text())}
 
 
-class DeviceLine(QComboBoxMapping, _Dictable):
+class DeviceLine(QComboBoxMapping, _Extras):
     def __init__(self, device: str = DEFAULTS.device):
         if device == "cuda" and ONNX_CUDA_AVAILABLE:
             current_value = device
@@ -442,23 +457,6 @@ class SettingsProcessingWidget(QDialog):
 
         self.show()
 
-    def save_widgets_state(self):
-        self.previous_states = {}
-        for widget in self.findChildren(QWidget):
-            self.previous_states[widget] = widget.isEnabled()
-        self.run_button.setEnabled(True)
-
-    def restore_widgets_state(self):
-        for widget, state in self.previous_states.items():
-            widget.setEnabled(state)
-        self.previous_states = {}
-        self.run_button.setEnabled(True)
-
-    def disable_all_widgets(self):
-        for widget in self.findChildren(QWidget):
-            widget.setEnabled(False)
-        self.run_button.setEnabled(True)
-
     def picking_click(self):
         self.picking_run = not self.picking_run
         if self.picking_run:
@@ -468,14 +466,18 @@ class SettingsProcessingWidget(QDialog):
             self.interrupt_signal.emit()
 
     def set_picking_mode(self):
-        if self.picking_run:
-            self.save_widgets_state()
-            self.disable_all_widgets()
-            self.run_button.setText("Stop")
+        for widget in self.findChildren(QWidget):
+            if isinstance(widget, _Extras):
+                widget.disable_fields()
+        self.run_button.setEnabled(True)
+        self.run_button.setText("Stop")
 
     def set_selection_mode(self):
         self.picking_run = False
-        self.restore_widgets_state()
+        for widget in self.findChildren(QWidget):
+            if isinstance(widget, _Extras):
+                widget.enable_fields()
+        self.run_button.setEnabled(True)
         self.run_button.setText("Run picking")
 
     def get_settings(self) -> Dict[str, Any]:
