@@ -32,7 +32,7 @@ from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.desktop.settings_processing_widget import (
     PicksFromFileSettings,
     PlotseisSettings,
-    SettingsAndProcessingWidget, PickingSettings,
+    SettingsProcessingWidget, PickingSettings,
 )
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
@@ -111,13 +111,11 @@ class MainWindow(QMainWindow):
 
         self.toolbar.addSeparator()
 
-        icon_fb = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
-        # icon_fb = QIcon(str(self.main_folder / "icons" / "picking.png"))
-        self.button_fb = QAction(icon_fb, "Neural network FB picking", self)
-        # self.button_fb.triggered.connect(self.pick_fb)
-
-        self.button_fb.setEnabled(False)
-        self.toolbar.addAction(self.button_fb)
+        icon_visual_settings = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
+        self.button_settings_processing = QAction(icon_visual_settings, "Settings and Processing", self)
+        self.button_settings_processing.triggered.connect(self.show_settings_processing_window)
+        self.button_settings_processing.setEnabled(False)
+        self.toolbar.addAction(self.button_settings_processing)
 
         self.need_processing_region = True
         icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
@@ -132,12 +130,6 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.button_processing_show)
 
         self.toolbar.addSeparator()
-
-        icon_visual_settings = self.style().standardIcon(QStyle.SP_BrowserReload)
-        self.button_visual_settings = QAction(icon_visual_settings, "Show visual settings", self)
-        self.button_visual_settings.triggered.connect(self.show_visual_settings_window)
-        self.button_visual_settings.setEnabled(False)
-        self.toolbar.addAction(self.button_visual_settings)
 
         icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
@@ -174,23 +166,23 @@ class MainWindow(QMainWindow):
         self.plotseis_settings = PlotseisSettings()
         first_byte = 1
         self.picks_from_file_settings = PicksFromFileSettings(byte_position=first_byte)
-        self.visual_settings_widget = SettingsAndProcessingWidget(
+        self.settings_processing_widget = SettingsProcessingWidget(
             hide_on_close=True,
             first_byte=first_byte,
             **{**self.plotseis_settings.model_dump(), **self.picks_from_file_settings.model_dump()},
         )
-        self.visual_settings_widget.hide()
-        self.visual_settings_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
-        self.visual_settings_widget.export_picking_settings_signal.connect(self.pick_fb)
-        self.visual_settings_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
-        self.visual_settings_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
+        self.settings_processing_widget.hide()
+        self.settings_processing_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
+        self.settings_processing_widget.export_picking_settings_signal.connect(self.pick_fb)
+        self.settings_processing_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
+        self.settings_processing_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
 
         # nn manager
         self.nn_manager = NNManager(
             status_progress=self.status_progress,
             status_message=self.status_message,
             threadpool=self.threadpool,
-            interrupt_on=self.visual_settings_widget.interrupt_signal
+            interrupt_on=self.settings_processing_widget.interrupt_signal
         )
         self.nn_manager.picking_finished_signal.connect(self.on_picking_finished)
 
@@ -224,12 +216,12 @@ class MainWindow(QMainWindow):
             self.last_folder = None
 
     def pick_fb(self, settings: PickingSettings):
-        self.button_fb.setEnabled(False)
+        self.button_settings_processing.setEnabled(False)
         self.button_get_filename.setEnabled(False)
         self.nn_manager.pick_fb(self.sgy, settings)
 
     def on_picking_finished(self, result: Task) -> None:
-        self.visual_settings_widget.set_selection_mode()
+        self.settings_processing_widget.set_selection_mode()
         self.last_task = result
 
         if result.success:
@@ -251,7 +243,7 @@ class MainWindow(QMainWindow):
             window_error.exec_()
 
         self.button_get_filename.setEnabled(True)
-        self.button_fb.setEnabled(True)
+        self.button_settings_processing.setEnabled(True)
 
     def processing_region_changed(self, toggle: bool) -> None:
         self.need_processing_region = toggle
@@ -312,13 +304,13 @@ class MainWindow(QMainWindow):
         self.show_nn_picks()
         self.show_picks_from_file()
 
-    def show_visual_settings_window(self) -> None:
-        self.visual_settings_widget.show()
-        self.visual_settings_widget.focusWidget()
+    def show_settings_processing_window(self) -> None:
+        self.settings_processing_widget.show()
+        self.settings_processing_widget.focusWidget()
 
     def unlock_pickng_if_ready(self) -> None:
         if self.ready_to_process.is_ready():
-            self.button_fb.setEnabled(True)
+            self.button_settings_processing.setEnabled(True)
             self.status_message.setText("Click on picking to start processing")
 
     def load_nn(self, filename: Optional[Union[str, Path]] = None) -> None:
@@ -369,7 +361,7 @@ class MainWindow(QMainWindow):
                 self.update_plot(refresh_view=True)
                 self.graph.show()
                 self.button_export.setEnabled(False)
-                self.button_visual_settings.setEnabled(True)
+                self.button_settings_processing.setEnabled(True)
 
                 self.button_get_filename.setEnabled(True)
                 self.ready_to_process.sgy_selected = True

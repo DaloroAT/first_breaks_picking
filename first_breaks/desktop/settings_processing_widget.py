@@ -276,7 +276,8 @@ class PicksFromFileLine(QWidget):
         super().__init__()
         self.picks_from_file_toggle = QCheckBox()
         self.picks_from_file_toggle.setCheckState(False)
-        self.picks_from_file_toggle.stateChanged.connect(self.export_picks_from_file_settings)
+        # self.picks_from_file_toggle.stateChanged.connect(self.export_picks_from_file_settings)
+        self.picks_from_file_toggle.clicked.connect(self.export_picks_from_file_settings)
         self.picks_from_file_widget = QByteEncodeUnitWidget(
             byte_position=byte_position, first_byte=first_byte, encoding=encoding, picks_unit=picks_unit, margins=0
         )
@@ -291,15 +292,27 @@ class PicksFromFileLine(QWidget):
     def update_picks_from_file_settings(self, params: Dict[str, Any]) -> None:
         self.picks_from_file_settings = params
 
-    def export_picks_from_file_settings(self) -> None:
-        is_pressed = self.picks_from_file_toggle.checkState() == Qt.CheckState.Checked
-        if is_pressed:
+    def export_picks_from_file_settings(self, checked) -> None:
+        print("Before", "IsEnabled", self.isEnabled(), "Widget", self.picks_from_file_widget.isEnabled())
+        if checked:
             self.picks_from_file_widget.setEnabled(False)
             self.export_picks_from_file_settings_signal.emit(PicksFromFileSettings(**self.picks_from_file_settings))
             self.toggle_picks_from_file_signal.emit(True)
         else:
-            self.picks_from_file_widget.setEnabled(True)
             self.toggle_picks_from_file_signal.emit(False)
+            self.picks_from_file_widget.setEnabled(True)
+        print("After ", "IsEnabled", self.isEnabled(), "Widget", self.picks_from_file_widget.isEnabled())
+        print("--------")
+
+    # def export_picks_from_file_settings(self) -> None:
+    #     is_pressed = self.picks_from_file_toggle.checkState() == Qt.CheckState.Checked
+    #     if is_pressed:
+    #         self.picks_from_file_widget.setEnabled(False)
+    #         self.export_picks_from_file_settings_signal.emit(PicksFromFileSettings(**self.picks_from_file_settings))
+    #         self.toggle_picks_from_file_signal.emit(True)
+    #     else:
+    #         self.picks_from_file_widget.setEnabled(True)
+    #         self.toggle_picks_from_file_signal.emit(False)
 
 
 class TracesPerGatherLine(QSpinBox, _Dictable):
@@ -342,7 +355,7 @@ class DeviceLine(QComboBoxMapping, _Dictable):
         return {"device": self.value()}
 
 
-class SettingsAndProcessingWidget(QDialog):
+class SettingsProcessingWidget(QDialog):
     export_plotseis_settings_signal = pyqtSignal(PlotseisSettings)
     export_picking_settings_signal = pyqtSignal(PickingSettings)
     export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
@@ -373,7 +386,7 @@ class SettingsAndProcessingWidget(QDialog):
         super().__init__()
         self.hide_on_close = hide_on_close
 
-        self.setWindowTitle("Visualization settings")
+        self.setWindowTitle("Settings and Processing")
         self.setWindowModality(Qt.ApplicationModal)
         set_geometry(self, width_rel=0.35, height_rel=0.4, fix_size=False, centralize=True)
 
@@ -489,5 +502,5 @@ class SettingsAndProcessingWidget(QDialog):
 
 if __name__ == "__main__":
     app = QApplication([])
-    window = SettingsAndProcessingWidget()
+    window = SettingsProcessingWidget()
     app.exec_()
