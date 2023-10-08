@@ -1,13 +1,13 @@
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from PyQt5.QtCore import QSize, Qt, QThreadPool
+from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
-    QDialog,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -21,18 +21,17 @@ from PyQt5.QtWidgets import (
 
 from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
 from first_breaks.data_models.dependent import TraceHeaderParams
+from first_breaks.data_models.independent import ExceptionOptional
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
-from first_breaks.desktop.picking_widget import PickingWindow
-from first_breaks.desktop.threads import CallInThread, PickerQRunnable
-from first_breaks.desktop.utils import MessageBox, set_geometry
-from first_breaks.desktop.visualization_settings_widget import (
+from first_breaks.desktop.nn_manager import NNManager
+from first_breaks.desktop.settings_processing_widget import (
+    PickingSettings,
     PicksFromFileSettings,
     PlotseisSettings,
-    VisualizationSettingsWidget,
+    SettingsProcessingWidget,
 )
-from first_breaks.picking.ipicker import IPicker
-from first_breaks.picking.picker_onnx import PickerONNX
+from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import (
@@ -41,7 +40,6 @@ from first_breaks.utils.utils import (
     download_demo_sgy,
     download_model_onnx,
     multiply_iterable_by,
-    remove_unused_kwargs,
 )
 
 warnings.filterwarnings("ignore")
@@ -84,6 +82,8 @@ class MainWindow(QMainWindow):
         set_geometry(self, width_rel=0.6, height_rel=0.6, fix_size=False, centralize=True)
         self.setWindowTitle("First breaks picking")
 
+        self.threadpool = QThreadPool()
+
         # toolbar
         self.toolbar = QToolBar()
         self.toolbar.setIconSize(QSize(30, 30))
@@ -106,12 +106,11 @@ class MainWindow(QMainWindow):
 
         self.toolbar.addSeparator()
 
-        icon_fb = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
-        # icon_fb = QIcon(str(self.main_folder / "icons" / "picking.png"))
-        self.button_fb = QAction(icon_fb, "Neural network FB picking", self)
-        self.button_fb.triggered.connect(self.pick_fb)
-        self.button_fb.setEnabled(False)
-        self.toolbar.addAction(self.button_fb)
+        icon_visual_settings = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
+        self.button_settings_processing = QAction(icon_visual_settings, "Settings and Processing", self)
+        self.button_settings_processing.triggered.connect(self.show_settings_processing_window)
+        self.button_settings_processing.setEnabled(False)
+        self.toolbar.addAction(self.button_settings_processing)
 
         self.need_processing_region = True
         icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
@@ -126,12 +125,6 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.button_processing_show)
 
         self.toolbar.addSeparator()
-
-        icon_visual_settings = self.style().standardIcon(QStyle.SP_BrowserReload)
-        self.button_visual_settings = QAction(icon_visual_settings, "Show visual settings", self)
-        self.button_visual_settings.triggered.connect(self.show_visual_settings_window)
-        self.button_visual_settings.setEnabled(False)
-        self.toolbar.addAction(self.button_visual_settings)
 
         icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
@@ -168,17 +161,30 @@ class MainWindow(QMainWindow):
         self.plotseis_settings = PlotseisSettings()
         first_byte = 1
         self.picks_from_file_settings = PicksFromFileSettings(byte_position=first_byte)
-        self.visual_settings_widget = VisualizationSettingsWidget(
+        self.settings_processing_widget = SettingsProcessingWidget(
             hide_on_close=True,
             first_byte=first_byte,
             **{**self.plotseis_settings.model_dump(), **self.picks_from_file_settings.model_dump()},
         )
-        self.visual_settings_widget.hide()
-        self.visual_settings_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
-        self.visual_settings_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
-        self.visual_settings_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
-        self.is_toggled_picks_from_file = False
+        self.settings_processing_widget.hide()
+        self.settings_processing_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
+        self.settings_processing_widget.export_picking_settings_signal.connect(self.pick_fb)
+        self.settings_processing_widget.export_picks_from_file_settings_signal.connect(
+            self.update_picks_from_file_settings
+        )
+        self.settings_processing_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
 
+        # nn manager
+        self.nn_manager = NNManager(
+            status_progress=self.status_progress,
+            status_message=self.status_message,
+            threadpool=self.threadpool,
+            interrupt_on=self.settings_processing_widget.interrupt_signal,
+        )
+        self.nn_manager.picking_finished_signal.connect(self.on_picking_finished)
+        self.nn_manager.picking_not_started_error_signal.connect(self.on_picking_not_started_error)
+
+        self.is_toggled_picks_from_file = False
         # placeholders
         self.sgy: Optional[SGY] = None
         self.fn_sgy: Optional[Union[str, Path]] = None
@@ -187,16 +193,7 @@ class MainWindow(QMainWindow):
         self.settings: Optional[Dict[str, Any]] = None
         self.last_folder: Optional[Union[str, Path]] = None
         self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
-
-        self.picker_class: Type[IPicker] = PickerONNX
-        self.picker: Optional[IPicker] = None
         self.picker_hash = MODEL_ONNX_HASH
-        self.picker_extra_kwargs_init = {"show_progressbar": False, "device": "cpu"}
-
-        self.picking_window_class = PickingWindow
-        self.picking_window_extra_kwargs: Dict[str, Any] = {}
-
-        self.threadpool = QThreadPool()
 
         self.show()
 
@@ -216,95 +213,45 @@ class MainWindow(QMainWindow):
         else:
             self.last_folder = None
 
-    def _thread_init_net(self, weights: Union[str, Path]) -> None:
-        task = CallInThread(self.picker_class, model_path=weights, **self.picker_extra_kwargs_init)
-        task.signals.result.connect(self.init_net)
-        self.threadpool.start(task)
-
-    def init_net(self, picker: PickerONNX) -> None:
-        self.picker = picker
-
-    def receive_settings(self, settings: Dict[str, Any]) -> None:
-        self.picking_window_extra_kwargs = remove_unused_kwargs(settings, self.picker.change_settings)
-        self.settings = settings
-
-    def pick_fb(self) -> None:
-        if self.graph.is_picks_modified_manually:
-            overwrite_manual_changes_dialog = MessageBox(
-                self,
-                title="Overwrite manual picking",
-                message="There are manual modifications in the current picks. "
-                "They will be lost when the new picking starts. "
-                "Do you agree?",
-                add_cancel_option=True,
-            )
-            reply = overwrite_manual_changes_dialog.exec_()
-            if reply == QDialog.Accepted:
-                is_accepted_open_picking_settings = True
-            else:
-                is_accepted_open_picking_settings = False
-        else:
-            is_accepted_open_picking_settings = True
-
-        if is_accepted_open_picking_settings:
-            picking_settings = self.picking_window_class(task=self.last_task, **self.picking_window_extra_kwargs)
-            picking_settings.export_settings_signal.connect(self.receive_settings)
-            picking_settings.exec_()
-        else:
-            return
-
-        if not self.settings:
-            return
-
-        try:
-            task_kwargs = remove_unused_kwargs(self.settings, Task)
-            task = Task(self.sgy, **task_kwargs)
-            change_settings_kwargs = remove_unused_kwargs(self.settings, self.picker_class.change_settings)
-            self.picker.change_settings(**change_settings_kwargs)
-            self.process_task(task)
-        except Exception as e:
-            window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
-            window_err.exec_()
-
-    def process_task(self, task: Task) -> None:
-        self.button_fb.setEnabled(False)
+    def pick_fb(self, settings: PickingSettings) -> None:
         self.button_get_filename.setEnabled(False)
-        worker = PickerQRunnable(self.picker, task)
-        worker.signals.started.connect(self.on_start_task)
-        worker.signals.result.connect(self.on_result_task)
-        worker.signals.progress.connect(self.on_progressbar_task)
-        worker.signals.message.connect(self.on_message_task)
-        worker.signals.result.connect(self.on_finish_task)
-        self.threadpool.start(worker)
+        self.nn_manager.pick_fb(self.sgy, settings)
 
-    def store_task(self, task: Task) -> None:
-        self.last_task = task
+    def on_picking_not_started_error(self, exc: ExceptionOptional) -> None:
+        self.settings_processing_widget.set_selection_mode()
+        window_error = MessageBox(
+            self,
+            title=exc.exception.__class__.__name__,
+            message=str(exc),
+            detailed_message=exc.get_formatted_traceback(),
+        )
+        window_error.exec_()
 
-    def on_start_task(self) -> None:
-        self.status_progress.show()
+    def on_picking_finished(self, result: Task) -> None:
+        self.settings_processing_widget.set_selection_mode()
+        self.last_task = result
 
-    def on_message_task(self, message: str) -> None:
-        self.status_message.setText(message)
-
-    def on_finish_task(self) -> None:
-        self.status_progress.hide()
-        self.button_fb.setEnabled(True)
-
-    def on_progressbar_task(self, value: int) -> None:
-        self.status_progress.setValue(value)
-
-    def on_result_task(self, result: Task) -> None:
-        self.store_task(result)
         if result.success:
             self.graph.plot_nn_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
             self.button_export.setEnabled(True)
         else:
-            window_error = MessageBox(self, title="InternalError", message=result.error_message)
+            if isinstance(result.exception, InterruptedError):
+                window_error = MessageBox(
+                    self,
+                    title="Interruption",
+                    message="The picking process has been interrupted. Intermediate results will not be saved",
+                )
+            else:
+                window_error = MessageBox(
+                    self,
+                    title=result.exception.__class__.__name__,
+                    message=result.error_message,
+                    detailed_message=result.get_formatted_traceback(),
+                )
             window_error.exec_()
 
         self.button_get_filename.setEnabled(True)
-        self.button_fb.setEnabled(True)
 
     def processing_region_changed(self, toggle: bool) -> None:
         self.need_processing_region = toggle
@@ -318,9 +265,7 @@ class MainWindow(QMainWindow):
 
     def show_processing_region(self) -> None:
         if self.last_task and self.last_task.success:
-            self.graph.plot_processing_region(
-                self.last_task.traces_per_gather_parsed, self.last_task.maximum_time_parsed
-            )
+            self.graph.plot_processing_region(self.last_task.traces_per_gather, self.last_task.maximum_time)
 
     def hide_processing_region(self) -> None:
         if self.last_task and self.last_task.success:
@@ -367,13 +312,15 @@ class MainWindow(QMainWindow):
         self.show_nn_picks()
         self.show_picks_from_file()
 
-    def show_visual_settings_window(self) -> None:
-        self.visual_settings_widget.show()
-        self.visual_settings_widget.focusWidget()
+    def show_settings_processing_window(self) -> None:
+        self.settings_processing_widget.show()
+        self.settings_processing_widget.focusWidget()
 
     def unlock_pickng_if_ready(self) -> None:
         if self.ready_to_process.is_ready():
-            self.button_fb.setEnabled(True)
+            self.button_settings_processing.setEnabled(True)
+            self.settings_processing_widget.enable_only_visualizations_settings()
+            self.settings_processing_widget.enable_picking()
             self.status_message.setText("Click on picking to start processing")
 
     def load_nn(self, filename: Optional[Union[str, Path]] = None) -> None:
@@ -385,7 +332,7 @@ class MainWindow(QMainWindow):
 
         if filename:
             if FileState.get_file_state(filename, self.picker_hash) == FileState.valid_file:
-                self._thread_init_net(weights=filename)
+                self.nn_manager.init_net(weights=filename)
                 self.button_load_nn.setEnabled(False)
                 self.ready_to_process.model_loaded = True
 
@@ -424,7 +371,8 @@ class MainWindow(QMainWindow):
                 self.update_plot(refresh_view=True)
                 self.graph.show()
                 self.button_export.setEnabled(False)
-                self.button_visual_settings.setEnabled(True)
+                self.button_settings_processing.setEnabled(True)
+                self.settings_processing_widget.enable_only_visualizations_settings()
 
                 self.button_get_filename.setEnabled(True)
                 self.ready_to_process.sgy_selected = True
@@ -472,6 +420,10 @@ class MainWindow(QMainWindow):
                     window_err.exec_()
                 if self.graph.is_picks_modified_manually:
                     self.last_task.picks_in_samples = picks_in_samples_prev
+
+    def closeEvent(self, e: QCloseEvent) -> None:
+        self.graph.spectrum_window.close()
+        e.accept()
 
 
 def run_app() -> None:

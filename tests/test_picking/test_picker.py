@@ -18,7 +18,7 @@ def test_picking(demo_sgy: Path,
                  gain: float,
                  clip: float) -> None:
     sgy = SGY(demo_sgy)
-    task = Task(sgy, traces_per_gather=traces_per_gather, maximum_time=maximum_time, gain=gain, clip=clip)
+    task = Task(source=sgy, traces_per_gather=traces_per_gather, maximum_time=maximum_time, gain=gain, clip=clip)
     picker = PickerONNX(model_onnx, device='cpu', show_progressbar=False)
     task = picker.process_task(task)
 

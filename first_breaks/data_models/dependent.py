@@ -1,10 +1,13 @@
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Literal, Optional, Union
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
 from first_breaks.sgy.headers import Headers, TraceHeaders
+from first_breaks.sgy.reader import SGY
+from first_breaks.utils.cuda import get_recommended_device
 
 TRACE_HEADER_NAMES = [v[1] for v in TraceHeaders().headers_schema]
 
@@ -18,7 +21,7 @@ class XAxis(DefaultModel):
             return v
         else:
             if v not in TRACE_HEADER_NAMES:
-                raise ValidationError(f"'x_axis' must be None or one of trace header name, got {v}")
+                raise ValueError(f"'x_axis' must be None or one of trace header name, got {v}")
             else:
                 return v
 
@@ -29,7 +32,7 @@ class Encoding(DefaultModel):
     @field_validator("encoding")
     def validate_encoding(cls, v: str) -> str:
         if v not in Headers().format2size.keys():
-            raise ValidationError(f"'encoding' must be one of {Headers().format2size.keys()}")
+            raise ValueError(f"'encoding' must be one of {Headers().format2size.keys()}")
         else:
             return v
 
@@ -40,8 +43,35 @@ class TraceHeaderParams(TraceBytePosition, Encoding):
         encoding = based_validation_info.data["encoding"]
         size = Headers.format2size[encoding]
         if v + size > 240:
-            raise ValidationError(
+            raise ValueError(
                 f"'byte_position' is greater than allowed for '{encoding}' encoding. "
                 f"Maximum allowed: {240 - size}, got {v}"
             )
         return v
+
+
+class Source(DefaultModel):
+    source: Union[SGY, str, Path, bytes]
+
+
+class SGYModel(Source):
+    sgy: Optional[SGY] = None
+
+    @model_validator(mode="after")  # type: ignore
+    def sync_source_and_sgy(self) -> "SGYModel":
+        prev_assignment = self.model_config.get("validate_assignment", None)
+        self.model_config["validate_assignment"] = False
+
+        if self.sgy is None:
+            self.sgy = self.source if isinstance(self.source, SGY) else SGY(self.source)
+
+        self.source = self.sgy
+
+        self.model_config["validate_assignment"] = prev_assignment
+        return self  # type: ignore
+
+
+class Device(DefaultModel):
+    device: Literal["cpu", "cuda"] = Field(
+        get_recommended_device(), description="Device to compute first breaks"
+    )  # type: ignore

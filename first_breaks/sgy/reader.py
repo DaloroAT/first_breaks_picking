@@ -73,6 +73,10 @@ class SGY:
     def shape(self) -> SizeHW:
         return self.ns, self.ntr
 
+    @property
+    def fs(self) -> float:
+        return 1000 / self.dt_ms
+
     def ms2index(self, ms_value: float) -> int:
         return self.units_converter.ms2index(ms_value)  # type: ignore
 

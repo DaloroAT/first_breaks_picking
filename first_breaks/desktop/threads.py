@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, Union
 
-from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QRunnable, pyqtBoundSignal, pyqtSignal, pyqtSlot
 
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
@@ -15,7 +15,7 @@ class PickerSignals(QObject):
 
 
 class PickerQRunnable(QRunnable):
-    def __init__(self, picker: IPicker, task: Task):
+    def __init__(self, picker: IPicker, task: Task, interrpution_signal: Union[pyqtSignal, pyqtBoundSignal]):
         super().__init__()
 
         self.signals = PickerSignals()
@@ -26,6 +26,8 @@ class PickerQRunnable(QRunnable):
         self.picker.callback_step_finished = self.callback_step_finished  # type: ignore
         self.picker.callback_processing_started = self.callback_processing_started  # type: ignore
         self.picker.callback_processing_finished = self._do_nothing  # type: ignore
+
+        interrpution_signal.connect(self.picker.callback_interrupt)
 
         self.len = 0
 
@@ -51,6 +53,7 @@ class PickerQRunnable(QRunnable):
         except Exception as e:
             self.task.success = False
             self.task.error_message = str(e)
+            self.task.exception = e
         finally:
             message = "Completed" if self.task.success else "Picking Error"
             self.signals.progress.emit(100)
