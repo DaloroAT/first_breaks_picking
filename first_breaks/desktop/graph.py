@@ -95,6 +95,7 @@ class GraphWidget(pg.PlotWidget):
         self.nn_picks_as_item = None
         self.nn_picks_in_ms = None
         self.is_picks_modified_manually = False
+        self.spectrum_roi_manager.delete_all_rois()
         self.clear()
 
     def plotseis(

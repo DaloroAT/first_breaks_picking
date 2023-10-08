@@ -459,10 +459,21 @@ class SettingsProcessingWidget(QDialog):
         self.run_button = QPushButton("Run picking", self)
         self.run_button.clicked.connect(self.picking_click)
         self.layout.addWidget(self.run_button)
+        self.disable_picking()
 
         self.set_selection_mode()
 
         self.show()
+
+    def enable_only_visualizations_settings(self) -> None:
+        self.setEnabled(True)
+        self.disable_picking()
+
+    def enable_picking(self) -> None:
+        self.run_button.setEnabled(True)
+
+    def disable_picking(self) -> None:
+        self.run_button.setEnabled(False)
 
     def picking_click(self) -> None:
         self.picking_run = not self.picking_run

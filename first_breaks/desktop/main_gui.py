@@ -319,6 +319,8 @@ class MainWindow(QMainWindow):
     def unlock_pickng_if_ready(self) -> None:
         if self.ready_to_process.is_ready():
             self.button_settings_processing.setEnabled(True)
+            self.settings_processing_widget.enable_only_visualizations_settings()
+            self.settings_processing_widget.enable_picking()
             self.status_message.setText("Click on picking to start processing")
 
     def load_nn(self, filename: Optional[Union[str, Path]] = None) -> None:
@@ -370,6 +372,7 @@ class MainWindow(QMainWindow):
                 self.graph.show()
                 self.button_export.setEnabled(False)
                 self.button_settings_processing.setEnabled(True)
+                self.settings_processing_widget.enable_only_visualizations_settings()
 
                 self.button_get_filename.setEnabled(True)
                 self.ready_to_process.sgy_selected = True

@@ -115,6 +115,10 @@ class RoiManager(QObject):
         self.viewbox.removeItem(roi)
         self.rois.remove(roi)
 
+    def delete_all_rois(self) -> None:
+        for roi in list(self.rois):
+            self.delete_roi(roi)
+
     def delete_selected_roi(self) -> None:
         if self.selected_roi:
             self.delete_roi(self.selected_roi)
