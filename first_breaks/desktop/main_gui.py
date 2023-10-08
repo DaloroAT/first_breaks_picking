@@ -23,17 +23,19 @@ from PyQt5.QtWidgets import (
 
 from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
 from first_breaks.data_models.dependent import TraceHeaderParams
+from first_breaks.data_models.independent import ExceptionOptional
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.nn_manager import NNManager
 from first_breaks.desktop.picking_widget import PickingWindow
-from first_breaks.desktop.threads import CallInThread, PickerQRunnable
-from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.desktop.settings_processing_widget import (
+    PickingSettings,
     PicksFromFileSettings,
     PlotseisSettings,
-    SettingsProcessingWidget, PickingSettings,
+    SettingsProcessingWidget,
 )
+from first_breaks.desktop.threads import CallInThread, PickerQRunnable
+from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
@@ -174,7 +176,9 @@ class MainWindow(QMainWindow):
         self.settings_processing_widget.hide()
         self.settings_processing_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
         self.settings_processing_widget.export_picking_settings_signal.connect(self.pick_fb)
-        self.settings_processing_widget.export_picks_from_file_settings_signal.connect(self.update_picks_from_file_settings)
+        self.settings_processing_widget.export_picks_from_file_settings_signal.connect(
+            self.update_picks_from_file_settings
+        )
         self.settings_processing_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
 
         # nn manager
@@ -182,9 +186,10 @@ class MainWindow(QMainWindow):
             status_progress=self.status_progress,
             status_message=self.status_message,
             threadpool=self.threadpool,
-            interrupt_on=self.settings_processing_widget.interrupt_signal
+            interrupt_on=self.settings_processing_widget.interrupt_signal,
         )
         self.nn_manager.picking_finished_signal.connect(self.on_picking_finished)
+        self.nn_manager.picking_not_started_error_signal.connect(self.on_picking_not_started_error)
 
         self.is_toggled_picks_from_file = False
         # placeholders
@@ -215,10 +220,19 @@ class MainWindow(QMainWindow):
         else:
             self.last_folder = None
 
-    def pick_fb(self, settings: PickingSettings):
-        self.button_settings_processing.setEnabled(False)
+    def pick_fb(self, settings: PickingSettings) -> None:
         self.button_get_filename.setEnabled(False)
         self.nn_manager.pick_fb(self.sgy, settings)
+
+    def on_picking_not_started_error(self, exc: ExceptionOptional) -> None:
+        self.settings_processing_widget.set_selection_mode()
+        window_error = MessageBox(
+            self,
+            title=exc.exception.__class__.__name__,
+            message=str(exc),
+            detailed_message=exc.get_formatted_traceback(),
+        )
+        window_error.exec_()
 
     def on_picking_finished(self, result: Task) -> None:
         self.settings_processing_widget.set_selection_mode()
@@ -233,17 +247,18 @@ class MainWindow(QMainWindow):
                 window_error = MessageBox(
                     self,
                     title="Interruption",
-                    message="The picking process has been interrupted. Intermediate results will not be saved")
+                    message="The picking process has been interrupted. Intermediate results will not be saved",
+                )
             else:
                 window_error = MessageBox(
                     self,
                     title=result.exception.__class__.__name__,
                     message=result.error_message,
-                    detailed_message=result.get_formatted_traceback())
+                    detailed_message=result.get_formatted_traceback(),
+                )
             window_error.exec_()
 
         self.button_get_filename.setEnabled(True)
-        self.button_settings_processing.setEnabled(True)
 
     def processing_region_changed(self, toggle: bool) -> None:
         self.need_processing_region = toggle

@@ -7,7 +7,11 @@ import onnxruntime as ort
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, ONNX_DEVICE2PROVIDER, get_recommended_device
+from first_breaks.utils.cuda import (
+    ONNX_CUDA_AVAILABLE,
+    ONNX_DEVICE2PROVIDER,
+    get_recommended_device,
+)
 from first_breaks.utils.utils import calc_hash, chunk_iterable, download_model_onnx
 
 
@@ -39,7 +43,7 @@ class IteratorOfTask:
             normalize=self.task.normalize,
             f1_f2=self.task.f1_f2,
             f3_f4=self.task.f3_f4,
-            fs=self.task.sgy.fs
+            fs=self.task.sgy.fs,
         )
 
         gather = amplitudes[None, :] * gather

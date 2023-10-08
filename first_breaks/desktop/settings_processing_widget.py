@@ -8,15 +8,18 @@ from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialog,
+    QDialogButtonBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QWidget, QSpinBox, QDialogButtonBox, QPushButton,
+    QPushButton,
+    QSpinBox,
+    QWidget,
 )
 
 from first_breaks.const import HIGH_DPI
-from first_breaks.data_models.dependent import TraceHeaderParams, XAxis, Device
+from first_breaks.data_models.dependent import Device, TraceHeaderParams, XAxis
 from first_breaks.data_models.independent import (
     F1F2,
     F3F4,
@@ -25,9 +28,11 @@ from first_breaks.data_models.independent import (
     Gain,
     InvertX,
     InvertY,
+    MaximumTime,
     Normalize,
     PicksUnit,
-    VSPView, MaximumTime, TracesPerGather,
+    TracesPerGather,
+    VSPView,
 )
 from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.bandfilter_widget import QBandFilterWidget
@@ -408,10 +413,12 @@ class SettingsProcessingWidget(QDialog):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
-        self._separators = [[QHSeparationLine("Processing"), 0],
-                            [QHSeparationLine("View"), 5],
-                            [QHSeparationLine("External"), 9],
-                            [QHSeparationLine("NN picking"), 11]]
+        self._separators = [
+            [QHSeparationLine("Processing"), 0],
+            [QHSeparationLine("View"), 5],
+            [QHSeparationLine("External"), 9],
+            [QHSeparationLine("NN picking"), 11],
+        ]
 
         for sep, line in self._separators:
             self.layout.addWidget(sep, line, 0, 1, 2)
@@ -426,7 +433,7 @@ class SettingsProcessingWidget(QDialog):
             ["Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 8, True],
             ["Traces per gather", TracesPerGatherLine(traces_per_gather=traces_per_gather), 12, False],
             ["Maximum time", MaximumTimeLine(maximum_time=maximum_time), 13, False],
-            ["Runtime", DeviceLine(device=device), 14, False]
+            ["Runtime", DeviceLine(device=device), 14, False],
         ]
 
         for label, widget, line, is_plotseis_param in self._inputs:

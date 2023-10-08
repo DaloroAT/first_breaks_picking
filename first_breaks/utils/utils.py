@@ -180,5 +180,3 @@ def resolve_xy2postime(vsp_view: bool, x: Any, y: Any) -> Tuple[Any, Any]:
         return y, x
     else:
         return x, y
-
-

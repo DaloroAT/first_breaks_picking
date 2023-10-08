@@ -1,6 +1,6 @@
 from typing import Any, Optional, Union
 
-from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot, pyqtBoundSignal
+from PyQt5.QtCore import QObject, QRunnable, pyqtBoundSignal, pyqtSignal, pyqtSlot
 
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
@@ -15,11 +15,7 @@ class PickerSignals(QObject):
 
 
 class PickerQRunnable(QRunnable):
-    def __init__(
-            self,
-            picker: IPicker,
-            task: Task,
-            interrpution_signal: Union[pyqtSignal, pyqtBoundSignal]):
+    def __init__(self, picker: IPicker, task: Task, interrpution_signal: Union[pyqtSignal, pyqtBoundSignal]):
         super().__init__()
 
         self.signals = PickerSignals()

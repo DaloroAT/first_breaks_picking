@@ -14,13 +14,14 @@ from first_breaks.data_models.independent import (
     Clip,
     ConfidenceOptional,
     DefaultModel,
+    ExceptionOptional,
     Gain,
     MaximumTime,
     ModelHashOptional,
     Normalize,
     PicksInSamplesOptional,
     TracesPerGather,
-    TracesToInverse, ExceptionOptional,
+    TracesToInverse,
 )
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import (
@@ -59,7 +60,7 @@ class Task(
     ErrorMessage,
     Success,
     ModelHashOptional,
-    ExceptionOptional
+    ExceptionOptional,
 ):
     @property
     def maximum_time_sample(self) -> int:
@@ -69,9 +70,6 @@ class Task(
     def align_parameters(self) -> "Task":
         prev_assignment = self.model_config.get("validate_assignment", None)
         self.model_config["validate_assignment"] = False
-
-        # sgy
-        self.sgy = self.sgy if isinstance(self.sgy, SGY) else SGY(self.sgy)
 
         # traces_per_gather
         self.traces_per_gather = min(self.sgy.num_traces, self.traces_per_gather)

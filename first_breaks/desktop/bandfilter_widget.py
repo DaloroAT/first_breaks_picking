@@ -19,7 +19,6 @@ from first_breaks.desktop.tooltip_widget import (
 
 
 class QBandFilterWidget(QWidget):
-
     def __init__(
         self,
         f1: Optional[float] = None,

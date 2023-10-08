@@ -50,10 +50,10 @@ class GraphWidget(pg.PlotWidget):
         self.is_picks_modified_manually = False
         self.pos_ax_header: Optional[str] = None
 
-        self.x_ax = None
-        self.y_ax = None
-        self.pos_ax = None
-        self.time_ax = None
+        self.x_ax: Optional[AxisItem] = None
+        self.y_ax: Optional[AxisItem] = None
+        self.pos_ax: Optional[AxisItem] = None
+        self.time_ax: Optional[AxisItem] = None
         self.setup_axes()
 
         self.spectrum_roi_manager = RoiManager(viewbox=self.getViewBox())
@@ -457,7 +457,7 @@ class GraphExporter(GraphWidget):
 
         if task is not None and show_processing_region:
             self.plot_processing_region(
-                maximum_time=task.maximum_time_,
+                maximum_time=task.maximum_time,
                 traces_per_gather=task.traces_per_gather,
                 region_contour_color=contour_color,
                 region_poly_color=poly_color,

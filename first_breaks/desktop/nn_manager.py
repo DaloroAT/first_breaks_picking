@@ -1,36 +1,30 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
-from PyQt5.QtCore import QThreadPool, QObject, pyqtSignal, pyqtBoundSignal
-from PyQt5.QtWidgets import (
-    QLabel,
-    QProgressBar,
-)
+from PyQt5.QtCore import QObject, QThreadPool, pyqtBoundSignal, pyqtSignal
+from PyQt5.QtWidgets import QLabel, QProgressBar
 
+from first_breaks.data_models.independent import ExceptionOptional
+from first_breaks.desktop.settings_processing_widget import PickingSettings
 from first_breaks.desktop.threads import CallInThread, PickerQRunnable
-from first_breaks.desktop.settings_processing_widget import (
-    PickingSettings,
-)
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import (
-    remove_unused_kwargs,
-)
+from first_breaks.utils.utils import remove_unused_kwargs
 
 
 class NNManager(QObject):
-    parsing_picking_parameters_error_signal = pyqtSignal()
+    picking_not_started_error_signal = pyqtSignal(ExceptionOptional)
     picking_started_signal = pyqtSignal()
     picking_finished_signal = pyqtSignal(Task)
 
     def __init__(
-            self,
-            status_progress: QProgressBar,
-            status_message: QLabel,
-            threadpool: QThreadPool,
-            interrupt_on: Union[pyqtSignal, pyqtBoundSignal]
+        self,
+        status_progress: QProgressBar,
+        status_message: QLabel,
+        threadpool: QThreadPool,
+        interrupt_on: Union[pyqtSignal, pyqtBoundSignal],
     ):
         super().__init__()
         self.status_progress = status_progress
@@ -51,14 +45,14 @@ class NNManager(QObject):
     def _store_picker(self, picker: PickerONNX) -> None:
         self.picker = picker
 
-    def pick_fb(self, sgy: SGY, settings: PickingSettings):
+    def pick_fb(self, sgy: SGY, settings: PickingSettings) -> None:
         try:
-            settings = settings.model_dump()
-            change_settings = remove_unused_kwargs(settings, self.picker.change_settings)
+            settings_dict = settings.model_dump()
+            change_settings = remove_unused_kwargs(settings_dict, self.picker.change_settings)  # type: ignore
             self.picker.change_settings(**change_settings)
 
-            task_kwargs = remove_unused_kwargs(settings, Task)
-            task = Task(sgy=sgy, **task_kwargs)
+            task_kwargs = remove_unused_kwargs(settings_dict, Task)  # type: ignore
+            task = Task(source=sgy, **task_kwargs)
 
             worker = PickerQRunnable(picker=self.picker, task=task, interrpution_signal=self.interrupt_on)
             worker.signals.started.connect(self.on_start_task)
@@ -68,8 +62,8 @@ class NNManager(QObject):
             worker.signals.result.connect(self.on_finish_task)
             self.threadpool.start(worker)
             self.picking_started_signal.emit()
-        except Exception:
-            self.parsing_picking_parameters_error_signal.emit()
+        except Exception as e:
+            self.picking_not_started_error_signal.emit(ExceptionOptional(exception=e))
 
     def on_start_task(self) -> None:
         self.status_progress.show()

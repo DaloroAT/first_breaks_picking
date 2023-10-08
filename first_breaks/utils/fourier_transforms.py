@@ -53,8 +53,9 @@ def get_mean_amplitude_spectrum(data, fs, normalize=True):
 def build_amplitude_filter(frequencies, f1_f2=None, f3_f4=None, filter_type="pass"):
     assert filter_type in ["pass", "reject"]
     assert np.all(frequencies >= 0)
-    assert all(pair is None or (isinstance(pair, (list, tuple, np.array)) and len(pair) == 2)
-               for pair in [f1_f2, f3_f4])
+    assert all(
+        pair is None or (isinstance(pair, (list, tuple, np.array)) and len(pair) == 2) for pair in [f1_f2, f3_f4]
+    )
 
     if f1_f2 is None and f3_f4 is None:
         if filter_type == "pass":
@@ -108,4 +109,4 @@ def get_filtered_data(data: np.ndarray, fs, f1_f2=None, f3_f4=None, filter_type=
 if __name__ == "__main__":
     t = np.linspace(0, 1)
     y = np.sin(2 * np.pi * t)
-    print(get_mean_amplitude_spectrum(y, 1/(t[1] - t[0])))
+    print(get_mean_amplitude_spectrum(y, 1 / (t[1] - t[0])))

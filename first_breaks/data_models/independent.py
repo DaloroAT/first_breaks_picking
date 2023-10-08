@@ -158,8 +158,6 @@ class ExceptionOptional(DefaultModel):
 
     def get_formatted_traceback(self) -> str:
         formatted_traceback = traceback.format_exception(
-            type(self.exception),
-            self.exception,
-            self.exception.__traceback__
+            type(self.exception), self.exception, self.exception.__traceback__
         )
         return "".join(formatted_traceback)

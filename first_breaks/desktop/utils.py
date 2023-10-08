@@ -1,28 +1,31 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, QEvent, QPointF, QPoint
+from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QDialog,
     QDialogButtonBox,
+    QGraphicsSceneMouseEvent,
     QLabel,
+    QPushButton,
+    QTextEdit,
     QVBoxLayout,
-    QWidget, QGraphicsSceneMouseEvent, QPushButton, QTextEdit,
+    QWidget,
 )
 from pyqtgraph import ViewBox
 
 
 class MessageBox(QDialog):
     def __init__(
-            self,
-            parent: QWidget,
-            title: str = "Error",
-            message: str = "Error",
-            detailed_message: str = None,
-            add_cancel_option: bool = False,
-            label_ok: str = "Ok",
-            label_cancel: str = "Cancel",
+        self,
+        parent: QWidget,
+        title: str = "Error",
+        message: str = "Error",
+        detailed_message: str = None,
+        add_cancel_option: bool = False,
+        label_ok: str = "Ok",
+        label_cancel: str = "Cancel",
     ):
         super().__init__(parent=parent)
 
@@ -96,7 +99,7 @@ def set_geometry(
 
 
 class QHSeparationLine(QtWidgets.QWidget):
-    def __init__(self, text=''):
+    def __init__(self, text=""):
         super().__init__()
 
         # Create the horizontal line (QFrame)
@@ -182,8 +185,7 @@ def validate_mapping_setup_and_get_current_index(
 
 
 def get_mouse_position_in_scene_coords(
-    event_or_point: Union[QGraphicsSceneMouseEvent, QEvent, QPointF, QPoint],
-    viewbox: ViewBox
+    event_or_point: Union[QGraphicsSceneMouseEvent, QEvent, QPointF, QPoint], viewbox: ViewBox
 ) -> QPointF:
     if isinstance(event_or_point, QGraphicsSceneMouseEvent):
         point = event_or_point.scenePos()

@@ -1,7 +1,13 @@
 from pathlib import Path
-from typing import Any, Optional, Union, Literal
+from typing import Any, Literal, Optional, Union
 
-from pydantic import AfterValidator, Field, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    Field,
+    field_validator,
+    model_validator,
+    root_validator,
+)
 from pydantic_core.core_schema import FieldValidationInfo
 
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
@@ -50,8 +56,25 @@ class TraceHeaderParams(TraceBytePosition, Encoding):
         return v
 
 
-class SGYModel(DefaultModel):
-    sgy: Union[SGY, str, Path, bytes] = Field(..., description="Source of SGY data")
+class Source(DefaultModel):
+    source: Union[SGY, str, Path, bytes]
+
+
+class SGYModel(Source):
+    sgy: Optional[SGY] = None
+
+    @model_validator(mode="after")
+    def sync_source_and_sgy(self) -> "SGYModel":
+        prev_assignment = self.model_config.get("validate_assignment", None)
+        self.model_config["validate_assignment"] = False
+
+        if self.sgy is None:
+            self.sgy = self.source if isinstance(self.source, SGY) else SGY(self.source)
+
+        self.source = self.sgy
+
+        self.model_config["validate_assignment"] = prev_assignment
+        return self
 
 
 class Device(DefaultModel):

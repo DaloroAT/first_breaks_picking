@@ -1,12 +1,26 @@
 import sys
-from typing import Union, Sequence, Optional, Callable, Any, Tuple
+from typing import Any, Callable, Optional, Sequence, Tuple, Union
 from weakref import WeakKeyDictionary
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLineEdit, QLabel, QFrame
-
-from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtCore import Qt, QTimer, QPoint, QEasingCurve, QPropertyAnimation, pyqtSignal, QObject, pyqtBoundSignal
-
+from PyQt5.QtCore import (
+    QEasingCurve,
+    QObject,
+    QPoint,
+    QPropertyAnimation,
+    Qt,
+    QTimer,
+    pyqtBoundSignal,
+    pyqtSignal,
+)
+from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 TDoUntil = Union[int, float, pyqtSignal, Sequence[pyqtSignal]]
 
@@ -23,21 +37,25 @@ def run_do_until(do_until: TDoUntil, func: Callable[[Any], Any]) -> None:
 
 
 class TextToolTip(QLabel):
-    def __init__(self,
-                 widget: QWidget,
-                 text: str,
-                 text_position="right",
-                 color: Union[Tuple[int, int, int], str] = "#faf3be",
-                 do_until: TDoUntil = 5000):
+    def __init__(
+        self,
+        widget: QWidget,
+        text: str,
+        text_position="right",
+        color: Union[Tuple[int, int, int], str] = "#faf3be",
+        do_until: TDoUntil = 5000,
+    ):
         super().__init__(widget)
 
         self.setWordWrap(True)
         self.setFrameShape(QFrame.StyledPanel)
-        self.setStyleSheet(f"""
+        self.setStyleSheet(
+            f"""
                     background-color: {color};
                     border: 1px solid black;
                     padding: 2px;
-                """)
+                """
+        )
         self.setAutoFillBackground(True)
         self.setWindowFlags(Qt.ToolTip | Qt.WindowStaysOnTopHint)
 
@@ -91,11 +109,12 @@ class HighlightToolTip(QObject):
     _manager = _HighlightManager()
 
     def __init__(
-            self,
-            widgets: Union[QWidget, Sequence[QWidget]],
-            parent: Optional[QWidget] = None,
-            do_until: TDoUntil = 5000,
-            color=(255, 220, 220),):
+        self,
+        widgets: Union[QWidget, Sequence[QWidget]],
+        parent: Optional[QWidget] = None,
+        do_until: TDoUntil = 5000,
+        color=(255, 220, 220),
+    ):
         if not parent and widgets:
             if isinstance(widgets, (list, tuple)):
                 parent = widgets[0]
@@ -144,7 +163,9 @@ class _Shaker:
 
 
 class ShakeToolTip(QObject):
-    def __init__(self, widgets: Union[QWidget, Sequence[QWidget]], parent: Optional[QWidget] = None, do_until: TDoUntil = 5000):
+    def __init__(
+        self, widgets: Union[QWidget, Sequence[QWidget]], parent: Optional[QWidget] = None, do_until: TDoUntil = 5000
+    ):
         if not parent and widgets:
             if isinstance(widgets, (list, tuple)):
                 parent = widgets[0]
@@ -169,6 +190,7 @@ class ShakeToolTip(QObject):
 
 
 if __name__ == "__main__":
+
     class ValidatorWidget(QWidget):
         def __init__(self):
             super().__init__()
@@ -182,12 +204,11 @@ if __name__ == "__main__":
 
         def validate_input(self, text):
             if "@" not in text:
-                TextToolTip(self.line_edit,
-                            text="Password must contain '@' symbol!" * 1,
-                            do_until=self.line_edit.textChanged)
+                TextToolTip(
+                    self.line_edit, text="Password must contain '@' symbol!" * 1, do_until=self.line_edit.textChanged
+                )
                 HighlightToolTip(self.line_edit, do_until=self.line_edit.textChanged)
                 ShakeToolTip(self.line_edit, do_until=self.line_edit.textChanged)
-
 
     app = QApplication(sys.argv)
     window = ValidatorWidget()
