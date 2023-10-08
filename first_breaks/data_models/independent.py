@@ -12,6 +12,7 @@ class DefaultModel(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         validate_assignment = True
+        protected_namespaces = ()
 
 
 class TracesPerGather(DefaultModel):

@@ -148,7 +148,7 @@ sgy_filename = 'data.sgy'
 download_demo_sgy(fname=sgy_filename)
 sgy = SGY(sgy_filename)
 
-task = Task(sgy_filename,
+task = Task(source=sgy_filename,
             traces_per_gather=12,
             maximum_time=100,
             gain=2)
@@ -260,8 +260,8 @@ print(sgy.num_traces, sgy.ntr)
 print(sgy.num_samples, sgy.ns)
 # = (ns, ntr)
 print(sgy.shape)
-# time discretization, in mcs, in mcs, in ms
-print(sgy.dt, sgy.dt_mcs, sgy.dt_ms)
+# time discretization, in mcs, in mcs, in ms, fs in Hertz
+print(sgy.dt, sgy.dt_mcs, sgy.dt_ms, sgy.fs)
 
 # dict with headers in the first 3600 bytes of the file
 print(sgy.general_headers)
@@ -284,7 +284,7 @@ from first_breaks.picking.task import Task
 sgy_filename = 'data.sgy'
 sgy = SGY(sgy_filename)
 
-task = Task(sgy,
+task = Task(source=sgy,
             traces_per_gather=24,
             maximum_time=200)
 ```
@@ -337,7 +337,7 @@ from first_breaks.sgy.reader import SGY
 sgy_filename = 'data.sgy'
 sgy = SGY(sgy_filename)
 
-task = Task(sgy,
+task = Task(source=sgy,
             traces_per_gather=24,
             maximum_time=200)
 picker = PickerONNX()
@@ -447,7 +447,7 @@ sgy_filename = 'data.sgy'
 image_filename = 'image.png'
 
 sgy = SGY(sgy_filename)
-task = Task(sgy,
+task = Task(source=sgy,
             traces_per_gather=24,
             maximum_time=200)
 picker = PickerONNX()
