@@ -596,9 +596,9 @@ if __name__ == "__main__":
     from first_breaks.utils.utils import download_demo_sgy
 
     demo_sgy = download_demo_sgy()
-    # export_image(demo_sgy, "demo_sgy.png")
-    app = QApplication([])
-    window = GraphWidget(background="w")
-    window.show()
-    window.plotseis(SGY(demo_sgy))
-    app.exec_()
+    export_image(demo_sgy, "demo_sgy.png")
+    # app = QApplication([])
+    # window = GraphWidget(background="w")
+    # window.show()
+    # window.plotseis(SGY(demo_sgy))
+    # app.exec_()
