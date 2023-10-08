@@ -514,8 +514,11 @@ The following mouse interactions are available:
 - Wheel spin: Zooms the scene in and out.
 - Left click: *After picking with model*, you can manually change picks.
 
-You can also use slider in toolbar to change gain of traces. **The gain value for the slider is only used for
-visualization, it is not used in picking process**.
+Spectrum analysis:
+- Hold down the **Shift** key, the left mouse button, and select an area: a window with a spectrum will appear.
+You can create as many windows as you like.
+- Move existing windows by dragging with the left mouse button.
+- Delete the window with the spectrum by clicking on it and pressing the **Del** key.
 
 ### Load model
 
@@ -525,19 +528,23 @@ on how to download the model.
 Click on 1 button and select file with model.
 After successfully loading the model, access to the pick will open.
 
-### Run picking
+### Settings and Processing
 
-Click on 3 button to open window with picking parameters. A detailed description of the parameters can be found
-in the `Picking process` chapter. Then run picking process. After some time, a line will appear connecting the first
-arrivals.
+Click on 3 button to open window with different settings and picking parameters:
 
-Run again with different parameters to achieve optimal values of the picking parameters for your data.
+- The **Processing** section contains parameters for drawing seismograms; these parameters are also used during the
+picking process. Changing them in real time changes the rendering.
+- The **View** section allows you to change the axes' names, content, and orientation.
+- The **External** section allows you to read and display the first picks from the headers of the current file.
+- The **NN Picking** section allows you to select additional parameters for picking the first arrivals and a device
+for calculations. If you have CUDA compatible GPU and installed GPU supported version of library
+(see `Installation` section), you can select `CUDA/GPU` device to use GPU acceleration.
+It can drastically decrease computation time.
 
-If you have CUDA compatible GPU and installed GPU supported version of library (see `Installation` section), you can
-select `CUDA/GPU` device  to use GPU acceleration. It can drastically decrease computation time.
+A detailed description of the parameters responsible for picking can be found in the `Picking process` chapter.
 
-Parameter `Batch size` determine how many gathers will be processed simultaneously on GPU. It also can decrease
-computation time, but make sure that you have enough free GPU memory (`Batch size=10` requires > 10 Gb VRAM on Windows).
+When you have chosen the optimal parameters, click on the **Run picking** button. After some time, a line will appear
+connecting the first arrivals. You can interrupt the process by clicking **Stop** button.
 
 ### Processing grid
 
@@ -545,14 +552,9 @@ Click on 4 button to toggle the display of the processing grid on or off. Horizo
 shows `Maximum time` and vertical lines are drawn at intervals equal to `Traces per gather`. The neural network
 processes blocks independently, as separate images.
 
-### Visual settings
-
-Click on 5 button to open window for visual settings. You can select gain, clip, normalization method,
-and trace values. In addition, you can also load a pick from a file, specifying how to read it.
-
 ### Save results
 
-Click on 6 button to save picks into file. Depending on file extension, results will be saved as `json`,
+Click on 5 button to save picks into file. Depending on file extension, results will be saved as `json`,
 as plain `txt`, or as `segy` file.
 
 For extensions `txt` and `json`, picking parameters and model confidence for each peak are additionally saved.
