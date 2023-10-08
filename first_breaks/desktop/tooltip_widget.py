@@ -37,7 +37,7 @@ def run_do_until(do_until: TDoUntil, func: Callable[[Any], Any]) -> None:
 
 
 class TextToolTip(QLabel):
-    def __init__(
+    def __init__(  # type: ignore
         self,
         widget: QWidget,
         text: str,
@@ -75,15 +75,15 @@ class TextToolTip(QLabel):
             raise ValueError("Wrong position value")
         self.show()
 
-        run_do_until(do_until, self.close)
+        run_do_until(do_until, self.close)  # type: ignore
 
 
 class _HighlightManager:
-    _original_colors = WeakKeyDictionary()
-    _highlight_counts = WeakKeyDictionary()
+    _original_colors = WeakKeyDictionary()  # type: ignore
+    _highlight_counts = WeakKeyDictionary()  # type: ignore
 
     @classmethod
-    def highlight_widget(cls, widget: QWidget, color: Tuple[int, int, int]):
+    def highlight_widget(cls, widget: QWidget, color: Tuple[int, int, int]) -> None:
         if widget not in cls._original_colors:
             cls._original_colors[widget] = widget.palette()
 
@@ -96,7 +96,7 @@ class _HighlightManager:
         widget.setPalette(palette)
 
     @classmethod
-    def remove_highlight(cls, widget: QWidget):
+    def remove_highlight(cls, widget: QWidget) -> None:
         if widget in cls._highlight_counts:
             cls._highlight_counts[widget] -= 1
             if cls._highlight_counts[widget] <= 0:
@@ -108,7 +108,7 @@ class _HighlightManager:
 class HighlightToolTip(QObject):
     _manager = _HighlightManager()
 
-    def __init__(
+    def __init__(  # type: ignore
         self,
         widgets: Union[QWidget, Sequence[QWidget]],
         parent: Optional[QWidget] = None,
@@ -127,7 +127,7 @@ class HighlightToolTip(QObject):
         for widget in self.widgets:
             self._manager.highlight_widget(widget, color)
 
-        run_do_until(do_until, self.remove_highlights)
+        run_do_until(do_until, self.remove_highlights)  # type: ignore
 
     def remove_highlights(self) -> None:
         for widget in self.widgets:
@@ -154,10 +154,10 @@ class _Shaker:
         self._animation.setLoopCount(-1)
         self._animation.setEasingCurve(QEasingCurve.InOutQuad)
 
-    def shake(self):
+    def shake(self) -> None:
         self._animation.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._animation.stop()
         self._widget.move(self._start_pos)
 
@@ -181,9 +181,9 @@ class ShakeToolTip(QObject):
             shaker.shake()
             self._shakers.append(shaker)
 
-        run_do_until(do_until, self.stop_shaking)
+        run_do_until(do_until, self.stop_shaking)  # type: ignore
 
-    def stop_shaking(self):
+    def stop_shaking(self) -> None:
         for shaker in self._shakers:
             shaker.stop()
         self.deleteLater()
@@ -192,7 +192,7 @@ class ShakeToolTip(QObject):
 if __name__ == "__main__":
 
     class ValidatorWidget(QWidget):
-        def __init__(self):
+        def __init__(self):  # type: ignore
             super().__init__()
 
             layout = QVBoxLayout(self)
@@ -202,7 +202,7 @@ if __name__ == "__main__":
             # Signal connection
             self.line_edit.textChanged.connect(self.validate_input)
 
-        def validate_input(self, text):
+        def validate_input(self, text: str) -> None:
             if "@" not in text:
                 TextToolTip(
                     self.line_edit, text="Password must contain '@' symbol!" * 1, do_until=self.line_edit.textChanged

@@ -1,7 +1,7 @@
 import json
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -23,12 +23,7 @@ from first_breaks.data_models.independent import (
     TracesPerGather,
     TracesToInverse,
 )
-from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import (
-    chunk_iterable,
-    download_demo_sgy,
-    multiply_iterable_by,
-)
+from first_breaks.utils.utils import chunk_iterable, multiply_iterable_by
 
 MINIMUM_TRACES_PER_GATHER = 2
 
@@ -66,7 +61,7 @@ class Task(
     def maximum_time_sample(self) -> int:
         return self.sgy.ms2index(self.maximum_time)
 
-    @model_validator(mode="after")
+    @model_validator(mode="after")  # type: ignore
     def align_parameters(self) -> "Task":
         prev_assignment = self.model_config.get("validate_assignment", None)
         self.model_config["validate_assignment"] = False
@@ -95,7 +90,7 @@ class Task(
         self.traces_to_inverse = sorted(set(traces_to_inverse))
 
         self.model_config["validate_assignment"] = prev_assignment
-        return self
+        return self  # type: ignore
 
     def get_gathers_ids(self) -> List[Tuple[int]]:
         return list(chunk_iterable(list(range(self.sgy.shape[1])), self.traces_per_gather))  # type: ignore

@@ -5,7 +5,7 @@ import io
 import random
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
@@ -152,7 +152,7 @@ def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, 
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
 
 
-def _color_generator():
+def _color_generator() -> Generator[List[int], None, None]:
     golden_ratio = 0.618033988749895
     hue = random.random()  # start from a random position
     while True:
@@ -164,7 +164,7 @@ def _color_generator():
 cgen = _color_generator()
 
 
-def generate_color():
+def generate_color() -> List[int]:
     return next(cgen)
 
 

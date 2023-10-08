@@ -60,13 +60,13 @@ class GraphWidget(pg.PlotWidget):
         self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
         self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
-    def resolve_postime2xy(self, position: Any, time: Any):
+    def resolve_postime2xy(self, position: Any, time: Any) -> Tuple[Any, Any]:
         return postime2xy(vsp_view=self.vsp_view, position=position, time=time)
 
-    def resolve_xy2postime(self, x: Any, y: Any):
+    def resolve_xy2postime(self, x: Any, y: Any) -> Tuple[Any, Any]:
         return xy2postime(vsp_view=self.vsp_view, x=x, y=y)
 
-    def setup_axes(self):
+    def setup_axes(self) -> None:
         self.getPlotItem().invertX(self.invert_x)
         self.getPlotItem().invertY(self.invert_y)
         self.getPlotItem().showAxis("top", True)
@@ -593,11 +593,7 @@ def export_image(
 
 if __name__ == "__main__":
     from first_breaks.sgy.reader import SGY
-    from first_breaks.utils.utils import (
-        download_demo_sgy,
-        resolve_postime2xy,
-        resolve_xy2postime,
-    )
+    from first_breaks.utils.utils import download_demo_sgy
 
     demo_sgy = download_demo_sgy()
     # export_image(demo_sgy, "demo_sgy.png")

@@ -1,19 +1,13 @@
 from pathlib import Path
 from typing import Any, Literal, Optional, Union
 
-from pydantic import (
-    AfterValidator,
-    Field,
-    field_validator,
-    model_validator,
-    root_validator,
-)
+from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
 from first_breaks.sgy.headers import Headers, TraceHeaders
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, get_recommended_device
+from first_breaks.utils.cuda import get_recommended_device
 
 TRACE_HEADER_NAMES = [v[1] for v in TraceHeaders().headers_schema]
 
@@ -63,7 +57,7 @@ class Source(DefaultModel):
 class SGYModel(Source):
     sgy: Optional[SGY] = None
 
-    @model_validator(mode="after")
+    @model_validator(mode="after")  # type: ignore
     def sync_source_and_sgy(self) -> "SGYModel":
         prev_assignment = self.model_config.get("validate_assignment", None)
         self.model_config["validate_assignment"] = False
@@ -74,8 +68,10 @@ class SGYModel(Source):
         self.source = self.sgy
 
         self.model_config["validate_assignment"] = prev_assignment
-        return self
+        return self  # type: ignore
 
 
 class Device(DefaultModel):
-    device: Literal["cpu", "cuda"] = Field(get_recommended_device(), description="Device to compute first breaks")
+    device: Literal["cpu", "cuda"] = Field(
+        get_recommended_device(), description="Device to compute first breaks"
+    )  # type: ignore

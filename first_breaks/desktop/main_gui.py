@@ -1,15 +1,13 @@
 import sys
-import traceback
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from PyQt5.QtCore import QSize, Qt, QThreadPool
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
-    QDialog,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -27,17 +25,13 @@ from first_breaks.data_models.independent import ExceptionOptional
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.nn_manager import NNManager
-from first_breaks.desktop.picking_widget import PickingWindow
 from first_breaks.desktop.settings_processing_widget import (
     PickingSettings,
     PicksFromFileSettings,
     PlotseisSettings,
     SettingsProcessingWidget,
 )
-from first_breaks.desktop.threads import CallInThread, PickerQRunnable
 from first_breaks.desktop.utils import MessageBox, set_geometry
-from first_breaks.picking.ipicker import IPicker
-from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import (
@@ -46,7 +40,6 @@ from first_breaks.utils.utils import (
     download_demo_sgy,
     download_model_onnx,
     multiply_iterable_by,
-    remove_unused_kwargs,
 )
 
 warnings.filterwarnings("ignore")

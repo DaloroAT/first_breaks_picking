@@ -1,13 +1,13 @@
-from typing import List, Optional
+from typing import Any, List, Tuple
 
 import pyqtgraph as pg
-from PyQt5.QtCore import QEvent, QObject, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QObject, QPointF, Qt, pyqtSignal
 
 from first_breaks.desktop.utils import get_mouse_position_in_scene_coords
-from first_breaks.utils.utils import generate_color, resolve_xy2postime
+from first_breaks.utils.utils import generate_color
 
 
-def get_rect_of_roi(roi: pg.ROI):
+def get_rect_of_roi(roi: pg.ROI) -> Tuple[float, float, float, float]:
     x0, y0 = roi.pos().x(), roi.pos().y()
     x1, y1 = roi.pos().x() + roi.size().x(), roi.pos().y() + roi.size().y()
     x_min, x_max = sorted([x0, x1])
@@ -15,10 +15,11 @@ def get_rect_of_roi(roi: pg.ROI):
     return x_min, y_min, x_max, y_max
 
 
-def invert_roi_shape(roi: pg.ROI):
+def invert_roi_shape(roi: pg.ROI) -> pg.ROI:
     position, size = roi.pos(), roi.size()
     roi.setPos((position.y(), position.x()))
     roi.setSize((size.y(), size.x()))
+    return roi
 
 
 class RoiManager(QObject):
@@ -33,7 +34,7 @@ class RoiManager(QObject):
     def __init__(self, viewbox: pg.ViewBox):
         super().__init__()
         self.viewbox = viewbox
-        self.rois = []
+        self.rois: List[pg.ROI] = []
         self.selected_roi = None
         self.creating_roi = False
 
@@ -42,16 +43,16 @@ class RoiManager(QObject):
 
         self.mouse_move_signal = pg.SignalProxy(self.viewbox.scene().sigMouseMoved, rateLimit=60, slot=self.mouse_moved)
 
-    def change_rois_view(self):
+    def change_rois_view(self) -> None:
         for roi in self.rois:
             invert_roi_shape(roi)
 
-    def mouse_moved(self, pos):
+    def mouse_moved(self, pos: Tuple[QPointF]) -> None:
         pos = pos[0]
         if self.creating_roi:
             self.update_roi_size(get_mouse_position_in_scene_coords(pos, self.viewbox))
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: Any, event: QEvent) -> Any:
         # event_dict = {value: name for name, value in vars(QEvent).items() if isinstance(value, int)}
         # print(event.type(), event_dict.get(event.type(), "UNK"))
         if obj == self.viewbox:
@@ -74,7 +75,7 @@ class RoiManager(QObject):
         # If the event wasn't handled, propagate it further
         return super(RoiManager, self).eventFilter(obj, event)
 
-    def start_roi_creation(self, position):
+    def start_roi_creation(self, position: QPointF) -> None:
         color = generate_color()
         pen = pg.mkPen(color=color, width=3)
         hover_pen = pg.mkPen(color=color, width=5)
@@ -91,30 +92,33 @@ class RoiManager(QObject):
         self.selected_roi = roi
         self.creating_roi = True
 
-    def update_roi_size(self, position):
+    def update_roi_size(self, position: QPointF) -> None:
         if self.rois:
             self.rois[-1].setSize([position.x() - self.rois[-1].pos().x(), position.y() - self.rois[-1].pos().y()])
 
-    def select_roi(self):
+    def select_roi(self) -> None:
         self.selected_roi = None
         for roi in self.rois:
             if roi.isUnderMouse():
                 self.selected_roi = roi
                 break
 
-    def delete_selected_roi(self):
+    def delete_roi(self, roi: pg.ROI) -> None:
+        roi.sigClicked.disconnect(self.on_roi_clicked)
+        roi.sigRegionChangeStarted.disconnect(self.roi_change_started_signal)
+        roi.sigRegionChanged.disconnect(self.roi_changing_signal)
+        roi.sigRegionChangeFinished.disconnect(self.roi_change_finished_signal)
+        roi.sigClicked.disconnect(self.roi_clicked_signal)
+
+        self.roi_deleted_signal.emit(roi)
+
+        self.viewbox.removeItem(roi)
+        self.rois.remove(roi)
+
+    def delete_selected_roi(self) -> None:
         if self.selected_roi:
-            self.selected_roi.sigClicked.disconnect(self.on_roi_clicked)
-            self.selected_roi.sigRegionChangeStarted.disconnect(self.roi_change_started_signal)
-            self.selected_roi.sigRegionChanged.disconnect(self.roi_changing_signal)
-            self.selected_roi.sigRegionChangeFinished.disconnect(self.roi_change_finished_signal)
-            self.selected_roi.sigClicked.disconnect(self.roi_clicked_signal)
-
-            self.roi_deleted_signal.emit(self.selected_roi)
-
-            self.viewbox.removeItem(self.selected_roi)
-            self.rois.remove(self.selected_roi)
+            self.delete_roi(self.selected_roi)
             self.selected_roi = None
 
-    def on_roi_clicked(self, roi):
+    def on_roi_clicked(self, roi: pg.ROI) -> None:
         self.selected_roi = roi

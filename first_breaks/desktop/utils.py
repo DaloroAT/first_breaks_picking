@@ -62,7 +62,7 @@ class MessageBox(QDialog):
         self.layout.addWidget(self.button_box)
         self.setLayout(self.layout)
 
-    def toggle_details(self):
+    def toggle_details(self) -> None:
         if self.details_text.isVisible():
             self.details_text.setVisible(False)
             self.details_button.setText("Show Details")
@@ -99,7 +99,7 @@ def set_geometry(
 
 
 class QHSeparationLine(QtWidgets.QWidget):
-    def __init__(self, text=""):
+    def __init__(self, text: str = ""):
         super().__init__()
 
         # Create the horizontal line (QFrame)

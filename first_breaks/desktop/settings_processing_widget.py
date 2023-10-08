@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialog,
-    QDialogButtonBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -31,6 +30,7 @@ from first_breaks.data_models.independent import (
     MaximumTime,
     Normalize,
     PicksUnit,
+    TNormalize,
     TracesPerGather,
     VSPView,
 )
@@ -100,7 +100,7 @@ def get_value(qline: QLineEdit, minimum: Optional[float] = None, default: Option
         return default
 
 
-def default_set_enabled(widget: QWidget, enabled: bool):
+def default_set_enabled(widget: QWidget, enabled: bool) -> None:
     widget.setEnabled(enabled)
 
 
@@ -109,10 +109,10 @@ class _Extras:
     def dict(self) -> Dict[str, Any]:
         raise NotImplementedError
 
-    def enable_fields(self):
+    def enable_fields(self) -> None:
         default_set_enabled(self, True)
 
-    def disable_fields(self):
+    def disable_fields(self) -> None:
         default_set_enabled(self, False)
 
 
@@ -164,9 +164,10 @@ class ClipLine(QLineEdit, _Extras):
 
 
 class NormalizationLine(QComboBoxMapping, _Extras):
-    def __init__(self, normalize: Optional[str] = DEFAULTS.normalize):
+    def __init__(self, normalize: TNormalize = DEFAULTS.normalize):
         super().__init__(
-            {0: ["Individual traces", "trace"], 1: ["Gather", "gather"], 2: ["Raw", None]}, current_value=normalize
+            {0: ["Individual traces", "trace"], 1: ["Gather", "gather"], 2: ["Raw", None]},
+            current_value=normalize,  # type: ignore
         )
 
     def dict(self) -> Dict[str, Any]:
@@ -202,16 +203,16 @@ class BandfilterLine(QWidget, _Extras):
         self.f3_f4 = f3_f4
         self.bandfilter_widget.enable_freqs_fields()
 
-    def enable_fields(self):
+    def enable_fields(self) -> None:
         self.bandfilter_toogle.setEnabled(True)
         if not self.bandfilter_toogle.isChecked():
             self.bandfilter_widget.enable_freqs_fields()
 
-    def disable_fields(self):
+    def disable_fields(self) -> None:
         self.bandfilter_toogle.setEnabled(False)
         self.bandfilter_widget.disable_freqs_fields()
 
-    def apply_bandfilter(self, checked):
+    def apply_bandfilter(self, checked: bool) -> None:
         if checked:
             freqs = self.bandfilter_widget.validate_and_get_values()
             if freqs is None:
@@ -253,7 +254,7 @@ class WigglesLine(QRadioSetWidget, _Extras):
 
 class XAxisLine(QComboBoxMapping, _Extras):
     def __init__(self, x_axis: Optional[str] = DEFAULTS.x_axis):
-        super().__init__(X_AXIS_MAPPING, current_value=x_axis)
+        super().__init__(X_AXIS_MAPPING, current_value=x_axis)  # type: ignore
 
     def dict(self) -> Dict[str, Any]:
         return {"x_axis": self.value()}
@@ -316,7 +317,7 @@ class PicksFromFileLine(QWidget, _Extras):
     def update_picks_from_file_settings(self, params: Dict[str, Any]) -> None:
         self.picks_from_file_settings = params
 
-    def export_picks_from_file_settings(self, checked) -> None:
+    def export_picks_from_file_settings(self, checked: bool) -> None:
         if checked:
             self.picks_from_file_widget.setEnabled(False)
             self.export_picks_from_file_settings_signal.emit(PicksFromFileSettings(**self.picks_from_file_settings))
@@ -325,12 +326,12 @@ class PicksFromFileLine(QWidget, _Extras):
             self.toggle_picks_from_file_signal.emit(False)
             self.picks_from_file_widget.setEnabled(True)
 
-    def enable_fields(self):
+    def enable_fields(self) -> None:
         self.picks_from_file_toggle.setEnabled(True)
         if not self.picks_from_file_toggle.isChecked():
             self.picks_from_file_widget.setEnabled(True)
 
-    def disable_fields(self):
+    def disable_fields(self) -> None:
         self.picks_from_file_toggle.setEnabled(False)
         self.picks_from_file_widget.setEnabled(False)
 
@@ -424,22 +425,22 @@ class SettingsProcessingWidget(QDialog):
             self.layout.addWidget(sep, line, 0, 1, 2)
 
         self._inputs = [
-            ["Gain", GainLine(gain=gain), 1, True],
-            ["Clip", ClipLine(clip=clip), 2, True],
-            ["Normalization", NormalizationLine(normalize=normalize), 3, True],
-            ["Band filter", BandfilterLine(f1_f2=f1_f2, f3_f4=f3_f4), 4, True],
-            ["Filling wiggles with color", WigglesLine(fill_black=fill_black), 6, True],
-            ["X Axis", XAxisLine(x_axis=x_axis), 7, True],
-            ["Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 8, True],
-            ["Traces per gather", TracesPerGatherLine(traces_per_gather=traces_per_gather), 12, False],
-            ["Maximum time", MaximumTimeLine(maximum_time=maximum_time), 13, False],
-            ["Runtime", DeviceLine(device=device), 14, False],
+            ("Gain", GainLine(gain=gain), 1, True),
+            ("Clip", ClipLine(clip=clip), 2, True),
+            ("Normalization", NormalizationLine(normalize=normalize), 3, True),
+            ("Band filter", BandfilterLine(f1_f2=f1_f2, f3_f4=f3_f4), 4, True),
+            ("Filling wiggles with color", WigglesLine(fill_black=fill_black), 6, True),
+            ("X Axis", XAxisLine(x_axis=x_axis), 7, True),
+            ("Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 8, True),
+            ("Traces per gather", TracesPerGatherLine(traces_per_gather=traces_per_gather), 12, False),
+            ("Maximum time", MaximumTimeLine(maximum_time=maximum_time), 13, False),
+            ("Runtime", DeviceLine(device=device), 14, False),
         ]
 
         for label, widget, line, is_plotseis_param in self._inputs:
             label = QLabel(label)
             if is_plotseis_param:
-                widget.changed_signal.connect(self.export_plotseis_settings)
+                widget.changed_signal.connect(self.export_plotseis_settings)  # type: ignore
             self.layout.addWidget(label, line, 0)
             self.layout.addWidget(widget, line, 1)
 
@@ -459,12 +460,11 @@ class SettingsProcessingWidget(QDialog):
         self.run_button.clicked.connect(self.picking_click)
         self.layout.addWidget(self.run_button)
 
-        self.previous_states = {}
         self.set_selection_mode()
 
         self.show()
 
-    def picking_click(self):
+    def picking_click(self) -> None:
         self.picking_run = not self.picking_run
         if self.picking_run:
             self.set_picking_mode()
@@ -472,14 +472,14 @@ class SettingsProcessingWidget(QDialog):
         else:
             self.interrupt_signal.emit()
 
-    def set_picking_mode(self):
+    def set_picking_mode(self) -> None:
         for widget in self.findChildren(QWidget):
             if isinstance(widget, _Extras):
                 widget.disable_fields()
         self.run_button.setEnabled(True)
         self.run_button.setText("Stop")
 
-    def set_selection_mode(self):
+    def set_selection_mode(self) -> None:
         self.picking_run = False
         for widget in self.findChildren(QWidget):
             if isinstance(widget, _Extras):
@@ -488,7 +488,7 @@ class SettingsProcessingWidget(QDialog):
         self.run_button.setText("Run picking")
 
     def get_settings(self) -> Dict[str, Any]:
-        output = {}
+        output: Dict[str, Any] = {}
         for _, w, _, _ in self._inputs:
             output.update(w.dict())
         return output
@@ -505,7 +505,7 @@ class SettingsProcessingWidget(QDialog):
         else:
             e.accept()
 
-    def accept(self):
+    def accept(self) -> None:
         pass
 
 

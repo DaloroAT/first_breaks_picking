@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 from PyQt5.QtCore import QObject, QThreadPool, pyqtBoundSignal, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QProgressBar

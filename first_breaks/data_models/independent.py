@@ -28,7 +28,7 @@ class TracesToInverse(DefaultModel):
     traces_to_inverse: Sequence[int] = Field((), description="Inverse traces amplitudes on the gathers level")
 
     @field_validator("traces_to_inverse")
-    def validate(cls, traces_to_inverse: Sequence[int]) -> Sequence[int]:
+    def validate_traces_to_inverse(cls, traces_to_inverse: Sequence[int]) -> Sequence[int]:
         if not all(val >= 0 for val in traces_to_inverse):
             raise ValueError("Elements of `traces_to_inverse` must be greater or equal to 0")
         return traces_to_inverse
@@ -60,7 +60,7 @@ class F1F2(DefaultModel):
     def validate_encoding(cls, v: Optional[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
         if v is not None:
             if v[0] >= v[1]:
-                raise ValueError(f"f2 should be greater than f1")
+                raise ValueError("f2 should be greater than f1")
         return v
 
 
@@ -71,7 +71,7 @@ class F3F4(DefaultModel):
     def validate_encoding(cls, v: Optional[Tuple[float, float]]) -> Optional[Tuple[float, float]]:
         if v is not None:
             if v[0] >= v[1]:
-                raise ValueError(f"f4 should be greater than f3")
+                raise ValueError("f4 should be greater than f3")
         return v
 
 

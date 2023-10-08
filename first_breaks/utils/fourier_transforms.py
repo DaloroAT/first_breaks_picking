@@ -1,36 +1,38 @@
+from typing import Optional, Tuple
+
 import numpy as np
 from numpy import fft
 
 
-def fourier_transform(input_signal):
+def fourier_transform(input_signal: np.ndarray) -> np.ndarray:
     spectrum = fft.fft(input_signal, axis=0)
     spectrum = _remove_negative_frequencies_of_spectrum(spectrum)
     return spectrum
 
 
-def get_frequencies(len_signal, fs):
+def get_frequencies(len_signal: int, fs: float) -> np.ndarray:
     return fft.rfftfreq(len_signal, 1 / fs)[_get_slice_positive_frequencies(len_signal)]
 
 
-def inverse_fourier_transform(spectrum, len_signal):
+def inverse_fourier_transform(spectrum: np.ndarray, len_signal: int) -> np.ndarray:
     reconstructed_spectrum = _reconstruct_negative_frequencies_for_spectrum(spectrum, len_signal)
     inverted_signal = fft.ifft(reconstructed_spectrum, n=len_signal, axis=0)
     inverted_signal = np.real(inverted_signal)
     return inverted_signal
 
 
-def _remove_negative_frequencies_of_spectrum(raw_fft):
+def _remove_negative_frequencies_of_spectrum(raw_fft: np.ndarray) -> np.ndarray:
     return raw_fft[_get_slice_positive_frequencies(len(raw_fft))]
 
 
-def _get_slice_positive_frequencies(len_signal):
+def _get_slice_positive_frequencies(len_signal: int) -> slice:
     if len_signal % 2 == 0:
         return slice(0, len_signal // 2 + 1, 1)
     else:
         return slice(0, (len_signal + 1) // 2, 1)
 
 
-def _reconstruct_negative_frequencies_for_spectrum(spectrum, len_signal):
+def _reconstruct_negative_frequencies_for_spectrum(spectrum: np.ndarray, len_signal: int) -> np.ndarray:
     if len_signal % 2 == 0:  # Even number of samples
         negative_freqs = np.conj(spectrum[-2:0:-1])  # Exclude DC and Nyquist
     else:  # Odd number of samples
@@ -39,7 +41,7 @@ def _reconstruct_negative_frequencies_for_spectrum(spectrum, len_signal):
     return new_spectrum
 
 
-def get_mean_amplitude_spectrum(data, fs, normalize=True):
+def get_mean_amplitude_spectrum(data: np.ndarray, fs: float, normalize: bool = True) -> Tuple[np.ndarray, np.ndarray]:
     spec = fourier_transform(data)
     spec = np.abs(spec)
     if data.ndim == 2:
@@ -50,7 +52,12 @@ def get_mean_amplitude_spectrum(data, fs, normalize=True):
     return freq, spec
 
 
-def build_amplitude_filter(frequencies, f1_f2=None, f3_f4=None, filter_type="pass"):
+def build_amplitude_filter(
+    frequencies: np.ndarray,
+    f1_f2: Optional[Tuple[float, float]] = None,
+    f3_f4: Optional[Tuple[float, float]] = None,
+    filter_type: str = "pass",
+) -> np.ndarray:
     assert filter_type in ["pass", "reject"]
     assert np.all(frequencies >= 0)
     assert all(
@@ -92,7 +99,13 @@ def build_amplitude_filter(frequencies, f1_f2=None, f3_f4=None, filter_type="pas
         return amp_filter
 
 
-def get_filtered_data(data: np.ndarray, fs, f1_f2=None, f3_f4=None, filter_type="pass"):
+def get_filtered_data(
+    data: np.ndarray,
+    fs: float,
+    f1_f2: Optional[Tuple[float, float]] = None,
+    f3_f4: Optional[Tuple[float, float]] = None,
+    filter_type: str = "pass",
+) -> np.ndarray:
     src_dtype = data.dtype
     length_signal = len(data)
     spectrum = fourier_transform(data)

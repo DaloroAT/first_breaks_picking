@@ -7,11 +7,7 @@ import onnxruntime as ort
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.cuda import (
-    ONNX_CUDA_AVAILABLE,
-    ONNX_DEVICE2PROVIDER,
-    get_recommended_device,
-)
+from first_breaks.utils.cuda import ONNX_DEVICE2PROVIDER, get_recommended_device
 from first_breaks.utils.utils import calc_hash, chunk_iterable, download_model_onnx
 
 
@@ -24,7 +20,8 @@ class IteratorOfTask:
         self.idx2gather_ids = {idx: gather_ids for idx, gather_ids in enumerate(self.task.get_gathers_ids())}
         if self.task.normalize == "gather" and len(self.idx2gather_ids) > 1:
             raise AssertionError(
-                "'gather' normalization can't be used for picking when number of gathers > 1. Use 'gather' normalization it only for visualization"
+                "'gather' normalization can't be used for picking when number of gathers > 1. "
+                "Use 'gather' normalization it only for visualization"
             )
 
     def __len__(self) -> int:

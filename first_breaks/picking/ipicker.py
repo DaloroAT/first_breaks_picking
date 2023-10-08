@@ -17,7 +17,7 @@ class IPicker:
     def process_task(self, task: Task) -> Task:
         raise NotImplementedError
 
-    def callback_interrupt(self):
+    def callback_interrupt(self) -> None:
         self.need_interrupt = True
 
     def interrupt_if_need(self) -> None:

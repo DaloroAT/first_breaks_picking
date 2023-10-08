@@ -1,15 +1,7 @@
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QWidget,
-)
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QLineEdit, QWidget
 
 from first_breaks.desktop.tooltip_widget import (
     HighlightToolTip,
@@ -52,19 +44,19 @@ class QBandFilterWidget(QWidget):
             if debug:
                 freq_widget.textChanged.connect(self.validate_and_get_values)
 
-    def enable_freqs_fields(self):
+    def enable_freqs_fields(self) -> None:
         for v in self.freq_widgets.values():
             v.setEnabled(True)
 
-    def disable_freqs_fields(self):
+    def disable_freqs_fields(self) -> None:
         for v in self.freq_widgets.values():
             v.setEnabled(False)
 
     @staticmethod
-    def _get_freq_str(index: int):
+    def _get_freq_str(index: int) -> str:
         return f"f<sub>{index}</sub>"
 
-    def get_raw_freqs(self):
+    def get_raw_freqs(self) -> Dict[int, Optional[float]]:
         freqs = {}
         for i in range(1, 5):
             value = self.freq_widgets[i].text()
@@ -72,7 +64,7 @@ class QBandFilterWidget(QWidget):
             freqs[i] = value
         return freqs
 
-    def validate_and_get_values(self):
+    def validate_and_get_values(self) -> Optional[Dict[int, Optional[float]]]:
         freqs = self.get_raw_freqs()
 
         problematic_widgets = set()
@@ -110,11 +102,11 @@ class QBandFilterWidget(QWidget):
                 recommendations = recommendation_tips[0]
 
             text_changed_signals = [w.textChanged for w in problematic_widgets]
-            problematic_widgets = list(problematic_widgets)
+            problematic_widgets_list = list(problematic_widgets)
 
             TextToolTip(widget=self, text=recommendations, do_until=text_changed_signals)
-            ShakeToolTip(widgets=list(problematic_widgets), parent=self, do_until=2000)
-            HighlightToolTip(widgets=problematic_widgets, parent=self, do_until=text_changed_signals)
+            ShakeToolTip(widgets=problematic_widgets_list, parent=self, do_until=2000)
+            HighlightToolTip(widgets=problematic_widgets_list, parent=self, do_until=text_changed_signals)
             return None
         else:
             return freqs
