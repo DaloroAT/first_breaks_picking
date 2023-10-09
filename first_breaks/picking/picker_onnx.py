@@ -7,7 +7,7 @@ import onnxruntime as ort
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, ONNX_DEVICE2PROVIDER
+from first_breaks.utils.cuda import ONNX_DEVICE2PROVIDER, get_recommended_device
 from first_breaks.utils.utils import calc_hash, chunk_iterable, download_model_onnx
 
 
@@ -18,6 +18,11 @@ class IteratorOfTask:
     def __init__(self, task: Task):
         self.task = task
         self.idx2gather_ids = {idx: gather_ids for idx, gather_ids in enumerate(self.task.get_gathers_ids())}
+        if self.task.normalize == "gather" and len(self.idx2gather_ids) > 1:
+            raise AssertionError(
+                "'gather' normalization can't be used for picking when number of gathers > 1. "
+                "Use 'gather' normalization it only for visualization"
+            )
 
     def __len__(self) -> int:
         return len(self.idx2gather_ids)
@@ -28,7 +33,16 @@ class IteratorOfTask:
             [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
         )
         gather = self.task.sgy.read_traces_by_ids(gather_ids)
-        gather = preprocess_gather(gather, self.task.gain, self.task.clip)
+        gather = preprocess_gather(
+            data=gather,
+            gain=self.task.gain,
+            clip=self.task.clip,
+            normalize=self.task.normalize,
+            f1_f2=self.task.f1_f2,
+            f3_f4=self.task.f3_f4,
+            fs=self.task.sgy.fs,
+        )
+
         gather = amplitudes[None, :] * gather
         gather = gather[: self.task.maximum_time_sample, :]
 
@@ -54,7 +68,7 @@ class PickerONNX(IPicker):
         self,
         model_path: Optional[Union[str, Path]] = None,
         show_progressbar: bool = True,
-        device: str = "cuda" if ONNX_CUDA_AVAILABLE else "cpu",
+        device: str = get_recommended_device(),
         batch_size: int = 1,
     ):
         super().__init__(show_progressbar=show_progressbar)
@@ -111,8 +125,9 @@ class PickerONNX(IPicker):
         counter_step_finished = 0
         self.callback_processing_started(len(task_iterator))
 
-        for batch in task_iterator.get_batch_generator(batch_size=self.batch_size):
-            data = batch["gather"]
+        for idx, batch in enumerate(task_iterator.get_batch_generator(batch_size=self.batch_size)):
+            self.interrupt_if_need()
+            data = batch["gather"].astype(np.float32)
             picks, confidence = self.pick_batch_of_gathers(data)
 
             indices = batch["gather_ids"]
@@ -128,5 +143,7 @@ class PickerONNX(IPicker):
         task.picks_in_samples = task_picks_in_sample.astype(int).tolist()
         task.confidence = task_confidence.tolist()
         task.model_hash = self.model_hash
+
+        self.need_interrupt = False
 
         return task

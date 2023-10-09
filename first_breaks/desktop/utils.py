@@ -1,15 +1,19 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QDialog,
     QDialogButtonBox,
+    QGraphicsSceneMouseEvent,
     QLabel,
+    QPushButton,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from pyqtgraph import ViewBox
 
 
 class MessageBox(QDialog):
@@ -18,6 +22,7 @@ class MessageBox(QDialog):
         parent: QWidget,
         title: str = "Error",
         message: str = "Error",
+        detailed_message: str = None,
         add_cancel_option: bool = False,
         label_ok: str = "Ok",
         label_cancel: str = "Cancel",
@@ -41,8 +46,29 @@ class MessageBox(QDialog):
 
         self.layout = QVBoxLayout()
         self.layout.addWidget(error_label)
+
+        if detailed_message:
+            self.details_button = QPushButton("Show Details")
+            self.details_text = QTextEdit()
+            self.details_text.setPlainText(detailed_message)
+            self.details_text.setVisible(False)
+            self.details_text.setReadOnly(True)
+
+            self.details_button.clicked.connect(self.toggle_details)
+
+            self.layout.addWidget(self.details_button)
+            self.layout.addWidget(self.details_text)
+
         self.layout.addWidget(self.button_box)
         self.setLayout(self.layout)
+
+    def toggle_details(self) -> None:
+        if self.details_text.isVisible():
+            self.details_text.setVisible(False)
+            self.details_button.setText("Show Details")
+        else:
+            self.details_text.setVisible(True)
+            self.details_button.setText("Hide Details")
 
 
 def set_geometry(
@@ -72,14 +98,43 @@ def set_geometry(
     widget.move(monitor.left(), monitor.top())
 
 
-class QHSeparationLine(QtWidgets.QFrame):
-    def __init__(self) -> None:
+class QHSeparationLine(QtWidgets.QWidget):
+    def __init__(self, text: str = ""):
         super().__init__()
-        self.setMinimumWidth(1)
-        self.setFixedHeight(20)
-        self.setFrameShape(QtWidgets.QFrame.HLine)
-        self.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+
+        # Create the horizontal line (QFrame)
+        self.line = QtWidgets.QFrame(self)
+        self.line.setFrameShape(QtWidgets.QFrame.HLine)
+        self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.line.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Create the label for the text
+        self.label = QtWidgets.QLabel(text, self)
+        self.label.setStyleSheet("background-color: transparent; color: grey;")
+        self.label.setAlignment(Qt.AlignCenter)
+
+        # Create a horizontal layout to hold the line and the label
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.line, 1)
+        layout.addWidget(self.label, 0)
+        layout.addWidget(self.line, 1)
+
+        # Adjust margins and spacing
+        layout.setSpacing(10)  # space between label and line
+        layout.setContentsMargins(0, 10, 0, 0)  # top margin to position label above line
+
+        self.setLayout(layout)
+
+
+# class QHSeparationLine(QtWidgets.QFrame):
+#     def __init__(self) -> None:
+#         super().__init__()
+#         self.setMinimumWidth(1)
+#         self.setFixedHeight(20)
+#         self.setFrameShape(QtWidgets.QFrame.HLine)
+#         self.setFrameShadow(QtWidgets.QFrame.Sunken)
+#         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
 
 
 TMappingSetup = Dict[int, Union[Tuple[str, Any], List[Any]]]
@@ -127,3 +182,17 @@ def validate_mapping_setup_and_get_current_index(
         current_index = 0
 
     return current_index
+
+
+def get_mouse_position_in_scene_coords(
+    event_or_point: Union[QGraphicsSceneMouseEvent, QEvent, QPointF, QPoint], viewbox: ViewBox
+) -> QPointF:
+    if isinstance(event_or_point, QGraphicsSceneMouseEvent):
+        point = event_or_point.scenePos()
+    elif isinstance(event_or_point, QEvent):
+        point = event_or_point.localPos()
+    elif isinstance(event_or_point, (QPointF, QPoint)):
+        point = event_or_point
+    else:
+        raise TypeError("Only events and points are available")
+    return viewbox.mapSceneToView(point)

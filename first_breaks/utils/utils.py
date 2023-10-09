@@ -1,9 +1,11 @@
+import colorsys
 import hashlib
 import inspect
 import io
+import random
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
@@ -148,3 +150,33 @@ class UnitsConverter:
 
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
+
+
+def _color_generator() -> Generator[List[int], None, None]:
+    golden_ratio = 0.618033988749895
+    hue = random.random()  # start from a random position
+    while True:
+        hue += golden_ratio
+        hue %= 1
+        yield [int(255 * v) for v in colorsys.hsv_to_rgb(hue, 0.5, 0.95)]
+
+
+cgen = _color_generator()
+
+
+def generate_color() -> List[int]:
+    return next(cgen)
+
+
+def resolve_postime2xy(vsp_view: bool, position: Any, time: Any) -> Tuple[Any, Any]:
+    if vsp_view:
+        return time, position
+    else:
+        return position, time
+
+
+def resolve_xy2postime(vsp_view: bool, x: Any, y: Any) -> Tuple[Any, Any]:
+    if vsp_view:
+        return y, x
+    else:
+        return x, y
