@@ -1,4 +1,4 @@
-# First breaks picking
+# FirstBreaksPicking
 This project is devoted to pick waves that are the first to be detected on a seismogram (first breaks, first arrivals).
 Traditionally, this procedure is performed manually. When processing field data, the number of picks reaches hundreds of
 thousands. Existing analytical methods allow you to automate picking only on high-quality data with a high
