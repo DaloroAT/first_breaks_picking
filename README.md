@@ -82,7 +82,7 @@ pip install -U first-breaks-picking
 
 ### GPU support
 
-You can use the capabilities of GPU to significantly reduce picking time. Before started, check
+You can use the capabilities of GPU (discrete, not integrated with CPU) to significantly reduce picking time. Before started, check
 [here](https://developer.nvidia.com/cuda-gpus) that your GPU is CUDA compatible.
 
 Install GPU supported version of library:
@@ -99,6 +99,13 @@ Version 12 also may work, but versions >=11.6 are recommended**.
 - Install ZLib and CuDNN:
 [Windows](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-windows) and
 [Linux](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-linux).
+
+### Compiled desktop application
+
+Compiled **executable** files (`.exe` in `.zip` archives), as well as installers (`.msi`), can be downloaded in the [Releases](https://github.com/DaloroAT/first_breaks_picking/releases) section.
+If you want to use the capabilities of your **dedicated** GPU, also follow the steps in the [previous step](https://github.com/DaloroAT/first_breaks_picking#gpu-support) to install the driver, CUDA, CuDNN, and ZLib.
+
+You can run the desktop application on other operating systems (Linux, MacOS) as well, but it must be [run using the Python environment](https://github.com/DaloroAT/first_breaks_picking#launch-app).
 
 ### Extra data
 
