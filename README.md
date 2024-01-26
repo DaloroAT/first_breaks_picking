@@ -622,7 +622,7 @@ located at the start of the traces. Keep it `0` if you don't want to limit trace
 
 Some receivers may have the wrong polarity, so you can specify which traces should be inversed. Note, that inversion
 will be applied on the gathers level. For example, if you have 96 traces, `Traces per gather` = 48 and
-`List of traces to inverse` = (2, 30, 48), then traces (2, 3, 48, 50, 78, 96) will be inversed.
+`List of traces to inverse` = (2, 30, 48), then traces (2, 30, 48, 50, 78, 96) will be inversed.
 
 Notes:
 - Trace indexing starts at 1.
