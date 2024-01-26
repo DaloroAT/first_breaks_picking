@@ -73,6 +73,14 @@ various types of noise.
 
 </details>
 
+# How model was trained?
+
+Model training is described in detail [here](https://github.com/DaloroAT/first_breaks_picking/tree/a45bb007140f6011cf04ebe27a86eea8deb5e6eb) in the previous version of the project README.
+
+The latest model was trained similarly, but:
+1) Real land seismic data is used instead of synthetic data.
+2) [UNet3+](https://arxiv.org/abs/2004.08790) model is used, instead of the vanilla UNet.
+
 # Installation
 
 Library is available in [PyPI](https://pypi.org/project/first-breaks-picking/):
