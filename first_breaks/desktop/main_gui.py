@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
+from pydantic import UUID4
 from PyQt5.QtCore import QSize, Qt, QThreadPool
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
@@ -194,6 +195,7 @@ class MainWindow(QMainWindow):
         self.last_folder: Optional[Union[str, Path]] = None
         self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
         self.picker_hash = MODEL_ONNX_HASH
+        self.last_picks_id: Optional[UUID4] = None
 
         self.show()
 
@@ -232,6 +234,7 @@ class MainWindow(QMainWindow):
         self.last_task = result
 
         if result.success:
+            self.last_picks_id = self.last_task.picks_id
             self.graph.plot_nn_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
             self.button_export.setEnabled(True)
@@ -273,7 +276,14 @@ class MainWindow(QMainWindow):
 
     def show_nn_picks(self) -> None:
         if self.last_task and self.last_task.success:
-            self.graph.plot_nn_picks(self.last_task.picks_in_ms)
+            if self.last_task.picks_id != self.last_picks_id:
+                self.graph.plot_nn_picks(self.last_task.picks_in_ms)
+            else:
+                # todo: implement later in a better way
+                # this case mean that we don't rerun picking, so we replicate settings
+                is_picks_modified_manually = self.graph.is_picks_modified_manually
+                self.graph.plot_nn_picks(self.graph.nn_picks_in_ms)
+                self.graph.is_picks_modified_manually = is_picks_modified_manually
 
     def read_picks_from_file(self) -> None:
         picks = self.sgy.read_custom_trace_header(
@@ -401,7 +411,7 @@ class MainWindow(QMainWindow):
                 picks_in_samples_prev = self.last_task.picks_in_samples
                 if self.graph.is_picks_modified_manually:
                     self.last_task.picks_in_samples = multiply_iterable_by(
-                        self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, int
+                        self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, float
                     )
                 if filename.suffix.lower() in (".sgy", ".segy"):
                     save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
