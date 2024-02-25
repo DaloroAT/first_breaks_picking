@@ -115,7 +115,7 @@ class PicksUnit(DefaultModel):
 
 
 class PicksInSamplesOptional(DefaultModel):
-    picks_in_samples: Optional[Union[np.ndarray, Sequence[Union[int]]]] = Field(
+    picks_in_samples: Optional[Union[np.ndarray, Sequence[Union[float]]]] = Field(  # todo: replace to "int" later
         None, description="First breaks presented as samples"
     )
 

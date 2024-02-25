@@ -411,7 +411,7 @@ class MainWindow(QMainWindow):
                 picks_in_samples_prev = self.last_task.picks_in_samples
                 if self.graph.is_picks_modified_manually:
                     self.last_task.picks_in_samples = multiply_iterable_by(
-                        self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, int
+                        self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, float
                     )
                 if filename.suffix.lower() in (".sgy", ".segy"):
                     save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
