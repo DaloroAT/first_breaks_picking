@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QToolBar,
     QWidget,
 )
+from pydantic import UUID4
 
 from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
 from first_breaks.data_models.dependent import TraceHeaderParams
@@ -194,6 +195,7 @@ class MainWindow(QMainWindow):
         self.last_folder: Optional[Union[str, Path]] = None
         self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
         self.picker_hash = MODEL_ONNX_HASH
+        self.last_picks_id: Optional[UUID4] = None
 
         self.show()
 
@@ -232,6 +234,7 @@ class MainWindow(QMainWindow):
         self.last_task = result
 
         if result.success:
+            self.last_picks_id = self.last_task.picks_id
             self.graph.plot_nn_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
             self.button_export.setEnabled(True)
@@ -273,7 +276,14 @@ class MainWindow(QMainWindow):
 
     def show_nn_picks(self) -> None:
         if self.last_task and self.last_task.success:
-            self.graph.plot_nn_picks(self.last_task.picks_in_ms)
+            if self.last_task.picks_id != self.last_picks_id:
+                self.graph.plot_nn_picks(self.last_task.picks_in_ms)
+            else:
+                # todo: implement later in a better way
+                # this case mean that we don't rerun picking, so we replicate settings
+                is_picks_modified_manually = self.graph.is_picks_modified_manually
+                self.graph.plot_nn_picks(self.graph.nn_picks_in_ms)
+                self.graph.is_picks_modified_manually = is_picks_modified_manually
 
     def read_picks_from_file(self) -> None:
         picks = self.sgy.read_custom_trace_header(

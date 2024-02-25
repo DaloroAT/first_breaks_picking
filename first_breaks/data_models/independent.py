@@ -1,8 +1,9 @@
 import traceback
 from typing import List, Literal, Optional, Sequence, Tuple, Union
+from uuid import uuid4
 
 import numpy as np
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, UUID4
 
 TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
 TNormalize = Union[Literal["trace", "gather"], float, int, np.ndarray, None]
@@ -162,3 +163,10 @@ class ExceptionOptional(DefaultModel):
             type(self.exception), self.exception, self.exception.__traceback__
         )
         return "".join(formatted_traceback)
+
+
+class PicksID(DefaultModel):
+    picks_id: Optional[UUID4] = Field(None, description="ID for picks")
+
+    def assign_new_picks_id(self):
+        self.picks_id = uuid4()

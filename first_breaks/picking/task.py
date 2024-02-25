@@ -22,6 +22,7 @@ from first_breaks.data_models.independent import (
     PicksInSamplesOptional,
     TracesPerGather,
     TracesToInverse,
+    PicksID,
 )
 from first_breaks.utils.utils import chunk_iterable, multiply_iterable_by
 
@@ -56,6 +57,7 @@ class Task(
     Success,
     ModelHashOptional,
     ExceptionOptional,
+    PicksID,
 ):
     @property
     def maximum_time_sample(self) -> int:
