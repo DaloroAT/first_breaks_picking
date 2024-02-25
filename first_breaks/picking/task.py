@@ -19,10 +19,10 @@ from first_breaks.data_models.independent import (
     MaximumTime,
     ModelHashOptional,
     Normalize,
+    PicksID,
     PicksInSamplesOptional,
     TracesPerGather,
     TracesToInverse,
-    PicksID,
 )
 from first_breaks.utils.utils import chunk_iterable, multiply_iterable_by
 

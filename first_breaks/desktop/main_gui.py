@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
+from pydantic import UUID4
 from PyQt5.QtCore import QSize, Qt, QThreadPool
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
@@ -18,7 +19,6 @@ from PyQt5.QtWidgets import (
     QToolBar,
     QWidget,
 )
-from pydantic import UUID4
 
 from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
 from first_breaks.data_models.dependent import TraceHeaderParams
