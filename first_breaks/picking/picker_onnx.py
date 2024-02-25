@@ -143,6 +143,7 @@ class PickerONNX(IPicker):
         task.picks_in_samples = task_picks_in_sample.astype(int).tolist()
         task.confidence = task_confidence.tolist()
         task.model_hash = self.model_hash
+        task.assign_new_picks_id()
 
         self.need_interrupt = False
 

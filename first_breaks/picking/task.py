@@ -19,6 +19,7 @@ from first_breaks.data_models.independent import (
     MaximumTime,
     ModelHashOptional,
     Normalize,
+    PicksID,
     PicksInSamplesOptional,
     TracesPerGather,
     TracesToInverse,
@@ -56,6 +57,7 @@ class Task(
     Success,
     ModelHashOptional,
     ExceptionOptional,
+    PicksID,
 ):
     @property
     def maximum_time_sample(self) -> int:

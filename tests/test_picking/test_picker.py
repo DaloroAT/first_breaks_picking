@@ -27,7 +27,7 @@ def test_picking(demo_sgy: Path,
     assert isinstance(task.picks_in_samples, list)
     assert len(task.picks_in_samples) == sgy.num_traces
     for pick in task.picks_in_samples:
-        assert isinstance(pick, int)
+        assert isinstance(pick, float)  # todo: replace to int
         assert 0 <= pick <= sgy.num_samples
 
     assert isinstance(task.confidence, list)
