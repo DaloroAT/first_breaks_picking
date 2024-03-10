@@ -3,16 +3,14 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import numpy as np
 import pandas as pd
-from pydantic import model_validator
+from pydantic import model_validator, Field
 
 from first_breaks.data_models.dependent import SGYModel
 from first_breaks.data_models.independent import (
     F1F2,
     F3F4,
     Clip,
-    ConfidenceOptional,
     DefaultModel,
     ExceptionOptional,
     Gain,
@@ -20,11 +18,11 @@ from first_breaks.data_models.independent import (
     ModelHashOptional,
     Normalize,
     PicksID,
-    PicksInSamplesOptional,
     TracesPerGather,
     TracesToInverse,
 )
-from first_breaks.utils.utils import chunk_iterable, multiply_iterable_by
+from first_breaks.picking.picks import Picks
+from first_breaks.utils.utils import chunk_iterable, as_list
 
 MINIMUM_TRACES_PER_GATHER = 2
 
@@ -51,14 +49,14 @@ class Task(
     Gain,
     Clip,
     Normalize,
-    PicksInSamplesOptional,
-    ConfidenceOptional,
     ErrorMessage,
     Success,
     ModelHashOptional,
     ExceptionOptional,
     PicksID,
 ):
+    picks: Optional[Picks] = Field(None, description="Result of picking process")
+
     @property
     def maximum_time_sample(self) -> int:
         return self.sgy.ms2index(self.maximum_time)
@@ -103,38 +101,27 @@ class Task(
 
     @property
     def picks_in_ms(self) -> Optional[List[float]]:
-        if self.picks_in_samples is not None:
-            picks_in_samples_list = self._check_and_convert_picks()
-            return multiply_iterable_by(picks_in_samples_list, self.sgy.dt_ms)  # type: ignore
+        if self.picks is None:
+            raise ValueError("There are no picks. Put them manually or process the task first")
         else:
-            return None
+            return self.picks.picks_in_ms
 
     @property
-    def picks_in_mcs(self) -> Optional[List[int]]:
-        if self.picks_in_samples is not None:
-            picks_in_samples_list = self._check_and_convert_picks()
-            return multiply_iterable_by(picks_in_samples_list, self.sgy.dt_mcs, cast_to=int)  # type: ignore
-        else:
-            return None
-
-    def _check_and_convert_picks(self) -> List[float]:  # type: ignore
-        if self.picks_in_samples is None:
+    def picks_in_mcs(self) -> Optional[List[float]]:
+        if self.picks is None:
             raise ValueError("There are no picks. Put them manually or process the task first")
-        if isinstance(self.picks_in_samples, (tuple, list)):
-            picks_in_samples = self.picks_in_samples
-        elif isinstance(self.picks_in_samples, np.ndarray):
-            picks_in_samples = self.picks_in_samples.tolist()
         else:
-            raise TypeError("Only 1D sequence can be saved")
-        return picks_in_samples  # type: ignore
+            return self.picks.picks_in_mcs
 
     def _prepare_output_for_nonbinary_export(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        picks_in_samples = self._check_and_convert_picks()
-        picks_in_ms = self.sgy.units_converter.index2ms(picks_in_samples, cast_to=float)
+        confidence = self.picks.confidence
 
-        confidence = self.confidence
+        picks_in_samples = as_list(self.picks.picks_in_samples)
+        picks_in_ms = as_list(self.picks.picks_in_ms)
+        picks_in_mcs = as_list(self.picks.picks_in_mcs)
 
         is_source_file = isinstance(self.sgy.source, (str, Path))
+
         if is_source_file:
             source_filename = str(Path(self.sgy.source).name)  # type: ignore
             source_full_name = str(Path(self.sgy.source).resolve())  # type: ignore
@@ -161,6 +148,7 @@ class Task(
             "trace": list(range(1, len(picks_in_samples) + 1)),
             "picks_in_samples": picks_in_samples,
             "picks_in_ms": picks_in_ms,
+            "picks_in_mcs": picks_in_mcs,
             "confidence": confidence,
         }
         return meta, data
@@ -172,10 +160,9 @@ class Task(
         encoding: str = "I",
         picks_unit: str = "mcs",
     ) -> None:
-        picks_in_samples = self._check_and_convert_picks()
         self.sgy.export_sgy_with_picks(
             output_fname=filename,
-            picks_in_samples=picks_in_samples,
+            picks_in_mcs=self.picks_in_mcs,
             encoding=encoding,
             byte_position=byte_position,
             picks_unit=picks_unit,

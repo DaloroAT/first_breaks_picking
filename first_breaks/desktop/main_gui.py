@@ -234,7 +234,7 @@ class MainWindow(QMainWindow):
         self.last_task = result
 
         if result.success:
-            self.last_picks_id = self.last_task.picks_id
+            self.last_picks_id = self.last_task.picks.id
             self.graph.plot_nn_picks(self.last_task.picks_in_ms)
             self.run_processing_region()
             self.button_export.setEnabled(True)
@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
 
     def show_nn_picks(self) -> None:
         if self.last_task and self.last_task.success:
-            if self.last_task.picks_id != self.last_picks_id:
+            if self.last_task.picks.id != self.last_picks_id:
                 self.graph.plot_nn_picks(self.last_task.picks_in_ms)
             else:
                 # todo: implement later in a better way

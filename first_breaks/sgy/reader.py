@@ -374,14 +374,14 @@ class SGY:
     def export_sgy_with_picks(
         self,
         output_fname: Union[str, Path],
-        picks_in_samples: List[float],
+        picks_in_mcs: List[float],
         byte_position: int = 236,
         encoding: Optional[str] = None,
         picks_unit: Optional[str] = "mcs",
     ) -> None:
         assert not self.is_source_ndarray, "Only true SGY can be used for importing picks"
         assert 0 <= byte_position <= 236, "Only 0-236 bytes can be ised for writing"
-        assert len(picks_in_samples) == self.num_traces, "Number of traces and picks differs"
+        assert len(picks_in_mcs) == self.num_traces, "Number of traces and picks differs"
         assert picks_unit in ["ms", "mcs", "sample"]
 
         Path(output_fname).parent.mkdir(exist_ok=True, parents=True)
@@ -405,11 +405,13 @@ class SGY:
         cast_to = float if encoding in ["f", "d"] else int
 
         if picks_unit == "ms":
-            picks = self.units_converter.index2ms(picks_in_samples, cast_to=cast_to)
+            picks = self.units_converter.mcs2ms(picks_in_mcs, cast_to=cast_to)
         elif picks_unit == "mcs":
-            picks = self.units_converter.index2mcs(picks_in_samples, cast_to=cast_to)
+            picks = picks_in_mcs
+        elif picks_unit == "sample":
+            picks = self.units_converter.mcs2index(picks_in_mcs, cast_to=cast_to)
         else:
-            picks = picks_in_samples
+            raise ValueError("Unsupported 'picking unit'")
 
         self._descriptor = get_io(output_fname, mode="r+b")
         for idx, pick in enumerate(picks):  # type: ignore

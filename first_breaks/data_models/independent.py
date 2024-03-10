@@ -88,6 +88,10 @@ class PicksColor(DefaultModel):
     picks_color: TColor = Field((255, 0, 0), description="Color for picks")
 
 
+class PicksWidth(DefaultModel):
+    picks_width: float = Field(3.0, description="Width of pick line")
+
+
 class RegionPolyColor(DefaultModel):
     region_poly_color: TColor = Field((100, 100, 100, 50), description="Color of region below maximum time")
 
@@ -131,7 +135,7 @@ class ModelHashOptional(DefaultModel):
 
 
 class PicksValue(DefaultModel):
-    picks_value: Union[np.ndarray, List[Union[int, float]], Tuple[Union[int, float], ...]] = Field(
+    picks_value: Union[np.ndarray, Sequence[Union[int, float]]] = Field(
         ...,
         description="Values of first breaks",
     )

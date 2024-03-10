@@ -180,3 +180,14 @@ def resolve_xy2postime(vsp_view: bool, x: Any, y: Any) -> Tuple[Any, Any]:
         return y, x
     else:
         return x, y
+
+
+def as_list(sequence: Iterable[Any]) -> List[Any]:
+    if isinstance(sequence, np.ndarray):
+        return sequence.tolist()
+    elif isinstance(sequence, (list, tuple)):
+        return list(sequence)
+    elif isinstance(sequence, (np.number, float, int)):
+        return [sequence]
+    else:
+        raise TypeError("Unsupported 'sequence' type")

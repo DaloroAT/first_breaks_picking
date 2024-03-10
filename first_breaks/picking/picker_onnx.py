@@ -5,10 +5,11 @@ import numpy as np
 import onnxruntime as ort
 
 from first_breaks.picking.ipicker import IPicker
+from first_breaks.picking.picks import Picks
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.utils.cuda import ONNX_DEVICE2PROVIDER, get_recommended_device
-from first_breaks.utils.utils import calc_hash, chunk_iterable, download_model_onnx
+from first_breaks.utils.utils import calc_hash, chunk_iterable, download_model_onnx, generate_color
 
 
 class IteratorOfTask:
@@ -33,6 +34,8 @@ class IteratorOfTask:
             [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
         )
         gather = self.task.sgy.read_traces_by_ids(gather_ids)
+        gather = np.sign(gather) * gather ** 2
+        gather = np.gradient(np.gradient(gather, axis=0), axis=0)
         gather = preprocess_gather(
             data=gather,
             gain=self.task.gain,
@@ -139,9 +142,19 @@ class PickerONNX(IPicker):
 
         self.callback_processing_finished()
 
+        picks = Picks(
+            values=task_picks_in_sample.astype(int).tolist(),
+            unit="sample",
+            dt_mcs=task.sgy.dt_mcs,
+            confidence=task_confidence.tolist(),
+            modified_manually=False,
+            created_manually=False,
+            created_by_nn=True,
+            picks_color=generate_color(),
+        )
+
         task.success = True
-        task.picks_in_samples = task_picks_in_sample.astype(int).tolist()
-        task.confidence = task_confidence.tolist()
+        task.picks = picks
         task.model_hash = self.model_hash
         task.assign_new_picks_id()
 

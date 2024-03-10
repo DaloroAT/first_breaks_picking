@@ -171,6 +171,10 @@ class GraphWidget(pg.PlotWidget):
         connect = np.ones(len(time), dtype=np.int32)
         connect[-1] = 0
 
+        if fill_black == "right":
+            trace = np.sign(trace) * trace ** 3
+            trace = np.gradient(np.gradient(trace)) * 10
+
         trace[0] = 0
         trace[-1] = 0
 
