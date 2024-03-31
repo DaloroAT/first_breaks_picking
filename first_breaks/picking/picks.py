@@ -1,9 +1,8 @@
 import uuid
-from typing import Optional, Union, Sequence, Literal
+from typing import Optional, Union, Literal, List, Any
 
 import numpy as np
-from first_breaks.utils.utils import UnitsConverter
-
+from first_breaks.utils.utils import UnitsConverter, generate_color
 
 from pydantic import model_validator, Field, UUID4
 
@@ -11,14 +10,16 @@ from first_breaks.data_models.independent import PicksColor, PicksWidth
 
 
 class Picks(PicksColor, PicksWidth):
-    values: Union[np.ndarray, Sequence[Union[int, float]]]
+    values: Union[np.ndarray, List[Union[int, float]]]
     unit: Literal["mcs", "ms", "sample"]
 
     dt_mcs: Optional[float] = None
-    confidence: Optional[Union[np.ndarray, Sequence[Union[int, float]]]] = None
+    confidence: Optional[Union[np.ndarray, List[Union[int, float]]]] = None
     created_by_nn: Optional[bool] = None
     created_manually: Optional[bool] = None
     modified_manually: Optional[bool] = None
+
+    active: Optional[bool] = None
 
     _units_converter: Optional[UnitsConverter] = None
 
@@ -80,5 +81,20 @@ class Picks(PicksColor, PicksWidth):
             return self._units_converter.mcs2index(self.values)
         else:
             raise ValueError("Wrong 'unit'")
+
+    def create_duplicate(self, keep_color: bool = False) -> "Picks":
+        values = self.values.copy()
+        confidence = self.confidence.copy() if self.confidence is not None else None
+
+        return Picks(
+            values=values,
+            confidence=confidence,
+            dt_mcs=self.dt_mcs,
+            unit=self.unit,
+            created_manually=self.created_manually,
+            created_by_nn=self.created_by_nn,
+            modified_manually=self.modified_manually,
+            picks_color=self.picks_color if keep_color else generate_color(),
+        )
 
 

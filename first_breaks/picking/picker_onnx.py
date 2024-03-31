@@ -34,8 +34,8 @@ class IteratorOfTask:
             [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
         )
         gather = self.task.sgy.read_traces_by_ids(gather_ids)
-        gather = np.sign(gather) * gather ** 2
-        gather = np.gradient(np.gradient(gather, axis=0), axis=0)
+        # gather = np.sign(gather) * gather ** 2
+        # gather = np.gradient(np.gradient(gather, axis=0), axis=0)
         gather = preprocess_gather(
             data=gather,
             gain=self.task.gain,

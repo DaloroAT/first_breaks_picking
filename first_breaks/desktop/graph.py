@@ -18,6 +18,7 @@ from first_breaks.data_models.independent import TColor, TNormalize
 from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.roi_manager import RoiManager
 from first_breaks.desktop.spectrum_window import SpectrumWindow
+from first_breaks.picking.picks import Picks
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
@@ -42,12 +43,9 @@ class GraphWidget(pg.PlotWidget):
         self.invert_y = DEFAULTS.invert_y
         self.vsp_view = DEFAULTS.vsp_view
         self.sgy: Optional[SGY] = None
-        self.nn_picks_in_ms: Optional[np.ndarray] = None
-        self.nn_picks_as_item: Optional[pg.PlotCurveItem] = None
-        self.extra_picks_as_item_list: Optional[List[pg.PlotCurveItem]] = []
+        self.picks_as_items: List[pg.PlotCurveItem] = []
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
-        self.is_picks_modified_manually = False
         self.pos_ax_header: Optional[str] = None
 
         self.x_ax: Optional[AxisItem] = None
@@ -58,7 +56,7 @@ class GraphWidget(pg.PlotWidget):
 
         self.spectrum_roi_manager = RoiManager(viewbox=self.getViewBox())
         self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
-        self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
+        # self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
     def resolve_postime2xy(self, position: Any, time: Any) -> Tuple[Any, Any]:
         return postime2xy(vsp_view=self.vsp_view, position=position, time=time)
@@ -89,12 +87,9 @@ class GraphWidget(pg.PlotWidget):
         self.time_ax.setTickFont(font)
 
     def full_clean(self) -> None:
-        self.remove_nn_picks()
+        self.remove_picks()
         self.remove_traces()
         self.remove_processing_region()
-        self.nn_picks_as_item = None
-        self.nn_picks_in_ms = None
-        self.is_picks_modified_manually = False
         self.spectrum_roi_manager.delete_all_rois()
         self.clear()
 
@@ -232,17 +227,6 @@ class GraphWidget(pg.PlotWidget):
         else:
             return previous_labels
 
-    def remove_nn_picks(self) -> None:
-        self.is_picks_modified_manually = False
-        if self.nn_picks_as_item:
-            self.removeItem(self.nn_picks_as_item)
-            self.nn_picks_as_item = None
-            self.nn_picks_in_ms = None
-
-    def remove_extra_picks(self) -> None:
-        for item in self.extra_picks_as_item_list:
-            self.removeItem(item)
-
     def remove_processing_region(self) -> None:
         if self.processing_region_as_items:
             for item in self.processing_region_as_items:
@@ -292,34 +276,25 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items.append(poly_item)
         self.addItem(poly_item)
 
-    def get_picks_as_item(
-        self,
-        picks_ms: Sequence[float],
-        color: TColor = DEFAULTS.picks_color,
-    ) -> pg.PlotCurveItem:
-        x, y = self.resolve_postime2xy(np.arange(self.sgy.num_traces) + 1, np.array(picks_ms))
+    def get_picks_as_item(self, picks: Picks) -> pg.PlotCurveItem:
+        x, y = self.resolve_postime2xy(np.arange(self.sgy.num_traces) + 1, np.array(picks.picks_in_ms))
 
         line = pg.PlotCurveItem()
         line.setData(x, y)
-        pen = pg.mkPen(color=color, width=3)
+        pen = pg.mkPen(color=picks.picks_color, width=picks.picks_width)
         line.setPen(pen)
 
         return line
 
-    def plot_nn_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
-        self.remove_nn_picks()
-        self.is_picks_modified_manually = False
-
-        self.nn_picks_in_ms = np.array(picks_ms)
-        self.nn_picks_as_item = self.get_picks_as_item(self.nn_picks_in_ms, color)
-
-        self.addItem(self.nn_picks_as_item)
-
-    def plot_extra_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
-        picks = self.get_picks_as_item(picks_ms, color)
-
+    def plot_picks(self, picks: Picks) -> None:
+        picks = self.get_picks_as_item(picks)
         self.addItem(picks)
-        self.extra_picks_as_item_list.append(picks)
+        self.picks_as_items.append(picks)
+
+    def remove_picks(self):
+        for pick in list(self.picks_as_items):
+            self.removeItem(pick)
+            self.picks_as_items.remove(pick)
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]

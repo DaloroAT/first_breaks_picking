@@ -26,6 +26,7 @@ from first_breaks.data_models.independent import ExceptionOptional
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.nn_manager import NNManager
+from first_breaks.desktop.picks_manager_widget import PicksManager
 from first_breaks.desktop.settings_processing_widget import (
     PickingSettings,
     PicksFromFileSettings,
@@ -127,12 +128,12 @@ class MainWindow(QMainWindow):
 
         self.toolbar.addSeparator()
 
-        icon_export = self.style().standardIcon(QStyle.SP_DialogSaveButton)
+        icon_picks_manager = self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        self.button_export = QAction(icon_export, "Export picks to file", self)
-        self.button_export.triggered.connect(self.export)
-        self.button_export.setEnabled(False)
-        self.toolbar.addAction(self.button_export)
+        self.button_picks_manager = QAction(icon_picks_manager, "Picks manager", self)
+        self.button_picks_manager.triggered.connect(self.show_picks_manager)
+        self.button_picks_manager.setEnabled(False)
+        self.toolbar.addAction(self.button_picks_manager)
 
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -185,6 +186,11 @@ class MainWindow(QMainWindow):
         self.nn_manager.picking_finished_signal.connect(self.on_picking_finished)
         self.nn_manager.picking_not_started_error_signal.connect(self.on_picking_not_started_error)
 
+        ## picks manager
+        self.picks_manager = PicksManager()
+        self.picks_manager.picks_updated_signal.connect(self.update_plot)
+        self.picks_manager.hide()
+
         self.is_toggled_picks_from_file = False
         # placeholders
         self.sgy: Optional[SGY] = None
@@ -195,7 +201,6 @@ class MainWindow(QMainWindow):
         self.last_folder: Optional[Union[str, Path]] = None
         self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
         self.picker_hash = MODEL_ONNX_HASH
-        self.last_picks_id: Optional[UUID4] = None
 
         self.show()
 
@@ -234,10 +239,9 @@ class MainWindow(QMainWindow):
         self.last_task = result
 
         if result.success:
-            self.last_picks_id = self.last_task.picks.id
-            self.graph.plot_nn_picks(self.last_task.picks_in_ms)
+            self.picks_manager.add_nn_picks(result.picks)
+            self.update_plot(refresh_view=False)
             self.run_processing_region()
-            self.button_export.setEnabled(True)
         else:
             if isinstance(result.exception, InterruptedError):
                 window_error = MessageBox(
@@ -274,17 +278,6 @@ class MainWindow(QMainWindow):
         if self.last_task and self.last_task.success:
             self.graph.remove_processing_region()
 
-    def show_nn_picks(self) -> None:
-        if self.last_task and self.last_task.success:
-            if self.last_task.picks.id != self.last_picks_id:
-                self.graph.plot_nn_picks(self.last_task.picks_in_ms)
-            else:
-                # todo: implement later in a better way
-                # this case mean that we don't rerun picking, so we replicate settings
-                is_picks_modified_manually = self.graph.is_picks_modified_manually
-                self.graph.plot_nn_picks(self.graph.nn_picks_in_ms)
-                self.graph.is_picks_modified_manually = is_picks_modified_manually
-
     def read_picks_from_file(self) -> None:
         picks = self.sgy.read_custom_trace_header(
             **TraceHeaderParams(**self.picks_from_file_settings.model_dump()).model_dump(),
@@ -305,12 +298,12 @@ class MainWindow(QMainWindow):
         self.is_toggled_picks_from_file = toggled
         self.show_picks_from_file()
 
-    def show_picks_from_file(self) -> None:
-        if self.is_toggled_picks_from_file:
-            self.read_picks_from_file()
-            self.graph.plot_extra_picks(picks_ms=self.picks_from_file_in_ms, color=(0, 0, 255))
-        else:
-            self.graph.remove_extra_picks()
+    # def show_picks_from_file(self) -> None:
+    #     if self.is_toggled_picks_from_file:
+    #         self.read_picks_from_file()
+    #         self.graph.plot_extra_picks(picks_ms=self.picks_from_file_in_ms, color=(0, 0, 255))
+    #     else:
+    #         self.graph.remove_extra_picks()
 
     def update_plotseis_settings(self, new_settings: PlotseisSettings) -> None:
         self.plotseis_settings = new_settings
@@ -319,8 +312,12 @@ class MainWindow(QMainWindow):
     def update_plot(self, refresh_view: bool = False) -> None:
         self.graph.plotseis(self.sgy, refresh_view=refresh_view, **self.plotseis_settings.model_dump())
         self.show_processing_region()
-        self.show_nn_picks()
-        self.show_picks_from_file()
+
+        self.graph.remove_picks()
+        for picks in self.picks_manager.get_selected_picks():
+            self.graph.plot_picks(picks)
+        # self.show_nn_picks()
+        # self.show_picks_from_file()
 
     def show_settings_processing_window(self) -> None:
         self.settings_processing_widget.show()
@@ -376,11 +373,13 @@ class MainWindow(QMainWindow):
                 self.last_task = None
                 self.sgy = SGY(self.fn_sgy)
                 self.picks_from_file_in_ms = None
+                self.picks_manager.reset_manager()
+                self.picks_manager.setup_manual_picks_params(sgy=self.sgy)
 
                 self.graph.full_clean()
                 self.update_plot(refresh_view=True)
                 self.graph.show()
-                self.button_export.setEnabled(False)
+                self.button_picks_manager.setEnabled(True)
                 self.button_settings_processing.setEnabled(True)
                 self.settings_processing_widget.enable_only_visualizations_settings()
 
@@ -398,41 +397,50 @@ class MainWindow(QMainWindow):
                 window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
                 window_err.exec_()
 
-    def export(self) -> None:
-        formats = ["SEGY-file (*.segy *.sgy)", "JSON-file (*.json)", "TXT-file (*.txt)"]
-        formats = ";; ".join(formats)
-        filename, _ = QFileDialog.getSaveFileName(self, "Save result", directory=self.get_last_folder(), filter=formats)
+    def show_picks_manager(self):
+        if self.picks_manager.isMinimized():
+            self.picks_manager.showNormal()
+        else:
+            self.picks_manager.show()
+        self.picks_manager.raise_()
+        self.picks_manager.activateWindow()
 
-        if filename:
-            filename = Path(filename).resolve()
-            if self.last_task is not None and self.last_task.success:
-                filename.parent.mkdir(parents=True, exist_ok=True)
-
-                picks_in_samples_prev = self.last_task.picks_in_samples
-                if self.graph.is_picks_modified_manually:
-                    self.last_task.picks_in_samples = multiply_iterable_by(
-                        self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, float
-                    )
-                if filename.suffix.lower() in (".sgy", ".segy"):
-                    save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
-                    save_params.setWindowTitle("How to save first breaks")
-                    save_params.show()
-                    save_params.exec_()
-                    export_params = save_params.get_values()
-                    self.last_task.export_result_as_sgy(str(filename), **export_params)  # type: ignore
-                elif filename.suffix.lower() == ".txt":
-                    self.last_task.export_result_as_txt(str(filename))
-                elif filename.suffix.lower() == ".json":
-                    self.last_task.export_result_as_json(str(filename))
-                else:
-                    message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
-                    window_err = MessageBox(self, title="Wrong filename", message=message_er)
-                    window_err.exec_()
-                if self.graph.is_picks_modified_manually:
-                    self.last_task.picks_in_samples = picks_in_samples_prev
+    # def export_(self) -> None:
+    #     formats = ["SEGY-file (*.segy *.sgy)", "JSON-file (*.json)", "TXT-file (*.txt)"]
+    #     formats = ";; ".join(formats)
+    #     filename, _ = QFileDialog.getSaveFileName(self, "Save result", directory=self.get_last_folder(), filter=formats)
+    #
+    #     if filename:
+    #         filename = Path(filename).resolve()
+    #         if self.last_task is not None and self.last_task.success:
+    #             filename.parent.mkdir(parents=True, exist_ok=True)
+    #
+    #             picks_in_samples_prev = self.last_task.picks_in_samples
+    #             if self.graph.is_picks_modified_manually:
+    #                 self.last_task.picks_in_samples = multiply_iterable_by(
+    #                     self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, float
+    #                 )
+    #             if filename.suffix.lower() in (".sgy", ".segy"):
+    #                 save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
+    #                 save_params.setWindowTitle("How to save first breaks")
+    #                 save_params.show()
+    #                 save_params.exec_()
+    #                 export_params = save_params.get_values()
+    #                 self.last_task.export_result_as_sgy(str(filename), **export_params)  # type: ignore
+    #             elif filename.suffix.lower() == ".txt":
+    #                 self.last_task.export_result_as_txt(str(filename))
+    #             elif filename.suffix.lower() == ".json":
+    #                 self.last_task.export_result_as_json(str(filename))
+    #             else:
+    #                 message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
+    #                 window_err = MessageBox(self, title="Wrong filename", message=message_er)
+    #                 window_err.exec_()
+    #             if self.graph.is_picks_modified_manually:
+    #                 self.last_task.picks_in_samples = picks_in_samples_prev
 
     def closeEvent(self, e: QCloseEvent) -> None:
         self.graph.spectrum_window.close()
+        self.picks_manager.close()
         e.accept()
 
 

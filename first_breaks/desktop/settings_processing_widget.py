@@ -342,6 +342,7 @@ class TracesPerGatherLine(QSpinBox, _Extras):
     def __init__(self, traces_per_gather: int = DEFAULTS.traces_per_gather, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.setMinimum(1)
+        self.setMaximum(1_000_000)
         self.setValue(traces_per_gather)
 
     def dict(self) -> Dict[str, Any]:
