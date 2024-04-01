@@ -108,7 +108,7 @@ class PicksItemWidget(QWidget):
         self.setLayout(layout)
 
         self.radio_button.clicked.connect(self.on_radiobutton_clicked)
-        self.radio_button.setEnabled(enabled_radio_button)
+        # self.radio_button.setEnabled(enabled_radio_button)
         self.color_display.mousePressEvent = self.edit_color
 
     def get_name(self) -> str:

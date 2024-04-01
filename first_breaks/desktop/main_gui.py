@@ -266,8 +266,11 @@ class MainWindow(QMainWindow):
             self.hide_processing_region()
 
     def show_processing_region(self) -> None:
-        if self.last_task and self.last_task.success:
-            self.graph.plot_processing_region(self.last_task.traces_per_gather, self.last_task.maximum_time)
+        for picks in self.picks_manager.picks_mapping.values():
+            if picks.created_by_nn and picks.active:
+                tps, max_time = picks.picking_parameters.traces_per_gather, picks.picking_parameters.maximum_time
+                self.graph.plot_processing_region(tps, max_time)
+                break
 
     def hide_processing_region(self) -> None:
         if self.last_task and self.last_task.success:

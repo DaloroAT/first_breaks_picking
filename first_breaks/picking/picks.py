@@ -6,10 +6,23 @@ from first_breaks.utils.utils import UnitsConverter, generate_color
 
 from pydantic import model_validator, Field, UUID4
 
-from first_breaks.data_models.independent import PicksColor, PicksWidth
-
+from first_breaks.data_models.independent import PicksColor, PicksWidth, TracesPerGather, MaximumTime, TracesToInverse, \
+    F1F2, F3F4, Gain, Clip, Normalize
 
 TValues = Union[np.ndarray, List[Union[int, float]]]
+
+
+class PickingParameters(
+    TracesPerGather,
+    MaximumTime,
+    TracesToInverse,
+    F1F2,
+    F3F4,
+    Gain,
+    Clip,
+    Normalize,
+):
+    pass
 
 
 class Picks(PicksColor, PicksWidth):
@@ -21,6 +34,7 @@ class Picks(PicksColor, PicksWidth):
     created_by_nn: Optional[bool] = None
     created_manually: Optional[bool] = None
     modified_manually: Optional[bool] = None
+    picking_parameters: Optional[PickingParameters] = None
 
     active: Optional[bool] = None
 
@@ -130,7 +144,6 @@ class Picks(PicksColor, PicksWidth):
             created_manually=self.created_manually,
             created_by_nn=self.created_by_nn,
             modified_manually=self.modified_manually,
+            picking_parameters=self.picking_parameters,
             picks_color=self.picks_color if keep_color else generate_color(),
         )
-
-

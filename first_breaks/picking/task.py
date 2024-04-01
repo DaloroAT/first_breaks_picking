@@ -21,7 +21,7 @@ from first_breaks.data_models.independent import (
     TracesPerGather,
     TracesToInverse,
 )
-from first_breaks.picking.picks import Picks
+from first_breaks.picking.picks import Picks, PickingParameters
 from first_breaks.utils.utils import chunk_iterable, as_list
 
 MINIMUM_TRACES_PER_GATHER = 2
@@ -41,14 +41,7 @@ class ErrorMessage(DefaultModel):
 
 class Task(
     SGYModel,
-    TracesPerGather,
-    MaximumTime,
-    TracesToInverse,
-    F1F2,
-    F3F4,
-    Gain,
-    Clip,
-    Normalize,
+    PickingParameters,
     ErrorMessage,
     Success,
     ModelHashOptional,
@@ -56,6 +49,10 @@ class Task(
     PicksID,
 ):
     picks: Optional[Picks] = Field(None, description="Result of picking process")
+
+    @property
+    def picking_parameters(self) -> PickingParameters:
+        return PickingParameters(**self.model_dump())
 
     @property
     def maximum_time_sample(self) -> int:

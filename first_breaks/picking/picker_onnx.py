@@ -151,6 +151,7 @@ class PickerONNX(IPicker):
             created_manually=False,
             created_by_nn=True,
             picks_color=generate_color(),
+            picking_parameters=task.picking_parameters
         )
 
         task.success = True
