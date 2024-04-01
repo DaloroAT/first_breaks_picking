@@ -2,11 +2,11 @@ import ast
 import os
 import warnings
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union, Dict
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QTimer, pyqtSlot
+from PyQt5.QtCore import Qt, QTimer, pyqtSlot, pyqtSignal
 from PyQt5.QtGui import QCloseEvent, QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph import AxisItem
@@ -31,6 +31,8 @@ if HIGH_DPI:
 
 
 class GraphWidget(pg.PlotWidget):
+    picks_manual_edited_signal = pyqtSignal(Picks)
+
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
         self.plotItem.disableAutoRange()
@@ -43,7 +45,8 @@ class GraphWidget(pg.PlotWidget):
         self.invert_y = DEFAULTS.invert_y
         self.vsp_view = DEFAULTS.vsp_view
         self.sgy: Optional[SGY] = None
-        self.picks_as_items: List[pg.PlotCurveItem] = []
+        # self.picks_as_items: List[pg.PlotCurveItem] = []
+        self.picks2items: Dict[Picks, pg.PlotCurveItem] = {}
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.pos_ax_header: Optional[str] = None
@@ -56,7 +59,7 @@ class GraphWidget(pg.PlotWidget):
 
         self.spectrum_roi_manager = RoiManager(viewbox=self.getViewBox())
         self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
-        # self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
+        self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
     def resolve_postime2xy(self, position: Any, time: Any) -> Tuple[Any, Any]:
         return postime2xy(vsp_view=self.vsp_view, position=position, time=time)
@@ -287,22 +290,26 @@ class GraphWidget(pg.PlotWidget):
         return line
 
     def plot_picks(self, picks: Picks) -> None:
-        picks = self.get_picks_as_item(picks)
-        self.addItem(picks)
-        self.picks_as_items.append(picks)
+        picks_item = self.get_picks_as_item(picks)
+        self.addItem(picks_item)
+        self.picks2items[picks] = picks_item
 
     def remove_picks(self):
-        for pick in list(self.picks_as_items):
-            self.removeItem(pick)
-            self.picks_as_items.remove(pick)
+        for picks in list(self.picks2items.keys()):
+            self.removeItem(self.picks2items[picks])
+            del self.picks2items[picks]
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
-        if self.nn_picks_as_item is not None and ev.button() == 1:
+        active_picks = [k for k in self.picks2items.keys() if k.active]
+        if active_picks:
+            active_picks = active_picks[0]
+
+        if active_picks and ev.button() == 1:
             mouse_xy = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
             mouse_pos, mouse_time = self.resolve_xy2postime(mouse_xy.x(), mouse_xy.y())
 
-            picks_x, picks_y = self.nn_picks_as_item.getData()
+            picks_x, picks_y = self.picks2items[active_picks].getData()
             picks_pos, picks_time = self.resolve_xy2postime(picks_x, picks_y)
 
             closest = np.argmin(np.abs(picks_pos - mouse_pos))
@@ -310,9 +317,11 @@ class GraphWidget(pg.PlotWidget):
             picks_time[closest] = mouse_time
 
             picks_x, picks_y = self.resolve_postime2xy(picks_pos, picks_time)
-            self.nn_picks_as_item.setData(picks_x, picks_y)
-            self.nn_picks_in_ms = picks_time
-            self.is_picks_modified_manually = True
+
+            self.picks2items[active_picks].setData(picks_x, picks_y)
+            active_picks.from_ms(picks_time)
+
+            self.picks_manual_edited_signal.emit(active_picks)
 
     def closeEvent(self, e: QCloseEvent) -> None:
         self.spectrum_window.close()

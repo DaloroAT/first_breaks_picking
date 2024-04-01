@@ -191,6 +191,8 @@ class MainWindow(QMainWindow):
         self.picks_manager.picks_updated_signal.connect(self.update_plot)
         self.picks_manager.hide()
 
+        self.graph.picks_manual_edited_signal.connect(self.picks_manager.update_picks_from_external)
+
         self.is_toggled_picks_from_file = False
         # placeholders
         self.sgy: Optional[SGY] = None

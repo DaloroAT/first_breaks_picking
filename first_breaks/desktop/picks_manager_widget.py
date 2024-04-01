@@ -177,6 +177,12 @@ class PicksManager(QWidget):
 
         self.hide()
 
+    def update_picks_from_external(self, external_picks: Picks) -> None:
+        for item, picks in self.picks_mapping.items():
+            if picks.id == external_picks.id:
+                self.picks_mapping[item] = external_picks
+                print("UPDATED")
+
     def setup_manual_picks_params(self, sgy: SGY):
         self.sgy = sgy
 
@@ -345,7 +351,7 @@ class PicksManager(QWidget):
     def update_active_picks(self, radio_button):
         for widget, picks in self.picks_mapping.items():
             if widget.radio_button is radio_button:
-                width = int(DEFAULT_PICKS_WIDTH * 2)
+                width = int(DEFAULT_PICKS_WIDTH * 1.7)
                 active = True
             else:
                 width = DEFAULT_PICKS_WIDTH

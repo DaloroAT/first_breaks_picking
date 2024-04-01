@@ -9,8 +9,11 @@ from pydantic import model_validator, Field, UUID4
 from first_breaks.data_models.independent import PicksColor, PicksWidth
 
 
+TValues = Union[np.ndarray, List[Union[int, float]]]
+
+
 class Picks(PicksColor, PicksWidth):
-    values: Union[np.ndarray, List[Union[int, float]]]
+    values: TValues
     unit: Literal["mcs", "ms", "sample"]
 
     dt_mcs: Optional[float] = None
@@ -79,6 +82,39 @@ class Picks(PicksColor, PicksWidth):
             return self._units_converter.ms2index(self.values)
         elif self.unit == "mcs":
             return self._units_converter.mcs2index(self.values)
+        else:
+            raise ValueError("Wrong 'unit'")
+
+    def from_ms(self, values: TValues):
+        self._raise_if_no_dt_mcs()
+        if self.unit == "sample":
+            self.values = self._units_converter.ms2index(values)
+        elif self.unit == "ms":
+            self.values = values
+        elif self.unit == "mcs":
+            self.values = self._units_converter.ms2mcs(values)
+        else:
+            raise ValueError("Wrong 'unit'")
+
+    def from_mcs(self, values: TValues):
+        self._raise_if_no_dt_mcs()
+        if self.unit == "sample":
+            self.values = self._units_converter.mcs2index(values)
+        elif self.unit == "ms":
+            self.values = self._units_converter.mcs2ms(values)
+        elif self.unit == "mcs":
+            self.values = values
+        else:
+            raise ValueError("Wrong 'unit'")
+
+    def from_samples(self, values: TValues):
+        self._raise_if_no_dt_mcs()
+        if self.unit == "sample":
+            self.values = values
+        elif self.unit == "ms":
+            self.values = self._units_converter.index2ms(values)
+        elif self.unit == "mcs":
+            self.values = self._units_converter.index2mcs(values)
         else:
             raise ValueError("Wrong 'unit'")
 
