@@ -161,20 +161,13 @@ class MainWindow(QMainWindow):
 
         # visual settings widget
         self.plotseis_settings = PlotseisSettings()
-        first_byte = 1
-        self.picks_from_file_settings = PicksFromFileSettings(byte_position=first_byte)
         self.settings_processing_widget = SettingsProcessingWidget(
             hide_on_close=True,
-            first_byte=first_byte,
-            **{**self.plotseis_settings.model_dump(), **self.picks_from_file_settings.model_dump()},
+            **self.plotseis_settings.model_dump(),
         )
         self.settings_processing_widget.hide()
         self.settings_processing_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
         self.settings_processing_widget.export_picking_settings_signal.connect(self.pick_fb)
-        self.settings_processing_widget.export_picks_from_file_settings_signal.connect(
-            self.update_picks_from_file_settings
-        )
-        self.settings_processing_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file)
 
         # nn manager
         self.nn_manager = NNManager(
@@ -280,33 +273,6 @@ class MainWindow(QMainWindow):
         if self.last_task and self.last_task.success:
             self.graph.remove_processing_region()
 
-    def read_picks_from_file(self) -> None:
-        picks = self.sgy.read_custom_trace_header(
-            **TraceHeaderParams(**self.picks_from_file_settings.model_dump()).model_dump(),
-        )
-        units_converter = UnitsConverter(sgy_mcs=self.sgy.dt_mcs)
-        if self.picks_from_file_settings.picks_unit == "sample":
-            self.picks_from_file_in_ms = units_converter.index2ms(picks)  # type: ignore
-        elif self.picks_from_file_settings.picks_unit == "mcs":
-            self.picks_from_file_in_ms = units_converter.mcs2ms(picks)  # type: ignore
-        else:
-            self.picks_from_file_in_ms = picks
-
-    def update_picks_from_file_settings(self, new_settings: PicksFromFileSettings) -> None:
-        print(new_settings)
-        self.picks_from_file_settings = new_settings
-
-    def toggle_picks_from_file(self, toggled: bool) -> None:
-        self.is_toggled_picks_from_file = toggled
-        self.show_picks_from_file()
-
-    # def show_picks_from_file(self) -> None:
-    #     if self.is_toggled_picks_from_file:
-    #         self.read_picks_from_file()
-    #         self.graph.plot_extra_picks(picks_ms=self.picks_from_file_in_ms, color=(0, 0, 255))
-    #     else:
-    #         self.graph.remove_extra_picks()
-
     def update_plotseis_settings(self, new_settings: PlotseisSettings) -> None:
         self.plotseis_settings = new_settings
         self.update_plot(False)
@@ -318,8 +284,6 @@ class MainWindow(QMainWindow):
         self.graph.remove_picks()
         for picks in self.picks_manager.get_selected_picks():
             self.graph.plot_picks(picks)
-        # self.show_nn_picks()
-        # self.show_picks_from_file()
 
     def show_settings_processing_window(self) -> None:
         self.settings_processing_widget.show()

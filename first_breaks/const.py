@@ -31,4 +31,6 @@ MODEL_ONNX_HASH = "7e39e017b01325180e36885eccaeb17a"
 
 TIMEOUT = 60
 
-HIGH_DPI = os.getenv("HIGH_DPI", True)
+HIGH_DPI = bool(os.getenv("HIGH_DPI", True))
+
+FIRST_BYTE = int(os.getenv("FIRST_BYTE", 1))

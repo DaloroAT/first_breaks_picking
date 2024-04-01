@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QPushButton
                              QSpinBox, QGridLayout, QDialogButtonBox, QComboBox)
 import numpy as np
 
+from first_breaks.const import FIRST_BYTE
 from first_breaks.data_models.dependent import TraceHeaderParams
 from first_breaks.data_models.independent import PicksWidth
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
@@ -285,7 +286,7 @@ class PicksManager(QWidget):
             self.add_picks(picks, f"Aggregated from {[item.get_name() for item in selected_picks_items]}", True)
 
     def add_from_headers_pick(self):
-        dialog = QDialogByteEncodeUnit(byte_position=1, first_byte=1, encoding="I", picks_unit="mcs")
+        dialog = QDialogByteEncodeUnit(byte_position=1, first_byte=FIRST_BYTE, encoding="I", picks_unit="mcs")
 
         if dialog.exec_() == QDialog.Accepted:
             params = dialog.get_values()

@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from first_breaks.const import HIGH_DPI
+from first_breaks.const import HIGH_DPI, FIRST_BYTE
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.sgy.headers import Headers
 
@@ -49,7 +49,7 @@ class QByteEncodeUnitWidget(QWidget):
         self,
         byte_position: int = 0,
         encoding: str = "I",
-        first_byte: int = 0,
+        first_byte: int = FIRST_BYTE,
         picks_unit: str = "mcs",
         margins: Optional[int] = None,
         *args: Any,
