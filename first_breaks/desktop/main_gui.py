@@ -25,6 +25,7 @@ from first_breaks.data_models.dependent import TraceHeaderParams
 from first_breaks.data_models.independent import ExceptionOptional
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
+from first_breaks.desktop.last_folder_manager import last_folder_manager
 from first_breaks.desktop.nn_manager import NNManager
 from first_breaks.desktop.picks_manager_widget import PicksManager
 from first_breaks.desktop.settings_processing_widget import (
@@ -185,6 +186,7 @@ class MainWindow(QMainWindow):
         self.picks_manager.hide()
 
         self.graph.picks_manual_edited_signal.connect(self.picks_manager.update_picks_from_external)
+        self.graph.about_to_change_nn_picks_signal.connect(self.picks_manager.duplicate_active_created_by_nn_picks)
 
         self.is_toggled_picks_from_file = False
         # placeholders
@@ -303,7 +305,7 @@ class MainWindow(QMainWindow):
         if not filename:
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(
-                self, "Select file with NN weights", directory=self.get_last_folder(), options=options
+                self, "Select file with NN weights", directory=last_folder_manager.get_last_folder(), options=options
             )
 
         if filename:
@@ -318,7 +320,7 @@ class MainWindow(QMainWindow):
                 self.status_message.setText(status_message)
 
                 self.unlock_pickng_if_ready()
-                self.set_last_folder_based_on_file(filename)
+                last_folder_manager.set_last_folder(filename)
             else:
                 window_err = MessageBox(
                     self,
@@ -333,7 +335,7 @@ class MainWindow(QMainWindow):
             filename, _ = QFileDialog.getOpenFileName(
                 self,
                 "Open SEGY-file",
-                directory=self.get_last_folder(),
+                directory=last_folder_manager.get_last_folder(),
                 filter="SEGY-file (*.segy *.sgy);; Any file (*)",
             )
         if filename:
@@ -343,7 +345,7 @@ class MainWindow(QMainWindow):
                 self.sgy = SGY(self.fn_sgy)
                 self.picks_from_file_in_ms = None
                 self.picks_manager.reset_manager()
-                self.picks_manager.setup_manual_picks_params(sgy=self.sgy)
+                self.picks_manager.set_sgy(sgy=self.sgy)
 
                 self.graph.full_clean()
                 self.update_plot(refresh_view=True)
@@ -360,7 +362,7 @@ class MainWindow(QMainWindow):
                     self.status_message.setText(status_message)
 
                 self.unlock_pickng_if_ready()
-                self.set_last_folder_based_on_file(filename)
+                last_folder_manager.set_last_folder(filename)
 
             except Exception as e:
                 window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))

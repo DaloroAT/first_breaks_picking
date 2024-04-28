@@ -7,14 +7,15 @@ from PyQt5.QtGui import QColor, QCloseEvent, QDoubleValidator
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QPushButton,
                              QListWidget, QListWidgetItem, QCheckBox, QRadioButton, QLabel,
                              QDialog, QWidget, QHBoxLayout, QButtonGroup, QMenu, QAction, QColorDialog, QLineEdit,
-                             QSpinBox, QGridLayout, QDialogButtonBox, QComboBox)
+                             QSpinBox, QGridLayout, QDialogButtonBox, QComboBox, QTabWidget)
 import numpy as np
 
 from first_breaks.const import FIRST_BYTE
 from first_breaks.data_models.dependent import TraceHeaderParams
 from first_breaks.data_models.independent import PicksWidth
-from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
+from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit, QByteEncodeUnitWidget
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
+from first_breaks.desktop.export_widgets import ExporterSGY
 from first_breaks.desktop.utils import set_geometry
 from first_breaks.picking.picks import Picks
 from first_breaks.sgy.reader import SGY
@@ -29,7 +30,7 @@ class ConstantValuesInputDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Enter value in microseconds")
 
-        main_layout = QVBoxLayout(self)
+        layout = QVBoxLayout(self)
         input_layout = QHBoxLayout()
 
         self.line_edit = QLineEdit(self)
@@ -43,13 +44,13 @@ class ConstantValuesInputDialog(QDialog):
         self.unit_label = QLabel("mcs", self)
         input_layout.addWidget(self.unit_label)
 
-        main_layout.addLayout(input_layout)
+        layout.addLayout(input_layout)
 
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
-        main_layout.addWidget(self.button_box)
+        layout.addWidget(self.button_box)
 
     def get_value(self):
         return self.line_edit.text()
@@ -60,20 +61,20 @@ class AggregationDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Select Aggregation Method")
 
-        main_layout = QVBoxLayout(self)
+        layout = QVBoxLayout(self)
 
         mapping = {0: ("Mean", lambda x: np.mean(x, axis=0)),
                    1: ("Median", lambda x: np.median(x, axis=0)),
                    2: ("RMS", lambda x: np.sqrt(np.mean(np.square(x), axis=0)))}
         self.combo_box = QComboBoxMapping(mapping, current_label="Mean")
 
-        main_layout.addWidget(self.combo_box)
+        layout.addWidget(self.combo_box)
 
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
-        main_layout.addWidget(self.button_box)
+        layout.addWidget(self.button_box)
 
     def get_aggregation_function(self):
         return self.combo_box.value()
@@ -111,6 +112,9 @@ class PicksItemWidget(QWidget):
         # self.radio_button.setEnabled(enabled_radio_button)
         self.color_display.mousePressEvent = self.edit_color
 
+    def change_name(self, name: str) -> None:
+        self.label.setText(str(name))
+
     def get_name(self) -> str:
         return self.label.text()
 
@@ -124,6 +128,82 @@ class PicksItemWidget(QWidget):
             self.color_display.setStyleSheet(f"background-color: {new_color.name()}; border: 1px solid black;")
             self.currentColor = new_color
             self.color_changed_signal.emit(new_color)  # Emit signal with the new color
+
+
+class PropertiesDialog(QDialog):
+    def __init__(self, picks_item_widget: PicksItemWidget, picks_mapping: Dict[PicksItemWidget, Picks], sgy: SGY):
+        super().__init__()
+        self.picks_item_widget = picks_item_widget
+        self.picks_mapping = picks_mapping
+        self.sgy = sgy
+
+        self.setWindowTitle("Picks")
+
+        layout = QVBoxLayout(self)
+
+        input_layout = QHBoxLayout()
+
+        self.unit_label = QLabel("Label", self)
+        input_layout.addWidget(self.unit_label)
+
+        self.line_edit = QLineEdit(self)
+        self.line_edit.setText(picks_item_widget.get_name())
+        self.line_edit.textChanged.connect(picks_item_widget.change_name)
+        input_layout.addWidget(self.line_edit)
+
+        layout.addLayout(input_layout)
+
+        self.tab_widget = QTabWidget(self)
+        self.create_export_tab()
+
+        layout.addWidget(self.tab_widget)
+
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+        layout.addWidget(self.button_box)
+
+    def create_export_tab(self):
+        export_tab = QWidget()
+        export_layout = QVBoxLayout(export_tab)
+
+        # Create the nested tab widget for exports
+        export_tab_widget = QTabWidget()
+        export_layout.addWidget(export_tab_widget)
+
+        # Create each export option as a separate tab
+        self.add_export_option(export_tab_widget, "SGY", "Export to SGY")
+        self.add_export_option(export_tab_widget, "JSON", "Export to JSON")
+        self.add_export_option(export_tab_widget, "TXT", "Export to TXT")
+        self.add_export_option(export_tab_widget, "pyGIMLI", "Export to pyGIMLI")
+
+        self.tab_widget.addTab(export_tab, "Export")
+
+    # def export_to_sgy(self):
+    #     save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
+        # export_params = save_params.get_values()
+
+
+
+
+    def add_export_option(self, tab_widget, tab_name, button_text):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        if tab_name == "SGY":
+            export_sgy = ExporterSGY(picks=self.picks_mapping[self.picks_item_widget], sgy=self.sgy)
+            layout.addWidget(export_sgy)
+        else:
+            info_label = QLabel(f"Configure and {button_text.lower()}.", tab)
+            layout.addWidget(info_label)
+            export_button = QPushButton(button_text, tab)
+            export_button.clicked.connect(lambda: self.export_data(tab_name))
+            layout.addWidget(export_button)
+        tab.setLayout(layout)
+        tab_widget.addTab(tab, tab_name)
+
+    def export_data(self, format_type):
+        print(f"Exporting data in {format_type} format...")
 
 
 class ItemsCounter:
@@ -148,6 +228,7 @@ class PicksManager(QWidget):
 
         self.list_widget = QListWidget(self)
         self.list_widget.itemDoubleClicked.connect(self.open_properties)
+        self.list_widget.itemSelectionChanged.connect(self.update_properties_button_state)
 
         # Enable multi-selection mode
         self.list_widget.setSelectionMode(QListWidget.ExtendedSelection)
@@ -159,7 +240,8 @@ class PicksManager(QWidget):
         self.add_button.clicked.connect(self.show_add_menu)
         self.remove_button = QPushButton("-", self)
         self.remove_button.clicked.connect(self.remove_items)  # renamed for clarity
-        self.properties_button = QPushButton("\u2699", self)  # Unicode character for gear
+        # self.properties_button = QPushButton("\u2699", self)  # Unicode character for gear
+        self.properties_button = QPushButton("\U0001F4BE", self)  # "\U0001F4BE" or "\U0001F5AB"
         self.properties_button.setFont(self.font())  # to increase the size of the button a bit
         self.properties_button.clicked.connect(self.open_properties)
         button_layout.addWidget(self.add_button)
@@ -176,7 +258,15 @@ class PicksManager(QWidget):
         self.picks_mapping: Dict[PicksItemWidget, Picks] = {}
         self.sgy = None
 
+        self.update_properties_button_state()
         self.hide()
+
+    def duplicate_active_created_by_nn_picks(self):
+        for item, picks in self.picks_mapping.items():
+            if picks.active and picks.created_by_nn and not picks.modified_manually:
+                new_item = self.add_duplicate_pick(item)
+                new_item.radio_button.toggle()
+                break
 
     def update_picks_from_external(self, external_picks: Picks) -> None:
         for item, picks in self.picks_mapping.items():
@@ -184,7 +274,7 @@ class PicksManager(QWidget):
                 self.picks_mapping[item] = external_picks
                 print("UPDATED")
 
-    def setup_manual_picks_params(self, sgy: SGY):
+    def set_sgy(self, sgy: SGY):
         self.sgy = sgy
 
     def reset_manager(self):
@@ -250,16 +340,16 @@ class PicksManager(QWidget):
                     picks_color=generate_color(),
                 )
                 self.items_counter.constant_values += 1
-                self.add_picks(picks, f"Manual {self.items_counter.constant_values}", True)
+                return self.add_picks(picks, f"Manual {self.items_counter.constant_values}", True)
 
-    def add_duplicate_pick(self):
-        selected_picks_item = self.list_widget.itemWidget(self.list_widget.selectedItems()[0])
+    def add_duplicate_pick(self, selected_picks_item: Optional[QListWidgetItem] = None):
+        selected_picks_item = selected_picks_item or self.list_widget.itemWidget(self.list_widget.selectedItems()[0])
 
         picks = self.picks_mapping[selected_picks_item]
         duplicated_picks = picks.create_duplicate(keep_color=False)
 
         self.items_counter.duplicated += 1
-        self.add_picks(duplicated_picks, f"Duplicated from '{selected_picks_item.get_name()}'", True)
+        return self.add_picks(duplicated_picks, f"Duplicated from '{selected_picks_item.get_name()}'", True)
 
     def add_aggregate_pick(self):
         self.items_counter.aggregated += 1
@@ -283,7 +373,7 @@ class PicksManager(QWidget):
             )
 
             self.items_counter.aggregated += 1
-            self.add_picks(picks, f"Aggregated from {[item.get_name() for item in selected_picks_items]}", True)
+            return self.add_picks(picks, f"Aggregated from {[item.get_name() for item in selected_picks_items]}", True)
 
     def add_from_headers_pick(self):
         dialog = QDialogByteEncodeUnit(byte_position=1, first_byte=FIRST_BYTE, encoding="I", picks_unit="mcs")
@@ -302,14 +392,13 @@ class PicksManager(QWidget):
                 picks_color=generate_color(),
             )
             self.items_counter.loaded += 1
-            self.add_picks(picks, f"Loaded {self.items_counter.loaded}", True)
+            return self.add_picks(picks, f"Loaded {self.items_counter.loaded}", True)
 
     def add_nn_picks(self, picks: Picks):
         self.items_counter.nn += 1
-        self.add_picks(picks, f"NN {self.items_counter.nn}", False)
-        print("NN Picks")
+        return self.add_picks(picks, f"NN {self.items_counter.nn}", False)
 
-    def add_picks(self, picks: Picks, name: str, enabled_radio_button: bool = True):
+    def add_picks(self, picks: Picks, name: str, enabled_radio_button: bool = True, do_active: bool = True):
         item = QListWidgetItem()
         self.list_widget.addItem(item)
 
@@ -331,13 +420,10 @@ class PicksManager(QWidget):
 
         self.picks_updated_signal.emit()
 
+        return picks_item_widget
+
     def get_selected_picks(self):
         seleted_picks = []
-        # for item in self.list_widget.:
-        #     picks_item_widget = self.list_widget.itemWidget(item)
-        #     seleted_picks.append(self.picks_mapping[picks_item_widget])
-        # print(len(self.list_widget.selectedItems()), seleted_picks)
-
         for widget, picks in self.picks_mapping.items():
             if widget.checkbox.isChecked():
                 seleted_picks.append(picks)
@@ -373,8 +459,14 @@ class PicksManager(QWidget):
         self.picks_updated_signal.emit()
 
     def open_properties(self):
-        dialog = PropertiesDialog()
+        item = self.list_widget.selectedItems()[0]
+        picks_item_widget = self.list_widget.itemWidget(item)
+        dialog = PropertiesDialog(picks_item_widget, self.picks_mapping, self.sgy)
         dialog.exec_()
+
+    def update_properties_button_state(self):
+        selected_items = self.list_widget.selectedItems()
+        self.properties_button.setEnabled(len(selected_items) == 1)
 
     def update_picks_color(self, picks_item_widget, color):
         pick = self.picks_mapping.get(picks_item_widget)

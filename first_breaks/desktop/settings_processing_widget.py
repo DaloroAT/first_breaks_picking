@@ -290,6 +290,7 @@ class OrientationLine(QWidget, _Extras):
     def dict(self) -> Dict[str, Any]:
         return {k: w.isChecked() for _, w, _, k in self.widgets}
 
+
 class TracesPerGatherLine(QSpinBox, _Extras):
     changed_signal = pyqtSignal()
 

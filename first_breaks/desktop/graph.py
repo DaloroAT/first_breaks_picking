@@ -32,6 +32,7 @@ if HIGH_DPI:
 
 class GraphWidget(pg.PlotWidget):
     picks_manual_edited_signal = pyqtSignal(Picks)
+    about_to_change_nn_picks_signal = pyqtSignal()
 
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
@@ -302,8 +303,15 @@ class GraphWidget(pg.PlotWidget):
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
         active_picks = [k for k in self.picks2items.keys() if k.active]
+
         if active_picks:
             active_picks = active_picks[0]
+        else:
+            return
+
+        if active_picks.created_by_nn and not active_picks.modified_manually:
+            self.about_to_change_nn_picks_signal.emit()
+            self.mouse_clicked((ev,))
 
         if active_picks and ev.button() == 1:
             mouse_xy = self.getPlotItem().vb.mapSceneToView(ev.scenePos())

@@ -141,9 +141,9 @@ class Picks(PicksColor, PicksWidth):
             confidence=confidence,
             dt_mcs=self.dt_mcs,
             unit=self.unit,
-            created_manually=self.created_manually,
+            created_manually=True,
             created_by_nn=self.created_by_nn,
-            modified_manually=self.modified_manually,
+            modified_manually=True,
             picking_parameters=self.picking_parameters,
             picks_color=self.picks_color if keep_color else generate_color(),
         )

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
@@ -98,43 +98,48 @@ def set_geometry(
     widget.move(monitor.left(), monitor.top())
 
 
-class QHSeparationLine(QtWidgets.QWidget):
-    def __init__(self, text: str = ""):
+class QSeparationLine(QtWidgets.QWidget):
+    def __init__(self, text: str = "", type_line: Literal["h", "v"] = "h"):
         super().__init__()
 
-        # Create the horizontal line (QFrame)
+        assert type_line in ["h", "v"]
+
+        if type_line == "h":
+            layout = QtWidgets.QHBoxLayout(self)
+            size_policy = (QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            frame_shape = QtWidgets.QFrame.HLine
+        else:
+            layout = QtWidgets.QVBoxLayout(self)
+            size_policy = (QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)
+            frame_shape = QtWidgets.QFrame.VLine
+
         self.line = QtWidgets.QFrame(self)
-        self.line.setFrameShape(QtWidgets.QFrame.HLine)
+        self.line.setFrameShape(frame_shape)
         self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.line.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        # Create the label for the text
-        self.label = QtWidgets.QLabel(text, self)
-        self.label.setStyleSheet("background-color: transparent; color: grey;")
-        self.label.setAlignment(Qt.AlignCenter)
+        self.line.setSizePolicy(*size_policy)
 
-        # Create a horizontal layout to hold the line and the label
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.line, 1)
-        layout.addWidget(self.label, 0)
-        layout.addWidget(self.line, 1)
+        if text:
+            self.label = QtWidgets.QLabel(text, self)
+            self.label.setStyleSheet("background-color: transparent; color: grey;")
+            self.label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(self.label)
+            layout.setSpacing(10)
 
-        # Adjust margins and spacing
-        layout.setSpacing(10)  # space between label and line
-        layout.setContentsMargins(0, 10, 0, 0)  # top margin to position label above line
+        layout.addWidget(self.line)
+        layout.setContentsMargins(1, 1, 1, 1)
 
         self.setLayout(layout)
 
 
-# class QHSeparationLine(QtWidgets.QFrame):
-#     def __init__(self) -> None:
-#         super().__init__()
-#         self.setMinimumWidth(1)
-#         self.setFixedHeight(20)
-#         self.setFrameShape(QtWidgets.QFrame.HLine)
-#         self.setFrameShadow(QtWidgets.QFrame.Sunken)
-#         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+class QHSeparationLine(QSeparationLine):
+    def __init__(self, text: str = ""):
+        super().__init__(text=text, type_line="h")
+
+
+class QVSeparationLine(QSeparationLine):
+    def __init__(self, text: str = ""):
+        super().__init__(text=text, type_line="v")
 
 
 TMappingSetup = Dict[int, Union[Tuple[str, Any], List[Any]]]
