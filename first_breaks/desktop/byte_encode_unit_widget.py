@@ -78,11 +78,15 @@ class QByteEncodeUnitWidget(QWidget):
         self.layout.addWidget(self.byte_position_label)
         self.layout.addWidget(self.byte_position_widget)
 
+        self.layout.addStretch(1)
+
         self.encoding_label = QLabel("Encoding")
         self.encoding_widget = QComboBoxMapping(ENCODING_MAPPING, current_value=self.encoding_value)  # type: ignore
 
         self.layout.addWidget(self.encoding_label)
         self.layout.addWidget(self.encoding_widget)
+
+        self.layout.addStretch(1)
 
         self.picks_unit_label = QLabel("Unit")
         self.picks_unit_widget = QComboBoxMapping(

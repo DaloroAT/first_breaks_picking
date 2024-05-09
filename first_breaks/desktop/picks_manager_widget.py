@@ -1,26 +1,23 @@
 import sys
-from typing import Optional, Dict
-from uuid import uuid4
+from typing import Optional, Dict, Any
 
+import numpy as np
 from PyQt5.QtCore import QPoint, pyqtSignal
 from PyQt5.QtGui import QColor, QCloseEvent, QDoubleValidator
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QPushButton,
+from PyQt5.QtWidgets import (QApplication, QVBoxLayout, QPushButton,
                              QListWidget, QListWidgetItem, QCheckBox, QRadioButton, QLabel,
                              QDialog, QWidget, QHBoxLayout, QButtonGroup, QMenu, QAction, QColorDialog, QLineEdit,
-                             QSpinBox, QGridLayout, QDialogButtonBox, QComboBox, QTabWidget)
-import numpy as np
+                             QDialogButtonBox, QTabWidget)
 
 from first_breaks.const import FIRST_BYTE
-from first_breaks.data_models.dependent import TraceHeaderParams
 from first_breaks.data_models.independent import PicksWidth
-from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit, QByteEncodeUnitWidget
+from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
-from first_breaks.desktop.export_widgets import ExporterSGY
+from first_breaks.desktop.export_widgets import ExporterSGY, ExporterTXT, ExporterJSON
 from first_breaks.desktop.utils import set_geometry
 from first_breaks.picking.picks import Picks
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import generate_color
-
 
 DEFAULT_PICKS_WIDTH = PicksWidth().picks_width
 
@@ -83,7 +80,7 @@ class AggregationDialog(QDialog):
 class PicksItemWidget(QWidget):
     color_changed_signal = pyqtSignal(QColor)  # Signal to emit when color changes
 
-    def __init__(self, text="", color=QColor(255, 255, 255), enabled_radio_button: bool = True):
+    def __init__(self, text="", color=QColor(255, 255, 255)):
         super().__init__()
 
         self.checkbox = QCheckBox(self)
@@ -109,7 +106,6 @@ class PicksItemWidget(QWidget):
         self.setLayout(layout)
 
         self.radio_button.clicked.connect(self.on_radiobutton_clicked)
-        # self.radio_button.setEnabled(enabled_radio_button)
         self.color_display.mousePressEvent = self.edit_color
 
     def change_name(self, name: str) -> None:
@@ -131,8 +127,21 @@ class PicksItemWidget(QWidget):
 
 
 class PropertiesDialog(QDialog):
-    def __init__(self, picks_item_widget: PicksItemWidget, picks_mapping: Dict[PicksItemWidget, Picks], sgy: SGY):
+    def __init__(self,
+                 picks_item_widget: PicksItemWidget,
+                 picks_mapping: Dict[PicksItemWidget, Picks],
+                 sgy: SGY,
+                 sgy_exporter_kwargs: Optional[Dict[str, Any]] = None,
+                 txt_exporter_kwargs: Optional[Dict[str, Any]] = None,
+                 json_exporter_kwargs: Optional[Dict[str, Any]] = None,
+                 ):
         super().__init__()
+        sgy_exporter_kwargs = sgy_exporter_kwargs or {}
+        txt_exporter_kwargs = txt_exporter_kwargs or {}
+        json_exporter_kwargs = json_exporter_kwargs or {}
+
+        set_geometry(self, width_rel=0.3, height_rel=0.3, centralize=True, fix_size=False)
+
         self.picks_item_widget = picks_item_widget
         self.picks_mapping = picks_mapping
         self.sgy = sgy
@@ -153,10 +162,20 @@ class PropertiesDialog(QDialog):
 
         layout.addLayout(input_layout)
 
-        self.tab_widget = QTabWidget(self)
-        self.create_export_tab()
+        self.tab_all = QTabWidget(self)
+        self.tab_export = QTabWidget()
 
-        layout.addWidget(self.tab_widget)
+        picks = self.picks_mapping[self.picks_item_widget]
+
+        self.exports_widgets = {"SGY": ExporterSGY(picks=picks, sgy=sgy, **sgy_exporter_kwargs),
+                                "TXT": ExporterTXT(picks=picks, sgy=sgy, **txt_exporter_kwargs),
+                                "JSON": ExporterJSON(picks=picks, sgy=sgy, **json_exporter_kwargs)}
+
+        for exporter_name, exporter in self.exports_widgets.items():
+            self.tab_export.addTab(exporter, exporter_name)
+
+        self.tab_all.addTab(self.tab_export, "Export")
+        layout.addWidget(self.tab_all)
 
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         self.button_box.accepted.connect(self.accept)
@@ -164,46 +183,14 @@ class PropertiesDialog(QDialog):
 
         layout.addWidget(self.button_box)
 
-    def create_export_tab(self):
-        export_tab = QWidget()
-        export_layout = QVBoxLayout(export_tab)
+    def get_sgy_exporter_settings(self):
+        return self.exports_widgets["SGY"].get_values()
 
-        # Create the nested tab widget for exports
-        export_tab_widget = QTabWidget()
-        export_layout.addWidget(export_tab_widget)
+    def get_txt_exporter_settings(self):
+        return self.exports_widgets["TXT"].get_values()
 
-        # Create each export option as a separate tab
-        self.add_export_option(export_tab_widget, "SGY", "Export to SGY")
-        self.add_export_option(export_tab_widget, "JSON", "Export to JSON")
-        self.add_export_option(export_tab_widget, "TXT", "Export to TXT")
-        self.add_export_option(export_tab_widget, "pyGIMLI", "Export to pyGIMLI")
-
-        self.tab_widget.addTab(export_tab, "Export")
-
-    # def export_to_sgy(self):
-    #     save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
-        # export_params = save_params.get_values()
-
-
-
-
-    def add_export_option(self, tab_widget, tab_name, button_text):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        if tab_name == "SGY":
-            export_sgy = ExporterSGY(picks=self.picks_mapping[self.picks_item_widget], sgy=self.sgy)
-            layout.addWidget(export_sgy)
-        else:
-            info_label = QLabel(f"Configure and {button_text.lower()}.", tab)
-            layout.addWidget(info_label)
-            export_button = QPushButton(button_text, tab)
-            export_button.clicked.connect(lambda: self.export_data(tab_name))
-            layout.addWidget(export_button)
-        tab.setLayout(layout)
-        tab_widget.addTab(tab, tab_name)
-
-    def export_data(self, format_type):
-        print(f"Exporting data in {format_type} format...")
+    def get_json_exporter_settings(self):
+        return self.exports_widgets["JSON"].get_values()
 
 
 class ItemsCounter:
@@ -225,6 +212,10 @@ class PicksManager(QWidget):
         self.setGeometry(100, 100, 300, 400)
 
         layout = QVBoxLayout()
+
+        self.sgy_exporter_settings = {}
+        self.txt_exporter_settings = {}
+        self.json_exporter_settings = {}
 
         self.list_widget = QListWidget(self)
         self.list_widget.itemDoubleClicked.connect(self.open_properties)
@@ -398,14 +389,13 @@ class PicksManager(QWidget):
         self.items_counter.nn += 1
         return self.add_picks(picks, f"NN {self.items_counter.nn}", False)
 
-    def add_picks(self, picks: Picks, name: str, enabled_radio_button: bool = True, do_active: bool = True):
+    def add_picks(self, picks: Picks, name: str):
         item = QListWidgetItem()
         self.list_widget.addItem(item)
 
         picks_item_widget = PicksItemWidget(
             text=name,
             color=QColor(*picks.picks_color),
-            enabled_radio_button=enabled_radio_button,
         )
         self.list_widget.setItemWidget(item, picks_item_widget)
         item.setSizeHint(picks_item_widget.sizeHint())
@@ -461,8 +451,18 @@ class PicksManager(QWidget):
     def open_properties(self):
         item = self.list_widget.selectedItems()[0]
         picks_item_widget = self.list_widget.itemWidget(item)
-        dialog = PropertiesDialog(picks_item_widget, self.picks_mapping, self.sgy)
+        dialog = PropertiesDialog(
+            picks_item_widget,
+            self.picks_mapping,
+            self.sgy,
+            sgy_exporter_kwargs=self.sgy_exporter_settings,
+            txt_exporter_kwargs=self.txt_exporter_settings,
+            json_exporter_kwargs=self.json_exporter_settings,
+        )
         dialog.exec_()
+        self.sgy_exporter_settings = dialog.get_sgy_exporter_settings()
+        self.txt_exporter_settings = dialog.get_txt_exporter_settings()
+        self.json_exporter_settings = dialog.get_json_exporter_settings()
 
     def update_properties_button_state(self):
         selected_items = self.list_widget.selectedItems()
@@ -480,7 +480,14 @@ class PicksManager(QWidget):
 
 
 if __name__ == "__main__":
+    from first_breaks.utils.utils import download_demo_sgy
+
+    sgy_ = SGY(download_demo_sgy())
+    picks_ = Picks(values=list(range(sgy_.num_traces)), dt_mcs=sgy_.dt_mcs, unit='mcs')
+
     app = QApplication(sys.argv)
     window = PicksManager()
+    window.set_sgy(sgy_)
+    window.add_picks(picks_, "range")
     window.show()
     sys.exit(app.exec_())

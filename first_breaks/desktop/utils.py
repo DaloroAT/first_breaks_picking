@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtWidgets import (
     QDesktopWidget,
@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QTextEdit,
     QVBoxLayout,
-    QWidget,
+    QWidget, QHBoxLayout, QStyle, QSizePolicy,
 )
 from pyqtgraph import ViewBox
 
@@ -94,8 +94,8 @@ def set_geometry(
     if fix_size:
         widget.setFixedSize(width, height)
 
-    monitor = QDesktopWidget().screenGeometry(1)
-    widget.move(monitor.left(), monitor.top())
+    # monitor = QDesktopWidget().screenGeometry(1)
+    # widget.move(monitor.left(), monitor.top())
 
 
 class QSeparationLine(QtWidgets.QWidget):
@@ -201,3 +201,27 @@ def get_mouse_position_in_scene_coords(
     else:
         raise TypeError("Only events and points are available")
     return viewbox.mapSceneToView(point)
+
+
+class LabelWithHelp(QWidget):
+    def __init__(self, text: str, help_string: str, move_help_close_to_label: bool = True) -> None:
+        super().__init__()
+        self.layout = QHBoxLayout()
+        self.setLayout(self.layout)
+
+        self.label = QLabel(text)
+        self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
+        self.help_button = QPushButton()
+        self.help_button.setFixedWidth(20)
+        icon = self.style().standardIcon(QStyle.SP_MessageBoxQuestion)
+        self.help_button.setIcon(icon)
+        self.help_button.setToolTip(help_string)
+        self.help_button.setStyleSheet("QPushButton { border: none; background-color: transparent; }")
+        self.help_button.setCursor(QtGui.QCursor(QtCore.Qt.WhatsThisCursor))
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.help_button)
+        if move_help_close_to_label:
+            self.layout.addStretch(1)
+        self.layout.setContentsMargins(0, 0, 0, 0)

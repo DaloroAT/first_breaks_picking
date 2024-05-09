@@ -6,6 +6,7 @@ import random
 from itertools import islice
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
+import pandas as pd
 
 import numpy as np
 import requests
@@ -183,7 +184,7 @@ def resolve_xy2postime(vsp_view: bool, x: Any, y: Any) -> Tuple[Any, Any]:
 
 
 def as_list(sequence: Iterable[Any]) -> List[Any]:
-    if isinstance(sequence, np.ndarray):
+    if isinstance(sequence, (np.ndarray, pd.Series)):
         return sequence.tolist()
     elif isinstance(sequence, (list, tuple)):
         return list(sequence)
