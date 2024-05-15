@@ -6,8 +6,18 @@ from first_breaks.utils.utils import UnitsConverter, generate_color
 
 from pydantic import model_validator, Field, UUID4
 
-from first_breaks.data_models.independent import PicksColor, PicksWidth, TracesPerGather, MaximumTime, TracesToInverse, \
-    F1F2, F3F4, Gain, Clip, Normalize
+from first_breaks.data_models.independent import (
+    TracesPerGather,
+    MaximumTime,
+    TracesToInverse,
+    F1F2,
+    F3F4,
+    Gain,
+    Clip,
+    Normalize,
+    TColor,
+    DefaultModel,
+)
 
 TValues = Union[np.ndarray, List[Union[int, float]]]
 
@@ -25,7 +35,10 @@ class PickingParameters(
     pass
 
 
-class Picks(PicksColor, PicksWidth):
+DEFAULT_PICKS_WIDTH = 3.0
+
+
+class Picks(DefaultModel):
     values: TValues
     unit: Literal["mcs", "ms", "sample"]
 
@@ -35,12 +48,17 @@ class Picks(PicksColor, PicksWidth):
     created_manually: Optional[bool] = None
     modified_manually: Optional[bool] = None
     picking_parameters: Optional[PickingParameters] = None
+    color: TColor = Field(..., default_factory=generate_color, description="Color for picks")
+    width: float = Field(DEFAULT_PICKS_WIDTH, description="Width of pick line")
 
     active: Optional[bool] = None
 
     _units_converter: Optional[UnitsConverter] = None
 
     id: UUID4 = Field(default_factory=uuid.uuid4)
+
+    def __len__(self):
+        return len(self.values)
 
     def __hash__(self) -> int:
         return int(self.id)
@@ -145,5 +163,5 @@ class Picks(PicksColor, PicksWidth):
             created_by_nn=self.created_by_nn,
             modified_manually=True,
             picking_parameters=self.picking_parameters,
-            picks_color=self.picks_color if keep_color else generate_color(),
+            picks_color=self.color if keep_color else generate_color(),
         )

@@ -14,21 +14,25 @@ DRAG_ID_KEY = "application/x-draggable-id"
 
 
 def set_normal_style(widget: QWidget):
-    widget.setStyleSheet("""
+    widget.setStyleSheet(
+        """
                 background-color: rgba(211, 211, 211, 255);
                 border: 1px solid gray;
                 color: rgb(0, 0, 0);
                 padding: 5px;
                 border-radius: 5px;
-            """)
+            """
+    )
 
 
 def set_transparent_style(widget: QWidget):
-    widget.setStyleSheet("""
+    widget.setStyleSheet(
+        """
                 background-color: rgba(211, 211, 211, 0);
                 border: rgba(211, 211, 211, 0);
                 color: rgba(0, 0, 0, 0);
-            """)
+            """
+    )
 
 
 class Tag(QLineEdit):
@@ -120,7 +124,7 @@ class BaseMultiSelectWidget(QWidget):
         self.list_changed_signal.emit(self.get_values())
 
     def add_tag_prompt(self):
-        text, ok = QInputDialog.getText(self, 'Add Tag', 'Enter tag text:')
+        text, ok = QInputDialog.getText(self, "Add Tag", "Enter tag text:")
         if ok and text:
             self.add_tag(text)
 
@@ -203,7 +207,16 @@ class BaseMultiSelectWidget(QWidget):
 
 
 class MultiSelectWidget(BaseMultiSelectWidget):
-    def __init__(self, values: Sequence[str], selected_values: Optional[Sequence[str]] = None, unique_selection: bool = True, max_visible_items: int = 10, fit_all_items: bool = True, *args: Any, **kwargs: Any):
+    def __init__(
+        self,
+        values: Sequence[str],
+        selected_values: Optional[Sequence[str]] = None,
+        unique_selection: bool = True,
+        max_visible_items: int = 10,
+        fit_all_items: bool = True,
+        *args: Any,
+        **kwargs: Any,
+    ):
         super().__init__(*args, **kwargs)
 
         assert isinstance(values, (list, tuple))
@@ -221,7 +234,8 @@ class MultiSelectWidget(BaseMultiSelectWidget):
         self.tag_selector = QtWidgets.QComboBox(self)
         self.tag_selector.setMaxVisibleItems(max_visible_items)
 
-        self.tag_selector.setStyleSheet("""
+        self.tag_selector.setStyleSheet(
+            """
                     QComboBox {
                         combobox-popup: 0;
                     }
@@ -254,7 +268,8 @@ class MultiSelectWidget(BaseMultiSelectWidget):
                         subcontrol-position: top;
                         subcontrol-origin: margin;
                     }
-                """)
+                """
+        )
 
         self.tag_selector.addItems(self.all_values)
         self.tag_selector.hide()
@@ -307,7 +322,7 @@ class MultiSelectWidget(BaseMultiSelectWidget):
             self.tag_selector.addItems(available)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_widget = MultiSelectWidget(values=[str(v) for v in range(20)], selected_values=["1", "3"])
     main_widget.show()

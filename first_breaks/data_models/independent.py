@@ -84,14 +84,6 @@ class FillBlack(DefaultModel):
     )
 
 
-class PicksColor(DefaultModel):
-    picks_color: TColor = Field((255, 0, 0), description="Color for picks")
-
-
-class PicksWidth(DefaultModel):
-    picks_width: float = Field(3.0, description="Width of pick line")
-
-
 class RegionPolyColor(DefaultModel):
     region_poly_color: TColor = Field((100, 100, 100, 50), description="Color of region below maximum time")
 

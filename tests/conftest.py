@@ -16,9 +16,9 @@ def model_onnx() -> Path:
     return download_model_onnx()
 
 
-@pytest.fixture(scope="session")
-def logs_dir_for_tests() -> Path:
-    logs_dir = Path('tests_logs').resolve()
+@pytest.fixture(scope="function")
+def logs_dir_for_tests(request) -> Path:
+    logs_dir = Path("tests_logs").absolute().resolve()
     logs_dir.mkdir(parents=True, exist_ok=True)
     yield logs_dir
     shutil.rmtree(logs_dir, ignore_errors=True)

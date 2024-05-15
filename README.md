@@ -163,16 +163,13 @@ sgy_filename = 'data.sgy'
 download_demo_sgy(fname=sgy_filename)
 sgy = SGY(sgy_filename)
 
-task = Task(source=sgy_filename,
+task = Task(source=sgy,
             traces_per_gather=12,
             maximum_time=100,
             gain=2)
 picker = PickerONNX()
 task = picker.process_task(task)
-
-# create an image with default parameters
-image_filename = 'default_view.png'
-export_image(task, image_filename)
+task.picks.color = (255, 0, 0)
 
 # create an image from the project preview
 image_filename = 'project_preview.png'
@@ -183,7 +180,8 @@ export_image(task, image_filename,
              headers_total_pixels=80,
              height=500,
              width=700,
-             hide_traces_axis=True)
+             hide_traces_axis=True
+             )
 ```
 [code-block-end]:e2e-example
 
@@ -341,7 +339,7 @@ picker_gpu.change_settings(device='cpu', batch_size=1)
 
 ### Pick first breaks
 
-Now, using all the created components, we can pick the first breaks and export the results.
+Now, using all the created components, we can pick the first breaks and retrieve results.
 
 [code-block-start]:pick-fb
 ```python
@@ -358,22 +356,54 @@ task = Task(source=sgy,
 picker = PickerONNX()
 task = picker.process_task(task)
 
-# you can see results of picking
-print(task.picks_in_samples)
-print(task.picks_in_ms)
-print(task.confidence)
+# picks available from attribute
+picks = task.picks
 
-# you can export picks to file as plain text
-task.export_result_as_txt('result.txt')
-# or save as json file
-task.export_result_as_json('result.json')
-# or make a copy of source SGY and put picks to 236 byte
-task.export_result_as_sgy('result.segy',
-                          byte_position=236,
-                          encoding='i',
-                          picks_unit='mcs')
+# or by method
+picks = task.get_result()
+
+# print values and confidence of picks
+print(picks.picks_in_mcs, picks.confidence)
+
+# print picking parameters
+print(picks.picking_parameters, task.picking_parameters)
 ```
 [code-block-end]:pick-fb
+
+
+### Picks
+
+The picks are stored in class `Picks`. In addition to the pick values, the class stores additional 
+information (picking parameters, color, etc.). The class instance is returned as a picking result, but can 
+also be created manually.
+
+[code-block-start]:picks
+```python
+from first_breaks.picking.picks import Picks
+
+
+picks_in_samples = [1, 10, 20, 30, 50, 100]
+dt_mcs = 250
+
+picks = Picks(values=picks_in_samples, unit="mcs", dt_mcs=dt_mcs)
+
+# get values
+print(picks.picks_in_samples)
+print(picks.picks_in_mcs)
+print(picks.picks_in_ms)
+
+# change color and width for visualisation
+picks.color = (255, 0, 0)
+picks.width = 5
+
+# if picks are obtained by NN you can read extra attributes
+print(picks.confidence)
+print(picks.picking_parameters)
+print(picks.created_by_nn)
+
+```
+[code-block-end]:picks
+
 
 ### Visualizations
 
@@ -433,6 +463,7 @@ Plot `SGY` with custom picks:
 [code-block-start]:plot-sgy-custom-picks
 ```python
 import numpy as np
+from first_breaks.picking.picks import Picks
 from first_breaks.sgy.reader import SGY
 from first_breaks.desktop.graph import export_image
 
@@ -443,9 +474,9 @@ sgy = SGY(sgy_filename)
 picks_ms = np.random.uniform(low=0,
                              high=sgy.ns * sgy.dt_ms,
                              size=sgy.ntr)
-export_image(sgy, image_filename,
-             picks_ms=picks_ms,
-             picks_color=(0, 100, 100))
+picks = Picks(values=picks_ms, unit="ms", dt_mcs=sgy.dt_mcs, color=(0, 100, 100))
+export_image(sgy, image_filename, 
+             picks=picks)
 ```
 [code-block-end]:plot-sgy-custom-picks
 

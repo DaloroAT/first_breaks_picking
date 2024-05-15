@@ -61,6 +61,9 @@ version = {file = "first_breaks/VERSION"}
 exclude = ["first_breaks._pytorch*"]
 include = ["first_breaks*"]
 
+[tool.black]
+line-length = 120
+
 
 [tool.briefcase]
 project_name = "FirstBreaksPicking"

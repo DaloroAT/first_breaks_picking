@@ -396,6 +396,7 @@ class SettingsProcessingWidget(QDialog):
         self.picking_run = False
         self.run_button = QPushButton("Run picking", self)
         self.run_button.clicked.connect(self.picking_click)
+        self.run_button.setToolTip("Load NN to unlock picking")
         self.layout.addWidget(self.run_button)
         self.disable_picking()
 
@@ -409,6 +410,7 @@ class SettingsProcessingWidget(QDialog):
 
     def enable_picking(self) -> None:
         self.run_button.setEnabled(True)
+        self.run_button.setToolTip("")
 
     def disable_picking(self) -> None:
         self.run_button.setEnabled(False)

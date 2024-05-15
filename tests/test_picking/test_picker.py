@@ -21,17 +21,18 @@ def test_picking(demo_sgy: Path,
     task = Task(source=sgy, traces_per_gather=traces_per_gather, maximum_time=maximum_time, gain=gain, clip=clip)
     picker = PickerONNX(model_onnx, device='cpu', show_progressbar=False)
     task = picker.process_task(task)
+    picks = task.picks
 
     assert task.success
 
-    assert isinstance(task.picks_in_samples, list)
-    assert len(task.picks_in_samples) == sgy.num_traces
-    for pick in task.picks_in_samples:
-        assert isinstance(pick, float)  # todo: replace to int
+    assert isinstance(picks.picks_in_samples, list)
+    assert len(picks.picks_in_samples) == sgy.num_traces
+    for pick in picks.picks_in_samples:
+        assert isinstance(pick, int)
         assert 0 <= pick <= sgy.num_samples
 
-    assert isinstance(task.confidence, list)
-    assert len(task.confidence) == sgy.num_traces
-    for conf in task.confidence:
+    assert isinstance(picks.confidence, list)
+    assert len(picks.confidence) == sgy.num_traces
+    for conf in picks.confidence:
         assert isinstance(conf, float)
         assert 0 <= conf <= 1

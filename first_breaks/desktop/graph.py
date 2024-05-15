@@ -285,7 +285,7 @@ class GraphWidget(pg.PlotWidget):
 
         line = pg.PlotCurveItem()
         line.setData(x, y)
-        pen = pg.mkPen(color=picks.picks_color, width=picks.picks_width)
+        pen = pg.mkPen(color=picks.color, width=picks.width)
         line.setPen(pen)
 
         return line
@@ -312,6 +312,7 @@ class GraphWidget(pg.PlotWidget):
         if active_picks.created_by_nn and not active_picks.modified_manually:
             self.about_to_change_nn_picks_signal.emit()
             self.mouse_clicked((ev,))
+            return
 
         if active_picks and ev.button() == 1:
             mouse_xy = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
@@ -404,10 +405,9 @@ class GraphExporter(GraphWidget):
         fill_black: Optional[str] = DEFAULTS.fill_black,
         time_window: Optional[Tuple[float, float]] = None,
         traces_window: Optional[Tuple[float, float]] = None,
-        picks_ms: Optional[Sequence[float]] = None,
+        picks: Optional[Picks] = None,
         task: Optional[Task] = None,
         show_processing_region: bool = True,
-        picks_color: TColor = DEFAULTS.picks_color,
         contour_color: TColor = DEFAULTS.region_contour_color,
         poly_color: TColor = DEFAULTS.region_poly_color,
         contour_width: float = DEFAULTS.region_contour_width,
@@ -425,8 +425,8 @@ class GraphExporter(GraphWidget):
         if args:
             raise need_kwargs_exception
 
-        if picks_ms is not None and task is not None:
-            raise ValueError("'picks_ms' and 'task' are mutually exclusive. Use only one of them or none")
+        if picks is not None and task is not None:
+            raise ValueError("'picks' and 'task' are mutually exclusive. Use only one of them or none")
 
         if width is None:
             if traces_window is None:
@@ -443,14 +443,9 @@ class GraphExporter(GraphWidget):
         self.plotseis(sgy, normalize=normalize, clip=clip, gain=gain, fill_black=fill_black, refresh_view=True)
 
         if task:
-            picks_to_plot = task.picks_in_ms  # type: ignore
-        elif picks_ms is not None:
-            picks_to_plot = picks_ms  # type: ignore
-        else:
-            picks_to_plot = None  # type: ignore
-
-        if picks_to_plot is not None:
-            self.plot_nn_picks(picks_to_plot, color=picks_color)
+            self.plot_picks(task.picks)
+        elif picks is not None:
+            self.plot_picks(picks)
 
         if task is not None and show_processing_region:
             self.plot_processing_region(
@@ -517,9 +512,8 @@ def export_image(
     fill_black: Optional[str] = DEFAULTS.fill_black,
     time_window: Optional[Tuple[float, float]] = None,
     traces_window: Optional[Tuple[float, float]] = None,
-    picks_ms: Optional[Sequence[float]] = None,
+    picks: Optional[Picks] = None,
     show_processing_region: bool = True,
-    picks_color: TColor = DEFAULTS.picks_color,
     contour_color: TColor = DEFAULTS.region_contour_color,
     poly_color: TColor = DEFAULTS.region_poly_color,
     contour_width: float = DEFAULTS.region_contour_width,
@@ -567,10 +561,9 @@ def export_image(
         fill_black=fill_black,
         time_window=time_window,
         traces_window=traces_window,
-        picks_ms=picks_ms,
+        picks=picks,
         task=task,
         show_processing_region=show_processing_region,
-        picks_color=picks_color,
         contour_color=contour_color,
         poly_color=poly_color,
         contour_width=contour_width,

@@ -1,28 +1,17 @@
-import json
 import warnings
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
-import pandas as pd
 from pydantic import model_validator, Field
 
 from first_breaks.data_models.dependent import SGYModel
 from first_breaks.data_models.independent import (
-    F1F2,
-    F3F4,
-    Clip,
     DefaultModel,
     ExceptionOptional,
-    Gain,
-    MaximumTime,
     ModelHashOptional,
-    Normalize,
     PicksID,
-    TracesPerGather,
-    TracesToInverse,
 )
 from first_breaks.picking.picks import Picks, PickingParameters
-from first_breaks.utils.utils import chunk_iterable, as_list
+from first_breaks.utils.utils import chunk_iterable
 
 MINIMUM_TRACES_PER_GATHER = 2
 
@@ -96,87 +85,8 @@ class Task(
     def num_gathers(self) -> int:
         return len(self.get_gathers_ids())
 
-    @property
-    def picks_in_ms(self) -> Optional[List[float]]:
-        if self.picks is None:
-            raise ValueError("There are no picks. Put them manually or process the task first")
+    def get_result(self) -> Picks:
+        if self.picks is not None:
+            return self.picks
         else:
-            return self.picks.picks_in_ms
-
-    @property
-    def picks_in_mcs(self) -> Optional[List[float]]:
-        if self.picks is None:
-            raise ValueError("There are no picks. Put them manually or process the task first")
-        else:
-            return self.picks.picks_in_mcs
-
-    def _prepare_output_for_nonbinary_export(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        confidence = self.picks.confidence
-
-        picks_in_samples = as_list(self.picks.picks_in_samples)
-        picks_in_ms = as_list(self.picks.picks_in_ms)
-        picks_in_mcs = as_list(self.picks.picks_in_mcs)
-
-        is_source_file = isinstance(self.sgy.source, (str, Path))
-
-        if is_source_file:
-            source_filename = str(Path(self.sgy.source).name)  # type: ignore
-            source_full_name = str(Path(self.sgy.source).resolve())  # type: ignore
-        else:
-            source_filename = None
-            source_full_name = None
-
-        meta = {
-            "is_source_file": is_source_file,
-            "is_source_ndarray": self.sgy.is_source_ndarray,
-            "filename": source_filename,
-            "full_name": source_full_name,
-            "hash": self.sgy.get_hash(),
-            "dt_ms": self.sgy.dt_ms,
-            "is_picked_with_model": bool(self.success),
-            "model_hash": self.model_hash,
-            "traces_per_gather": self.traces_per_gather,
-            "maximum_time": self.maximum_time,
-            "traces_to_inverse": self.traces_to_inverse,
-            "gain": self.gain,
-            "clip": self.clip,
-        }
-        data = {
-            "trace": list(range(1, len(picks_in_samples) + 1)),
-            "picks_in_samples": picks_in_samples,
-            "picks_in_ms": picks_in_ms,
-            "picks_in_mcs": picks_in_mcs,
-            "confidence": confidence,
-        }
-        return meta, data
-
-    def export_result_as_sgy(
-        self,
-        filename: Union[str, Path],
-        byte_position: int = 236,
-        encoding: str = "I",
-        picks_unit: str = "mcs",
-    ) -> None:
-        self.sgy.export_sgy_with_picks(
-            output_fname=filename,
-            picks_in_mcs=self.picks_in_mcs,
-            encoding=encoding,
-            byte_position=byte_position,
-            picks_unit=picks_unit,
-        )
-
-    def export_result_as_json(self, filename: Union[str, Path]) -> None:
-        meta, data = self._prepare_output_for_nonbinary_export()
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
-        with open(filename, "w") as fout:
-            json.dump({**meta, **data}, fout)
-
-    def export_result_as_txt(self, filename: Union[str, Path]) -> None:
-        meta, data = self._prepare_output_for_nonbinary_export()
-        Path(filename).parent.mkdir(parents=True, exist_ok=True)
-        with open(filename, "w") as fout:
-            content = [f"{k}={v}" for k, v in meta.items()]
-            data_str = pd.DataFrame(data).to_string(index=False, justify="right")
-            content.append(data_str)
-            content = "\n".join(content)
-            fout.write(content)
+            raise ValueError("Picks are not calculated")

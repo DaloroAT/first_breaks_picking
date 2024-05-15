@@ -201,22 +201,6 @@ class MainWindow(QMainWindow):
 
         self.show()
 
-    def get_last_folder(self) -> str:
-        if self.last_folder is None:
-            return str(Path.home())
-        else:
-            if Path(self.last_folder).exists():
-                return str(Path(self.last_folder).resolve())
-            else:
-                return str(Path.home())
-
-    def set_last_folder_based_on_file(self, file: Union[str, Path]) -> None:
-        file = Path(file)
-        if file.exists():
-            self.last_folder = str(file.parent)
-        else:
-            self.last_folder = None
-
     def pick_fb(self, settings: PickingSettings) -> None:
         self.button_get_filename.setEnabled(False)
         self.nn_manager.pick_fb(self.sgy, settings)
@@ -318,7 +302,7 @@ class MainWindow(QMainWindow):
                 if not self.ready_to_process.sgy_selected:
                     status_message += ". Open SGY file to start picking"
                 self.status_message.setText(status_message)
-
+                self.settings_processing_widget.enable_picking()
                 self.unlock_pickng_if_ready()
                 last_folder_manager.set_last_folder(filename)
             else:
@@ -376,39 +360,6 @@ class MainWindow(QMainWindow):
         self.picks_manager.raise_()
         self.picks_manager.activateWindow()
 
-    # def export_(self) -> None:
-    #     formats = ["SEGY-file (*.segy *.sgy)", "JSON-file (*.json)", "TXT-file (*.txt)"]
-    #     formats = ";; ".join(formats)
-    #     filename, _ = QFileDialog.getSaveFileName(self, "Save result", directory=self.get_last_folder(), filter=formats)
-    #
-    #     if filename:
-    #         filename = Path(filename).resolve()
-    #         if self.last_task is not None and self.last_task.success:
-    #             filename.parent.mkdir(parents=True, exist_ok=True)
-    #
-    #             picks_in_samples_prev = self.last_task.picks_in_samples
-    #             if self.graph.is_picks_modified_manually:
-    #                 self.last_task.picks_in_samples = multiply_iterable_by(
-    #                     self.graph.nn_picks_in_ms, 1 / self.sgy.dt_ms, float
-    #                 )
-    #             if filename.suffix.lower() in (".sgy", ".segy"):
-    #                 save_params = QDialogByteEncodeUnit(first_byte=1, byte_position=237, encoding="I", picks_unit="mcs")
-    #                 save_params.setWindowTitle("How to save first breaks")
-    #                 save_params.show()
-    #                 save_params.exec_()
-    #                 export_params = save_params.get_values()
-    #                 self.last_task.export_result_as_sgy(str(filename), **export_params)  # type: ignore
-    #             elif filename.suffix.lower() == ".txt":
-    #                 self.last_task.export_result_as_txt(str(filename))
-    #             elif filename.suffix.lower() == ".json":
-    #                 self.last_task.export_result_as_json(str(filename))
-    #             else:
-    #                 message_er = "The file can only be saved in '.sgy', '.segy', '.txt, or '.json' formats"
-    #                 window_err = MessageBox(self, title="Wrong filename", message=message_er)
-    #                 window_err.exec_()
-    #             if self.graph.is_picks_modified_manually:
-    #                 self.last_task.picks_in_samples = picks_in_samples_prev
-
     def closeEvent(self, e: QCloseEvent) -> None:
         self.graph.spectrum_window.close()
         self.picks_manager.close()
@@ -432,4 +383,5 @@ def fetch_data_and_run_app() -> None:
 
 
 if __name__ == "__main__":
+    # run_app()
     fetch_data_and_run_app()

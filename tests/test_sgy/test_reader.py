@@ -16,7 +16,7 @@ def test_reader_open_different_sources(demo_sgy: Path) -> None:
     sgy_from_str = SGY(str(demo_sgy))
     traces_from_str = sgy_from_str.read()
 
-    with open(demo_sgy, 'rb') as f_io:
+    with open(demo_sgy, "rb") as f_io:
         sgy_from_bytes = SGY(f_io.read())
         traces_from_bytes = sgy_from_bytes.read()
 
@@ -41,12 +41,12 @@ def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, logs_dir_for_
     elif picks_in_samples_type == np.ndarray:
         picks_in_samples = np.random.randint(0, sgy.num_samples, sgy.num_traces)
     else:
-        raise TypeError('Invalid type')
-
-    sgy_with_picks_path = logs_dir_for_tests / 'sgy_with_picks.sgy'
-    sgy.export_sgy_with_picks(sgy_with_picks_path, picks_in_samples)
-    sgy_with_picks = SGY(sgy_with_picks_path)
+        raise TypeError("Invalid type")
 
     picks_in_mcs = multiply_iterable_by(picks_in_samples, sgy.dt_mcs, cast_to=int)
+
+    sgy_with_picks_path = logs_dir_for_tests / "sgy_with_picks.sgy"
+    sgy.export_sgy_with_picks(sgy_with_picks_path, picks_in_mcs)
+    sgy_with_picks = SGY(sgy_with_picks_path)
 
     assert np.all(picks_in_mcs == sgy_with_picks.traces_headers[picks_col_name])
