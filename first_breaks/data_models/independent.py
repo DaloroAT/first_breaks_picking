@@ -1,5 +1,5 @@
 import traceback
-from typing import List, Literal, Optional, Sequence, Tuple, Union
+from typing import Literal, Optional, Sequence, Tuple, Union
 from uuid import uuid4
 
 import numpy as np

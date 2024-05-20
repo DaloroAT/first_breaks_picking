@@ -6,9 +6,9 @@ import random
 from itertools import islice
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
-import pandas as pd
 
 import numpy as np
+import pandas as pd
 import requests
 
 from first_breaks.const import (

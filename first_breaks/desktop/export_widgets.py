@@ -1,20 +1,18 @@
-import json
 from pathlib import Path
-from typing import Sequence, Union, List, Optional, Any, Dict
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-import pandas as pd
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication,
-    QVBoxLayout,
-    QPushButton,
-    QLabel,
-    QWidget,
-    QGridLayout,
-    QFileDialog,
-    QMessageBox,
     QCheckBox,
+    QFileDialog,
+    QGridLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
     QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 from first_breaks.const import FIRST_BYTE
@@ -26,14 +24,13 @@ from first_breaks.desktop.utils import LabelWithHelp
 from first_breaks.exports.export_picks import (
     COL_PICKS_IN_MCS,
     PICKS_COLUMNS,
+    export_to_json,
     export_to_sgy,
     export_to_txt,
-    export_to_json,
 )
-from first_breaks.picking.picks import Picks, PickingParameters
+from first_breaks.picking.picks import PickingParameters, Picks
 from first_breaks.sgy.headers import TraceHeaders
 from first_breaks.sgy.reader import SGY
-import numpy as np
 
 
 class _ExporterWidget(QWidget):
@@ -55,7 +52,7 @@ class _ExporterWidget(QWidget):
         self.export_button.clicked.connect(self.export)
         self._main_layout.addWidget(self.export_button)
 
-    def export(self):
+    def export(self) -> None:
         formats = ";; ".join(self.formats)
         filename, _ = QFileDialog.getSaveFileName(
             self, "Save result", directory=last_folder_manager.get_last_folder(), filter=formats
@@ -108,7 +105,7 @@ columns_selector_tip = """
 """
 
 
-def _add_picks_tag_prefix(name: str):
+def _add_picks_tag_prefix(name: str) -> str:
     return f"* {name}"
 
 
@@ -138,11 +135,11 @@ class _ColumnExporter(_ExporterWidget):
         self.tags_selector.list_changed_signal.connect(self.set_enable_export)
         self.export_button.setEnabled(bool(self.tags_selector.get_values()))
 
-    def set_enable_export(self, selected_tags: List[str]):
+    def set_enable_export(self, selected_tags: List[str]) -> None:
         self.export_button.setEnabled(bool(selected_tags))
 
     @staticmethod
-    def _prepare_tags():
+    def _prepare_tags() -> Tuple[List[str], Dict[str, str]]:
         tags = []
         tag2column = {}
 
@@ -176,7 +173,7 @@ class ExporterTXT(_ColumnExporter):
         self.layout.addWidget(self.separator_label, 2, 0)
 
         separator_mapping = {0: ["Tab", "\t"], 1: ["Space", " "], 2: ["Comma", ","]}
-        self.separator_selector = QComboBoxMapping(separator_mapping, current_value=separator)
+        self.separator_selector = QComboBoxMapping(separator_mapping, current_value=separator)  # type: ignore
         self.layout.addWidget(self.separator_selector, 2, 1, Qt.AlignmentFlag.AlignRight)
 
         self.column_names_label = QLabel("Include column names")

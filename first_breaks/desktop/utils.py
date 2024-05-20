@@ -1,17 +1,20 @@
-from typing import Any, Dict, List, Optional, Tuple, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QDialog,
     QDialogButtonBox,
     QGraphicsSceneMouseEvent,
+    QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
+    QStyle,
     QTextEdit,
     QVBoxLayout,
-    QWidget, QHBoxLayout, QStyle, QSizePolicy,
+    QWidget,
 )
 from pyqtgraph import ViewBox
 

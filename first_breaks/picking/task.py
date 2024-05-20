@@ -1,7 +1,7 @@
 import warnings
 from typing import List, Optional, Tuple
 
-from pydantic import model_validator, Field
+from pydantic import Field, model_validator
 
 from first_breaks.data_models.dependent import SGYModel
 from first_breaks.data_models.independent import (
@@ -10,7 +10,7 @@ from first_breaks.data_models.independent import (
     ModelHashOptional,
     PicksID,
 )
-from first_breaks.picking.picks import Picks, PickingParameters
+from first_breaks.picking.picks import PickingParameters, Picks
 from first_breaks.utils.utils import chunk_iterable
 
 MINIMUM_TRACES_PER_GATHER = 2

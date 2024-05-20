@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 
 class LastFolderManager:
-    def __init__(self):
-        self.last_folder = None
+    def __init__(self) -> None:
+        self.last_folder: Optional[str] = None
 
-    def get_last_folder(self):
+    def get_last_folder(self) -> str:
         if self.last_folder is None:
             return str(Path.home())
         else:

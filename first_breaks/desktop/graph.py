@@ -2,11 +2,11 @@ import ast
 import os
 import warnings
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Tuple, Union, Dict
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QTimer, pyqtSlot, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QCloseEvent, QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph import AxisItem
@@ -171,7 +171,7 @@ class GraphWidget(pg.PlotWidget):
         connect[-1] = 0
 
         if fill_black == "right":
-            trace = np.sign(trace) * trace ** 3
+            trace = np.sign(trace) * trace**3
             trace = np.gradient(np.gradient(trace)) * 10
 
         trace[0] = 0
@@ -295,17 +295,17 @@ class GraphWidget(pg.PlotWidget):
         self.addItem(picks_item)
         self.picks2items[picks] = picks_item
 
-    def remove_picks(self):
+    def remove_picks(self) -> None:
         for picks in list(self.picks2items.keys()):
             self.removeItem(self.picks2items[picks])
             del self.picks2items[picks]
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
-        active_picks = [k for k in self.picks2items.keys() if k.active]
+        active_picks_list = [k for k in self.picks2items.keys() if k.active]
 
-        if active_picks:
-            active_picks = active_picks[0]
+        if active_picks_list:
+            active_picks = active_picks_list[0]
         else:
             return
 

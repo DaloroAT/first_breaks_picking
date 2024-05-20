@@ -1,19 +1,26 @@
 import sys
 import uuid
-from typing import List, Dict, Optional, Any, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
-from PyQt5 import QtWidgets, QtGui
-from PyQt5.QtCore import Qt, QByteArray, QMimeData, pyqtSignal
+from PyQt5 import QtGui, QtWidgets
+from PyQt5.QtCore import QByteArray, QEvent, QMimeData, Qt, pyqtSignal
 from PyQt5.QtGui import QDrag, QMouseEvent
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QPushButton, QInputDialog, QLineEdit
+from PyQt5.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QInputDialog,
+    QLineEdit,
+    QPushButton,
+    QWidget,
+)
 
 from first_breaks.desktop.utils import QVSeparationLine
 
 DRAG_ID_KEY = "application/x-draggable-id"
 
 
-def set_normal_style(widget: QWidget):
+def set_normal_style(widget: QWidget) -> None:
     widget.setStyleSheet(
         """
                 background-color: rgba(211, 211, 211, 255);
@@ -25,7 +32,7 @@ def set_normal_style(widget: QWidget):
     )
 
 
-def set_transparent_style(widget: QWidget):
+def set_transparent_style(widget: QWidget) -> None:
     widget.setStyleSheet(
         """
                 background-color: rgba(211, 211, 211, 0);
@@ -36,7 +43,7 @@ def set_transparent_style(widget: QWidget):
 
 
 class Tag(QLineEdit):
-    def __init__(self, text, parent=None, fixed_height_policy: bool = False):
+    def __init__(self, text: str, parent: Optional[QWidget] = None, fixed_height_policy: bool = False) -> None:
         super(Tag, self).__init__(text, parent)
         self.id = uuid.uuid4().bytes
         self.setMinimumWidth(10)
@@ -50,21 +57,21 @@ class Tag(QLineEdit):
 
         self.set_normal_style()
 
-    def set_normal_style(self):
+    def set_normal_style(self) -> None:
         set_normal_style(self)
 
-    def set_transparent_style(self):
+    def set_transparent_style(self) -> None:
         set_transparent_style(self)
 
-    def dragLeaveEvent(self, event):
+    def dragLeaveEvent(self, event: QMouseEvent) -> None:
         self.set_normal_style()
         event.accept()
 
-    def mousePressEvent(self, event: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self.drag_start_position = event.pos()
 
-    def mouseMoveEvent(self, event: QMouseEvent):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if not (event.buttons() & Qt.LeftButton):
             return
         if (event.pos() - self.drag_start_position).manhattanLength() < QApplication.startDragDistance():
@@ -82,7 +89,7 @@ class Tag(QLineEdit):
 class BaseMultiSelectWidget(QWidget):
     list_changed_signal = pyqtSignal(list)
 
-    def __init__(self, fixed_height_policy: bool = False):
+    def __init__(self, fixed_height_policy: bool = False) -> None:
         super(BaseMultiSelectWidget, self).__init__()
         self._main_layout = QHBoxLayout(self)
         self.setLayout(self._main_layout)
@@ -109,13 +116,13 @@ class BaseMultiSelectWidget(QWidget):
         self.button_add_remove.clicked.connect(self.add_tag_prompt)
         self._main_layout.addWidget(self.button_add_remove)
 
-    def set_button_text_add_tag(self):
+    def set_button_text_add_tag(self) -> None:
         self.button_add_remove.setText("Add")
 
-    def set_button_text_remove_tag(self):
+    def set_button_text_remove_tag(self) -> None:
         self.button_add_remove.setText("Remove")
 
-    def add_tag(self, text):
+    def add_tag(self, text: str) -> None:
         tag = Tag(text, self, self.fixed_height_policy)
         self.id2tag[tag.id] = tag
         self.ids.append(tag.id)
@@ -123,12 +130,12 @@ class BaseMultiSelectWidget(QWidget):
         self.vline.setVisible(True)
         self.list_changed_signal.emit(self.get_values())
 
-    def add_tag_prompt(self):
+    def add_tag_prompt(self) -> None:
         text, ok = QInputDialog.getText(self, "Add Tag", "Enter tag text:")
         if ok and text:
             self.add_tag(text)
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event: QEvent) -> None:
         if event.mimeData().hasFormat(DRAG_ID_KEY):
             self.set_button_text_remove_tag()
             tag_id = event.mimeData().data(DRAG_ID_KEY).data()
@@ -140,14 +147,14 @@ class BaseMultiSelectWidget(QWidget):
         else:
             event.ignore()
 
-    def dragMoveEvent(self, event):
+    def dragMoveEvent(self, event: QEvent) -> None:
         if event.mimeData().hasFormat(DRAG_ID_KEY):
             self._update_while_dragging(event)
             event.accept()
         else:
             event.ignore()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QEvent) -> None:
         if event.mimeData().hasFormat(DRAG_ID_KEY):
             self._update_while_dragging(event)
 
@@ -171,7 +178,7 @@ class BaseMultiSelectWidget(QWidget):
         else:
             event.ignore()
 
-    def dragLeaveEvent(self, event):
+    def dragLeaveEvent(self, event: QEvent) -> None:
         self.set_button_text_add_tag()
         if self.currently_dragged_id is not None:
             self.id2tag[self.currently_dragged_id].set_normal_style()
@@ -179,7 +186,7 @@ class BaseMultiSelectWidget(QWidget):
         event.accept()
         self.list_changed_signal.emit(self.get_values())
 
-    def _update_while_dragging(self, event):
+    def _update_while_dragging(self, event: QEvent) -> None:
         tag_id = event.mimeData().data(DRAG_ID_KEY).data()
         tag = self.id2tag[tag_id]
 
@@ -216,7 +223,7 @@ class MultiSelectWidget(BaseMultiSelectWidget):
         fit_all_items: bool = True,
         *args: Any,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(*args, **kwargs)
 
         assert isinstance(values, (list, tuple))
@@ -284,7 +291,7 @@ class MultiSelectWidget(BaseMultiSelectWidget):
             for value in selected_values:
                 self.add_tag(value)
 
-    def adjust_dropdown_width(self, fit_all_items: bool):
+    def adjust_dropdown_width(self, fit_all_items: bool) -> None:
         withs_elems = []
         width_widget = self.tag_selector.width()  # Start with the current width of the ComboBox
         font_metrics = QtGui.QFontMetrics(self.tag_selector.font())
@@ -296,7 +303,7 @@ class MultiSelectWidget(BaseMultiSelectWidget):
         width = round(aggregate(withs_elems)) + padding
         self.tag_selector.setMinimumWidth(width)
 
-    def toggle_tag_selector(self):
+    def toggle_tag_selector(self) -> None:
         global_pos = QtGui.QCursor.pos()
         local_pos = self.mapFromGlobal(global_pos)
 
@@ -306,7 +313,7 @@ class MultiSelectWidget(BaseMultiSelectWidget):
         self.tag_selector.setFocus()
         self.tag_selector.showPopup()
 
-    def add_tag_from_selection(self, index):
+    def add_tag_from_selection(self, index: int) -> None:
         if index >= 0:
             tag_text = self.tag_selector.itemText(index)
             self.add_tag(tag_text)
@@ -314,7 +321,7 @@ class MultiSelectWidget(BaseMultiSelectWidget):
 
             self._update_available()
 
-    def _update_available(self):
+    def _update_available(self) -> None:
         if self.unique_selection:
             selected = self.get_values()
             available = [v for v in self.all_values if v not in selected]

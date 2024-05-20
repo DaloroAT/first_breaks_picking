@@ -9,7 +9,12 @@ from first_breaks.picking.picks import Picks
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.utils.cuda import ONNX_DEVICE2PROVIDER, get_recommended_device
-from first_breaks.utils.utils import calc_hash, chunk_iterable, download_model_onnx, generate_color
+from first_breaks.utils.utils import (
+    calc_hash,
+    chunk_iterable,
+    download_model_onnx,
+    generate_color,
+)
 
 
 class IteratorOfTask:
@@ -151,7 +156,7 @@ class PickerONNX(IPicker):
             created_manually=False,
             created_by_nn=True,
             picks_color=generate_color(),
-            picking_parameters=task.picking_parameters
+            picking_parameters=task.picking_parameters,
         )
 
         task.success = True

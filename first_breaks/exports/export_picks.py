@@ -1,7 +1,7 @@
 import json
 import warnings
 from pathlib import Path
-from typing import Union, Optional, Sequence, Callable, Dict, Any
+from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -45,7 +45,7 @@ def _prepare_column_values_to_export(
     columns: Sequence[str] = (COL_PICKS_IN_MCS,),
     sgy: Optional[SGY] = None,
     process_values: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-):
+) -> Dict[str, Any]:
     if not any(v in PICKS_COLUMNS for v in columns):
         warnings.warn(
             f"No pick columns were selected. Add them using their names {PICKS_COLUMNS}, " f"or ignore the warning."
@@ -100,7 +100,7 @@ def export_to_txt(
     separator: str = "\t",
     include_column_names: bool = True,
     precision: int = 3,
-):
+) -> None:
     to_export = _prepare_column_values_to_export(
         picks=picks,
         columns=columns,
@@ -118,7 +118,7 @@ def export_to_json(
     sgy: Optional[SGY] = None,
     include_picking_parameters: bool = True,
     extra_data: Optional[Dict[str, Any]] = None,
-):
+) -> None:
     to_export = _prepare_column_values_to_export(
         picks=picks,
         columns=columns,

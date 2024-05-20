@@ -1,23 +1,22 @@
 import uuid
-from typing import Optional, Union, Literal, List, Any
+from typing import List, Literal, Optional, Union
 
 import numpy as np
-from first_breaks.utils.utils import UnitsConverter, generate_color
-
-from pydantic import model_validator, Field, UUID4
+from pydantic import UUID4, Field, model_validator
 
 from first_breaks.data_models.independent import (
-    TracesPerGather,
-    MaximumTime,
-    TracesToInverse,
     F1F2,
     F3F4,
-    Gain,
     Clip,
+    DefaultModel,
+    Gain,
+    MaximumTime,
     Normalize,
     TColor,
-    DefaultModel,
+    TracesPerGather,
+    TracesToInverse,
 )
+from first_breaks.utils.utils import UnitsConverter, generate_color
 
 TValues = Union[np.ndarray, List[Union[int, float]]]
 
@@ -48,7 +47,7 @@ class Picks(DefaultModel):
     created_manually: Optional[bool] = None
     modified_manually: Optional[bool] = None
     picking_parameters: Optional[PickingParameters] = None
-    color: TColor = Field(..., default_factory=generate_color, description="Color for picks")
+    color: TColor = Field(default_factory=generate_color, description="Color for picks")  # type: ignore
     width: float = Field(DEFAULT_PICKS_WIDTH, description="Width of pick line")
 
     active: Optional[bool] = None
@@ -57,7 +56,7 @@ class Picks(DefaultModel):
 
     id: UUID4 = Field(default_factory=uuid.uuid4)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.values)
 
     def __hash__(self) -> int:
@@ -77,12 +76,12 @@ class Picks(DefaultModel):
         self.model_config["validate_assignment"] = prev_assignment
         return self  # type: ignore
 
-    def _raise_if_no_dt_mcs(self):
+    def _raise_if_no_dt_mcs(self) -> None:
         if self.dt_mcs is None:
             raise ValueError("'dt_mcs' should be specified")
 
     @property
-    def picks_in_ms(self):
+    def picks_in_ms(self) -> TValues:
         self._raise_if_no_dt_mcs()
         if self.unit == "sample":
             return self._units_converter.index2ms(self.values)
@@ -94,7 +93,7 @@ class Picks(DefaultModel):
             raise ValueError("Wrong 'unit'")
 
     @property
-    def picks_in_mcs(self):
+    def picks_in_mcs(self) -> TValues:
         self._raise_if_no_dt_mcs()
         if self.unit == "sample":
             return self._units_converter.index2mcs(self.values)
@@ -106,7 +105,7 @@ class Picks(DefaultModel):
             raise ValueError("Wrong 'unit'")
 
     @property
-    def picks_in_samples(self):
+    def picks_in_samples(self) -> TValues:
         self._raise_if_no_dt_mcs()
         if self.unit == "sample":
             return self.values
@@ -117,7 +116,7 @@ class Picks(DefaultModel):
         else:
             raise ValueError("Wrong 'unit'")
 
-    def from_ms(self, values: TValues):
+    def from_ms(self, values: TValues) -> None:
         self._raise_if_no_dt_mcs()
         if self.unit == "sample":
             self.values = self._units_converter.ms2index(values)
@@ -128,7 +127,7 @@ class Picks(DefaultModel):
         else:
             raise ValueError("Wrong 'unit'")
 
-    def from_mcs(self, values: TValues):
+    def from_mcs(self, values: TValues) -> None:
         self._raise_if_no_dt_mcs()
         if self.unit == "sample":
             self.values = self._units_converter.mcs2index(values)
@@ -139,7 +138,7 @@ class Picks(DefaultModel):
         else:
             raise ValueError("Wrong 'unit'")
 
-    def from_samples(self, values: TValues):
+    def from_samples(self, values: TValues) -> None:
         self._raise_if_no_dt_mcs()
         if self.unit == "sample":
             self.values = values

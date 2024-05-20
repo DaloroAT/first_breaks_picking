@@ -373,8 +373,8 @@ print(picks.picking_parameters, task.picking_parameters)
 
 ### Picks
 
-The picks are stored in class `Picks`. In addition to the pick values, the class stores additional 
-information (picking parameters, color, etc.). The class instance is returned as a picking result, but can 
+The picks are stored in class `Picks`. In addition to the pick values, the class stores additional
+information (picking parameters, color, etc.). The class instance is returned as a picking result, but can
 also be created manually.
 
 [code-block-start]:picks
@@ -475,7 +475,7 @@ picks_ms = np.random.uniform(low=0,
                              high=sgy.ns * sgy.dt_ms,
                              size=sgy.ntr)
 picks = Picks(values=picks_ms, unit="ms", dt_mcs=sgy.dt_mcs, color=(0, 100, 100))
-export_image(sgy, image_filename, 
+export_image(sgy, image_filename,
              picks=picks)
 ```
 [code-block-end]:plot-sgy-custom-picks

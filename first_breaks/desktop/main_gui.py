@@ -3,7 +3,6 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
-from pydantic import UUID4
 from PyQt5.QtCore import QSize, Qt, QThreadPool
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
@@ -21,29 +20,20 @@ from PyQt5.QtWidgets import (
 )
 
 from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
-from first_breaks.data_models.dependent import TraceHeaderParams
 from first_breaks.data_models.independent import ExceptionOptional
-from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.last_folder_manager import last_folder_manager
 from first_breaks.desktop.nn_manager import NNManager
 from first_breaks.desktop.picks_manager_widget import PicksManager
 from first_breaks.desktop.settings_processing_widget import (
     PickingSettings,
-    PicksFromFileSettings,
     PlotseisSettings,
     SettingsProcessingWidget,
 )
 from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import (
-    UnitsConverter,
-    calc_hash,
-    download_demo_sgy,
-    download_model_onnx,
-    multiply_iterable_by,
-)
+from first_breaks.utils.utils import calc_hash, download_demo_sgy, download_model_onnx
 
 warnings.filterwarnings("ignore")
 
@@ -180,7 +170,7 @@ class MainWindow(QMainWindow):
         self.nn_manager.picking_finished_signal.connect(self.on_picking_finished)
         self.nn_manager.picking_not_started_error_signal.connect(self.on_picking_not_started_error)
 
-        ## picks manager
+        # picks manager
         self.picks_manager = PicksManager()
         self.picks_manager.picks_updated_signal.connect(self.update_plot)
         self.picks_manager.hide()
@@ -353,7 +343,7 @@ class MainWindow(QMainWindow):
                 window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
                 window_err.exec_()
 
-    def show_picks_manager(self):
+    def show_picks_manager(self) -> None:
         if self.picks_manager.isMinimized():
             self.picks_manager.showNormal()
         else:

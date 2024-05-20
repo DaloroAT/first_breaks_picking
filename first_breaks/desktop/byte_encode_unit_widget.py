@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from first_breaks.const import HIGH_DPI, FIRST_BYTE
+from first_breaks.const import FIRST_BYTE, HIGH_DPI
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.sgy.headers import Headers
 

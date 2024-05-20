@@ -1,42 +1,42 @@
 import sys
-from typing import Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 import numpy as np
-from PyQt5.QtCore import QPoint, pyqtSignal
-from PyQt5.QtGui import QColor, QCloseEvent, QDoubleValidator
+from PyQt5.QtCore import QEvent, QPoint, pyqtSignal
+from PyQt5.QtGui import QCloseEvent, QColor, QDoubleValidator
 from PyQt5.QtWidgets import (
+    QAction,
     QApplication,
-    QVBoxLayout,
-    QPushButton,
+    QButtonGroup,
+    QCheckBox,
+    QColorDialog,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QCheckBox,
-    QRadioButton,
-    QLabel,
-    QDialog,
-    QWidget,
-    QHBoxLayout,
-    QButtonGroup,
     QMenu,
-    QAction,
-    QColorDialog,
-    QLineEdit,
-    QDialogButtonBox,
+    QPushButton,
+    QRadioButton,
     QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from first_breaks.const import FIRST_BYTE
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
-from first_breaks.desktop.export_widgets import ExporterSGY, ExporterTXT, ExporterJSON
+from first_breaks.desktop.export_widgets import ExporterJSON, ExporterSGY, ExporterTXT
 from first_breaks.desktop.utils import set_geometry
-from first_breaks.picking.picks import Picks, DEFAULT_PICKS_WIDTH
+from first_breaks.picking.picks import DEFAULT_PICKS_WIDTH, Picks
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import generate_color
 
 
 class ConstantValuesInputDialog(QDialog):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Enter value in microseconds")
 
@@ -62,12 +62,12 @@ class ConstantValuesInputDialog(QDialog):
 
         layout.addWidget(self.button_box)
 
-    def get_value(self):
+    def get_value(self) -> str:
         return self.line_edit.text()
 
 
 class AggregationDialog(QDialog):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Select Aggregation Method")
 
@@ -78,7 +78,7 @@ class AggregationDialog(QDialog):
             1: ("Median", lambda x: np.median(x, axis=0)),
             2: ("RMS", lambda x: np.sqrt(np.mean(np.square(x), axis=0))),
         }
-        self.combo_box = QComboBoxMapping(mapping, current_label="Mean")
+        self.combo_box = QComboBoxMapping(mapping, current_label="Mean")  # type: ignore
 
         layout.addWidget(self.combo_box)
 
@@ -88,14 +88,14 @@ class AggregationDialog(QDialog):
 
         layout.addWidget(self.button_box)
 
-    def get_aggregation_function(self):
+    def get_aggregation_function(self) -> Any:
         return self.combo_box.value()
 
 
 class PicksItemWidget(QWidget):
     color_changed_signal = pyqtSignal(QColor)  # Signal to emit when color changes
 
-    def __init__(self, text="", color=QColor(255, 255, 255)):
+    def __init__(self, text: str = "", color: QColor = QColor(255, 255, 255)) -> None:
         super().__init__()
 
         self.checkbox = QCheckBox(self)
@@ -129,11 +129,11 @@ class PicksItemWidget(QWidget):
     def get_name(self) -> str:
         return self.label.text()
 
-    def on_radiobutton_clicked(self, checked):
+    def on_radiobutton_clicked(self, checked: bool) -> None:
         if checked:  # If the radiobutton is checked, also check the checkbox
             self.checkbox.setChecked(True)
 
-    def edit_color(self, event):
+    def edit_color(self, event: QEvent) -> None:
         new_color = QColorDialog.getColor(self.currentColor, self)
         if new_color.isValid():
             self.color_display.setStyleSheet(f"background-color: {new_color.name()}; border: 1px solid black;")
@@ -150,7 +150,7 @@ class PropertiesDialog(QDialog):
         sgy_exporter_kwargs: Optional[Dict[str, Any]] = None,
         txt_exporter_kwargs: Optional[Dict[str, Any]] = None,
         json_exporter_kwargs: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         super().__init__()
         sgy_exporter_kwargs = sgy_exporter_kwargs or {}
         txt_exporter_kwargs = txt_exporter_kwargs or {}
@@ -201,18 +201,18 @@ class PropertiesDialog(QDialog):
 
         layout.addWidget(self.button_box)
 
-    def get_sgy_exporter_settings(self):
+    def get_sgy_exporter_settings(self) -> Dict[str, Any]:
         return self.exports_widgets["SGY"].get_values()
 
-    def get_txt_exporter_settings(self):
+    def get_txt_exporter_settings(self) -> Dict[str, Any]:
         return self.exports_widgets["TXT"].get_values()
 
-    def get_json_exporter_settings(self):
+    def get_json_exporter_settings(self) -> Dict[str, Any]:
         return self.exports_widgets["JSON"].get_values()
 
 
 class ItemsCounter:
-    def __init__(self):
+    def __init__(self) -> None:
         self.constant_values = 0
         self.nn = 0
         self.duplicated = 0
@@ -228,7 +228,7 @@ class PicksManager(QWidget):
 
     picks_updated_signal = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.setWindowTitle("Picks Manager")
@@ -236,9 +236,9 @@ class PicksManager(QWidget):
 
         layout = QVBoxLayout()
 
-        self.sgy_exporter_settings = {}
-        self.txt_exporter_settings = {}
-        self.json_exporter_settings = {}
+        self.sgy_exporter_settings: Dict[str, Any] = {}
+        self.txt_exporter_settings: Dict[str, Any] = {}
+        self.json_exporter_settings: Dict[str, Any] = {}
 
         self.list_widget = QListWidget(self)
         self.list_widget.itemDoubleClicked.connect(self.open_properties)
@@ -270,12 +270,12 @@ class PicksManager(QWidget):
 
         self.items_counter = ItemsCounter()
         self.picks_mapping: Dict[PicksItemWidget, Picks] = {}
-        self.sgy = None
+        self.sgy: Optional[SGY] = None
 
         self.update_properties_button_state()
         self.hide()
 
-    def duplicate_active_created_by_nn_picks(self):
+    def duplicate_active_created_by_nn_picks(self) -> None:
         for item, picks in self.picks_mapping.items():
             if picks.active and picks.created_by_nn and not picks.modified_manually:
                 new_item = self.add_duplicate_pick(item)
@@ -287,21 +287,22 @@ class PicksManager(QWidget):
             if picks.id == external_picks.id:
                 self.picks_mapping[item] = external_picks
 
-    def set_sgy(self, sgy: SGY):
+    def set_sgy(self, sgy: SGY) -> None:
         self.sgy = sgy
 
-    def reset_manager(self):
+    def reset_manager(self) -> None:
         for item in list(self.picks_mapping.keys()):
             self.radio_group.removeButton(item.radio_button)
             self.picks_mapping.pop(item)
-            self.items_counter = ItemsCounter()
-            self.sgy: Optional[SGY] = None
+
+        self.items_counter = ItemsCounter()
+        self.sgy = None
 
         self.list_widget.clear()
 
         self.picks_updated_signal.emit()
 
-    def show_add_menu(self):
+    def show_add_menu(self) -> None:
         menu = QMenu(self)
 
         constant_values_action = QAction(self.ADD_PICKS_NAME_CONSTANT_VALUES, self)
@@ -327,7 +328,7 @@ class PicksManager(QWidget):
         menu_pos = button_pos + QPoint(0, self.add_button.height())
         menu.exec_(menu_pos)
 
-    def add_constant_values_pick(self):
+    def add_constant_values_pick(self) -> Optional[PicksItemWidget]:
         assert self.sgy is not None, "Setup SGY"
 
         dialog = ConstantValuesInputDialog()
@@ -335,18 +336,20 @@ class PicksManager(QWidget):
         if dialog.exec_() == QDialog.Accepted:
             value = dialog.get_value()
             if value:
-                value = int(value)
+                value = int(value)  # type: ignore
                 picks = Picks(
                     values=[value] * self.sgy.num_traces,
                     unit="mcs",
                     dt_mcs=self.sgy.dt_mcs,
                     created_by_nn=False,
-                    picks_color=generate_color(),
                 )
                 self.items_counter.constant_values += 1
                 return self.add_picks(picks, f"Manual {self.items_counter.constant_values}")
+            return None
+        else:
+            return None
 
-    def add_duplicate_pick(self, selected_picks_item: Optional[QListWidgetItem] = None):
+    def add_duplicate_pick(self, selected_picks_item: Optional[QListWidgetItem] = None) -> PicksItemWidget:
         selected_picks_item = selected_picks_item or self.list_widget.itemWidget(self.list_widget.selectedItems()[0])
 
         picks = self.picks_mapping[selected_picks_item]
@@ -355,7 +358,7 @@ class PicksManager(QWidget):
         self.items_counter.duplicated += 1
         return self.add_picks(duplicated_picks, f"Duplicated from '{selected_picks_item.get_name()}'")
 
-    def add_aggregate_pick(self):
+    def add_aggregate_pick(self) -> Optional[PicksItemWidget]:
         self.items_counter.aggregated += 1
         selected_picks_items = [self.list_widget.itemWidget(item) for item in self.list_widget.selectedItems()]
 
@@ -378,8 +381,10 @@ class PicksManager(QWidget):
 
             self.items_counter.aggregated += 1
             return self.add_picks(picks, f"Aggregated from {[item.get_name() for item in selected_picks_items]}")
+        else:
+            return None
 
-    def add_from_headers_pick(self):
+    def add_from_headers_pick(self) -> Optional[PicksItemWidget]:
         dialog = QDialogByteEncodeUnit(byte_position=1, first_byte=FIRST_BYTE, encoding="I", picks_unit="mcs")
 
         if dialog.exec_() == QDialog.Accepted:
@@ -397,12 +402,14 @@ class PicksManager(QWidget):
             )
             self.items_counter.loaded += 1
             return self.add_picks(picks, f"Loaded {self.items_counter.loaded}")
+        else:
+            return None
 
-    def add_nn_picks(self, picks: Picks):
+    def add_nn_picks(self, picks: Picks) -> PicksItemWidget:
         self.items_counter.nn += 1
         return self.add_picks(picks, f"NN {self.items_counter.nn}")
 
-    def add_picks(self, picks: Picks, name: str):
+    def add_picks(self, picks: Picks, name: str) -> PicksItemWidget:
         item = QListWidgetItem()
         self.list_widget.addItem(item)
 
@@ -427,23 +434,23 @@ class PicksManager(QWidget):
 
         return picks_item_widget
 
-    def get_selected_picks(self):
+    def get_selected_picks(self) -> List[Picks]:
         seleted_picks = []
         for widget, picks in self.picks_mapping.items():
             if widget.checkbox.isChecked():
                 seleted_picks.append(picks)
         return seleted_picks
 
-    def get_active_picks(self):
+    def get_active_picks(self) -> Optional[Picks]:
         for widget, picks in self.picks_mapping.items():
             if widget.radio_button.isChecked():
                 return picks
         return None
 
-    def update_active_picks(self, radio_button):
+    def update_active_picks(self, radio_button: QRadioButton) -> None:
         for widget, picks in self.picks_mapping.items():
             if widget.radio_button is radio_button:
-                width = int(DEFAULT_PICKS_WIDTH * 1.7)
+                width = DEFAULT_PICKS_WIDTH * 1.7
                 active = True
             else:
                 width = DEFAULT_PICKS_WIDTH
@@ -452,7 +459,7 @@ class PicksManager(QWidget):
             picks.active = active
         self.picks_updated_signal.emit()
 
-    def remove_items(self):
+    def remove_items(self) -> None:
         for item in self.list_widget.selectedItems():
             picks_item_widget = self.list_widget.itemWidget(item)
             self.radio_group.removeButton(picks_item_widget.radio_button)
@@ -463,7 +470,7 @@ class PicksManager(QWidget):
 
         self.picks_updated_signal.emit()
 
-    def open_properties(self):
+    def open_properties(self) -> None:
         item = self.list_widget.selectedItems()[0]
         picks_item_widget = self.list_widget.itemWidget(item)
         dialog = PropertiesDialog(
@@ -479,11 +486,11 @@ class PicksManager(QWidget):
         self.txt_exporter_settings = dialog.get_txt_exporter_settings()
         self.json_exporter_settings = dialog.get_json_exporter_settings()
 
-    def update_properties_button_state(self):
+    def update_properties_button_state(self) -> None:
         selected_items = self.list_widget.selectedItems()
         self.properties_button.setEnabled(len(selected_items) == 1)
 
-    def update_picks_color(self, picks_item_widget, color):
+    def update_picks_color(self, picks_item_widget: PicksItemWidget, color: QColor) -> None:
         pick = self.picks_mapping.get(picks_item_widget)
         if pick:
             pick.color = (color.red(), color.green(), color.blue())
