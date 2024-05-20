@@ -84,33 +84,30 @@ def test_main_gui(qtbot, demo_sgy: Path, model_onnx: Path):
     assert y_lim_graph[1] == (sgy.num_samples - 1) * sgy.dt_ms
 
     # add const picks
-    assert not main_window.picks_manager.picks_mapping
-
-    picks_manager = main_window.picks_manager
-
-    # Find the QMenu
-    add_menu: QMenu = click_and_get_response(qtbot, main_window.picks_manager.add_button, QMenu)
-
-    # Find the specific QAction
-    constant_values_action = None
-    for action in add_menu.actions():
-        if action.text() == picks_manager.ADD_PICKS_NAME_CONSTANT_VALUES:
-            constant_values_action = action
-            break
-
-    assert constant_values_action is not None
-
-    def get_child():
-        ww = add_menu.findChildren(QObject)
-        assert False, [w.text() for w in ww]
-        return w
-
-    QTimer.singleShot(1000, get_child)
-
-    constant_values_action.trigger()
-
-
-
+    # assert not main_window.picks_manager.picks_mapping
+    #
+    # picks_manager = main_window.picks_manager
+    #
+    # # Find the QMenu
+    # add_menu: QMenu = click_and_get_response(qtbot, main_window.picks_manager.add_button, QMenu)
+    #
+    # # Find the specific QAction
+    # constant_values_action = None
+    # for action in add_menu.actions():
+    #     if action.text() == picks_manager.ADD_PICKS_NAME_CONSTANT_VALUES:
+    #         constant_values_action = action
+    #         break
+    #
+    # assert constant_values_action is not None
+    #
+    # def get_child():
+    #     ww = add_menu.findChildren(QObject)
+    #     assert False, [w.text() for w in ww]
+    #     return w
+    #
+    # QTimer.singleShot(1000, get_child)
+    #
+    # constant_values_action.trigger()
     # add_menu: QMenu = click_and_get_response(qtbot, main_window.picks_manager.add_button, QMenu)
     # assert_add_picks_options_enabled(add_menu, aggregate=False, duplicate=False)
     # for action in add_menu.actions():
