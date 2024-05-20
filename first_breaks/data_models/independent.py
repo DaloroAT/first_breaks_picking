@@ -106,31 +106,8 @@ class TraceBytePosition(DefaultModel):
     byte_position: int = Field(0, ge=0, lt=240, description="Byte index in trace headers")
 
 
-class PicksUnit(DefaultModel):
-    picks_unit: Literal["ms", "mcs", "sample"] = Field("mcs", description="First breaks / picks unit")
-
-
-class PicksInSamplesOptional(DefaultModel):
-    picks_in_samples: Optional[Union[np.ndarray, Sequence[Union[float]]]] = Field(  # todo: replace to "int" later
-        None, description="First breaks presented as samples"
-    )
-
-
-class ConfidenceOptional(DefaultModel):
-    confidence: Optional[Union[np.ndarray, Sequence[Union[int, float]]]] = Field(
-        None, description="Confidence of first breaks"
-    )
-
-
 class ModelHashOptional(DefaultModel):
     model_hash: Optional[str] = Field(None, description="Hash of model checkpoint")
-
-
-class PicksValue(DefaultModel):
-    picks_value: Union[np.ndarray, Sequence[Union[int, float]]] = Field(
-        ...,
-        description="Values of first breaks",
-    )
 
 
 class VSPView(DefaultModel):

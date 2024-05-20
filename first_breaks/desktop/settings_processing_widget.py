@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 )
 
 from first_breaks.const import HIGH_DPI
-from first_breaks.data_models.dependent import Device, TraceHeaderParams, XAxis
+from first_breaks.data_models.dependent import Device, XAxis
 from first_breaks.data_models.independent import (
     F1F2,
     F3F4,
@@ -29,7 +29,6 @@ from first_breaks.data_models.independent import (
     InvertY,
     MaximumTime,
     Normalize,
-    PicksUnit,
     TNormalize,
     TracesPerGather,
     VSPView,
@@ -80,10 +79,6 @@ class PlotseisSettings(Gain, Clip, Normalize, XAxis, FillBlack, F1F2, F3F4, VSPV
 
 
 class PickingSettings(Gain, Clip, Normalize, F1F2, F3F4, MaximumTime, TracesPerGather, Device):
-    pass
-
-
-class PicksFromFileSettings(TraceHeaderParams, PicksUnit):
     pass
 
 
@@ -324,9 +319,18 @@ class DeviceLine(QComboBoxMapping, _Extras):
             current_value = device
         else:
             current_value = "cpu"
-        super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=current_value)
+
         if not ONNX_CUDA_AVAILABLE:
-            self.setEnabled(False)
+            cuda_postfix = "(CUDA drivers or CUDA compatible app are not installed)"
+        else:
+            cuda_postfix = ""
+
+        super().__init__({0: [f"GPU/CUDA {cuda_postfix}", "cuda"], 1: ["CPU", "cpu"]}, current_value=current_value)
+
+        if not ONNX_CUDA_AVAILABLE:
+            item = self.model().item(0)
+            if not ONNX_CUDA_AVAILABLE:
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
     def dict(self) -> Dict[str, Any]:
         return {"device": self.value()}
