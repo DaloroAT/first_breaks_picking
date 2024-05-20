@@ -221,6 +221,11 @@ class ItemsCounter:
 
 
 class PicksManager(QWidget):
+    ADD_PICKS_NAME_CONSTANT_VALUES = "Constant Values"
+    ADD_PICKS_NAME_DUPLICATE = "Duplicate"
+    ADD_PICKS_NAME_AGGREGATE = "Aggregate"
+    ADD_PICKS_NAME_LOAD_FROM_HEADERS = "Load from Headers"
+
     picks_updated_signal = pyqtSignal()
 
     def __init__(self):
@@ -299,10 +304,10 @@ class PicksManager(QWidget):
     def show_add_menu(self):
         menu = QMenu(self)
 
-        constant_values_action = QAction("Constant Values", self)
-        duplicate_action = QAction("Duplicate", self)
-        aggregate_action = QAction("Aggregate", self)
-        from_headers_action = QAction("Load from Headers", self)
+        constant_values_action = QAction(self.ADD_PICKS_NAME_CONSTANT_VALUES, self)
+        duplicate_action = QAction(self.ADD_PICKS_NAME_DUPLICATE, self)
+        aggregate_action = QAction(self.ADD_PICKS_NAME_AGGREGATE, self)
+        from_headers_action = QAction(self.ADD_PICKS_NAME_LOAD_FROM_HEADERS, self)
 
         menu.addAction(constant_values_action)
         menu.addAction(duplicate_action)

@@ -74,7 +74,7 @@ class ReadyToProcess:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, use_open_gl: bool = True):  # type: ignore
+    def __init__(self, use_open_gl: bool = True, show: bool = True):  # type: ignore
         super(MainWindow, self).__init__()
 
         if getattr(sys, "frozen", False):
@@ -199,7 +199,8 @@ class MainWindow(QMainWindow):
         self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
         self.picker_hash = MODEL_ONNX_HASH
 
-        self.show()
+        if show:
+            self.show()
 
     def pick_fb(self, settings: PickingSettings) -> None:
         self.button_get_filename.setEnabled(False)
@@ -366,17 +367,19 @@ class MainWindow(QMainWindow):
         e.accept()
 
 
+def create_app() -> Tuple[QApplication, MainWindow]:
+    return QApplication([]), MainWindow()
+
+
 def run_app() -> None:
-    app = QApplication([])
-    _ = MainWindow()
+    app, _ = create_app()
     app.exec_()
 
 
 def fetch_data_and_run_app() -> None:
     download_model_onnx(MODEL_ONNX_PATH)
     download_demo_sgy(DEMO_SGY_PATH)
-    app = QApplication([])
-    window = MainWindow()
+    app, window = create_app()
     window.load_nn(MODEL_ONNX_PATH)
     window.get_filename(DEMO_SGY_PATH)
     app.exec_()
