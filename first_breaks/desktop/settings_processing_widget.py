@@ -314,6 +314,9 @@ class MaximumTimeLine(QLineEdit, _Extras):
 
 
 class DeviceLine(QComboBoxMapping, _Extras):
+    CUDA_INDEX = 0
+    CPU_INEDX = 1
+
     def __init__(self, device: str = DEFAULTS.device):
         if device == "cuda" and ONNX_CUDA_AVAILABLE:
             current_value = device
@@ -325,12 +328,18 @@ class DeviceLine(QComboBoxMapping, _Extras):
         else:
             cuda_postfix = ""
 
-        super().__init__({0: [f"GPU/CUDA {cuda_postfix}", "cuda"], 1: ["CPU", "cpu"]}, current_value=current_value)
+        super().__init__(
+            {self.CUDA_INDEX: [f"GPU/CUDA {cuda_postfix}", "cuda"], self.CPU_INEDX: ["CPU", "cpu"]},
+            current_value=current_value,
+        )
 
         if not ONNX_CUDA_AVAILABLE:
-            item = self.model().item(0)
+            item = self.model().item(self.CUDA_INDEX)
             if not ONNX_CUDA_AVAILABLE:
                 item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+
+    def select_cpu(self):
+        self.setCurrentIndex(self.CPU_INEDX)
 
     def dict(self) -> Dict[str, Any]:
         return {"device": self.value()}

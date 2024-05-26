@@ -33,6 +33,7 @@ if HIGH_DPI:
 class GraphWidget(pg.PlotWidget):
     picks_manual_edited_signal = pyqtSignal(Picks)
     about_to_change_nn_picks_signal = pyqtSignal()
+    graph_updated_signal = pyqtSignal()
 
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
@@ -79,7 +80,7 @@ class GraphWidget(pg.PlotWidget):
 
         self.pos_ax, self.time_ax = self.resolve_xy2postime(self.x_ax, self.y_ax)
 
-        self.pos_ax.tickStrings = self.replace_tick_labels
+        self.pos_ax.tickStrings = self._replace_tick_labels
 
         text_size = 12
         self.label_style = {"font-size": f"{text_size}pt"}
@@ -89,6 +90,7 @@ class GraphWidget(pg.PlotWidget):
         self.time_ax.setLabel("t, ms", **self.label_style)
         self.pos_ax.setTickFont(font)
         self.time_ax.setTickFont(font)
+        self.graph_updated_signal.emit()
 
     def full_clean(self) -> None:
         self.remove_picks()
@@ -96,6 +98,7 @@ class GraphWidget(pg.PlotWidget):
         self.remove_processing_region()
         self.spectrum_roi_manager.delete_all_rois()
         self.clear()
+        self.graph_updated_signal.emit()
 
     def plotseis(
         self,
@@ -165,6 +168,7 @@ class GraphWidget(pg.PlotWidget):
             self._plot_trace_fast(trace=traces[:, idx], time=t, shift=idx + 1, fill_black=fill_black)
 
         self.pos_ax.showLabel()
+        self.graph_updated_signal.emit()
 
     def _plot_trace_fast(self, trace: np.ndarray, time: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
         connect = np.ones(len(time), dtype=np.int32)
@@ -184,7 +188,7 @@ class GraphWidget(pg.PlotWidget):
 
         item = pg.QtWidgets.QGraphicsPathItem(path)
         pen = QPen(Qt.black, 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
-        pen.setWidth(0.1)
+        pen.setCosmetic(True)  # 1 pixel width for any scale and resolution
         item.setPen(pen)
         item.setBrush(Qt.white)
         self.addItem(item)
@@ -205,13 +209,13 @@ class GraphWidget(pg.PlotWidget):
             item = pg.QtWidgets.QGraphicsPathItem(patch)
 
             pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
-            pen.setWidth(0.1)
+            pen.setCosmetic(True)  # 1 pixel width for any scale and resolution
             item.setPen(pen)
             item.setBrush(Qt.black)
             self.addItem(item)
             self.traces_as_items.append(item)
 
-    def replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
+    def _replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
         self.pos_ax.setLabel(self.pos_ax_header, **self.label_style)
         previous_labels = AxisItem.tickStrings(self.pos_ax, *args, **kwargs)
 
@@ -235,11 +239,13 @@ class GraphWidget(pg.PlotWidget):
         if self.processing_region_as_items:
             for item in self.processing_region_as_items:
                 self.removeItem(item)
+        self.graph_updated_signal.emit()
 
     def remove_traces(self) -> None:
         if self.traces_as_items:
             for item in self.traces_as_items:
                 self.removeItem(item)
+        self.graph_updated_signal.emit()
 
     def plot_processing_region(
         self,
@@ -280,7 +286,7 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items.append(poly_item)
         self.addItem(poly_item)
 
-    def get_picks_as_item(self, picks: Picks) -> pg.PlotCurveItem:
+    def _get_picks_as_item(self, picks: Picks) -> pg.PlotCurveItem:
         x, y = self.resolve_postime2xy(np.arange(self.sgy.num_traces) + 1, np.array(picks.picks_in_ms))
 
         line = pg.PlotCurveItem()
@@ -291,14 +297,16 @@ class GraphWidget(pg.PlotWidget):
         return line
 
     def plot_picks(self, picks: Picks) -> None:
-        picks_item = self.get_picks_as_item(picks)
+        picks_item = self._get_picks_as_item(picks)
         self.addItem(picks_item)
         self.picks2items[picks] = picks_item
+        self.graph_updated_signal.emit()
 
     def remove_picks(self) -> None:
         for picks in list(self.picks2items.keys()):
             self.removeItem(self.picks2items[picks])
             del self.picks2items[picks]
+        self.graph_updated_signal.emit()
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
@@ -331,6 +339,7 @@ class GraphWidget(pg.PlotWidget):
             active_picks.from_ms(picks_time)
 
             self.picks_manual_edited_signal.emit(active_picks)
+            self.graph_updated_signal.emit()
 
     def closeEvent(self, e: QCloseEvent) -> None:
         self.spectrum_window.close()

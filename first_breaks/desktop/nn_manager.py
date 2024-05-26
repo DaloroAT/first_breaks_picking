@@ -54,6 +54,7 @@ class NNManager(QObject):
             task_kwargs = remove_unused_kwargs(settings_dict, Task)  # type: ignore
             task = Task(source=sgy, **task_kwargs)
 
+            print(task.picking_parameters)
             worker = PickerQRunnable(picker=self.picker, task=task, interrpution_signal=self.interrupt_on)
             worker.signals.started.connect(self.on_start_task)
             worker.signals.result.connect(self.on_result_task)

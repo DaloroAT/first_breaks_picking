@@ -3,7 +3,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
-from PyQt5.QtCore import QSize, Qt, QThreadPool
+from PyQt5.QtCore import QSize, Qt, QThreadPool, pyqtSignal
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (
     QAction,
@@ -64,6 +64,14 @@ class ReadyToProcess:
 
 
 class MainWindow(QMainWindow):
+    TOOLBAR_LOAD_MODEL = "Load model"
+    TOOLDBAR_OPEN_SGY = "Open SGY-file"
+    TOOLBAR_SETTINGS_AND_PROCESSINGS = "Settings and Processing"
+    TOOLBAR_SHOW_GRID = "Show processing grid"
+    TOOLBAR_PICKS_MANAGER = "Picks manager"
+
+    processing_finished_signal = pyqtSignal()
+
     def __init__(self, use_open_gl: bool = True, show: bool = True):  # type: ignore
         super(MainWindow, self).__init__()
 
@@ -85,14 +93,14 @@ class MainWindow(QMainWindow):
         # buttons on toolbar
         icon_load_nn = self.style().standardIcon(QStyle.SP_ComputerIcon)
         # icon_load_nn = QIcon(str(self.main_folder / "icons" / "nn.png"))
-        self.button_load_nn = QAction(icon_load_nn, "Load model", self)
+        self.button_load_nn = QAction(icon_load_nn, self.TOOLBAR_LOAD_MODEL, self)
         self.button_load_nn.triggered.connect(self.load_nn)
         self.button_load_nn.setEnabled(True)
         self.toolbar.addAction(self.button_load_nn)
 
         icon_get_filename = self.style().standardIcon(QStyle.SP_DirIcon)
         # icon_get_filename = QIcon(str(self.main_folder / "icons" / "sgy.png"))
-        self.button_get_filename = QAction(icon_get_filename, "Open SGY-file", self)
+        self.button_get_filename = QAction(icon_get_filename, self.TOOLDBAR_OPEN_SGY, self)
         self.button_get_filename.triggered.connect(self.get_filename)
         self.button_get_filename.setEnabled(True)
         self.toolbar.addAction(self.button_get_filename)
@@ -100,7 +108,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addSeparator()
 
         icon_visual_settings = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
-        self.button_settings_processing = QAction(icon_visual_settings, "Settings and Processing", self)
+        self.button_settings_processing = QAction(icon_visual_settings, self.TOOLBAR_SETTINGS_AND_PROCESSINGS, self)
         self.button_settings_processing.triggered.connect(self.show_settings_processing_window)
         self.button_settings_processing.setEnabled(False)
         self.toolbar.addAction(self.button_settings_processing)
@@ -108,7 +116,7 @@ class MainWindow(QMainWindow):
         self.need_processing_region = True
         icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        self.button_processing_show = QAction(icon_processing_show, "Show processing grid", self)
+        self.button_processing_show = QAction(icon_processing_show, self.TOOLBAR_SHOW_GRID, self)
         self.button_processing_show.triggered.connect(self.processing_region_changed)
         self.button_processing_show.setChecked(self.need_processing_region)
         self.button_processing_show.setEnabled(True)
@@ -121,7 +129,7 @@ class MainWindow(QMainWindow):
 
         icon_picks_manager = self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        self.button_picks_manager = QAction(icon_picks_manager, "Picks manager", self)
+        self.button_picks_manager = QAction(icon_picks_manager, self.TOOLBAR_PICKS_MANAGER, self)
         self.button_picks_manager.triggered.connect(self.show_picks_manager)
         self.button_picks_manager.setEnabled(False)
         self.toolbar.addAction(self.button_picks_manager)
@@ -205,6 +213,7 @@ class MainWindow(QMainWindow):
             detailed_message=exc.get_formatted_traceback(),
         )
         window_error.exec_()
+        self.processing_finished_signal.emit()
 
     def on_picking_finished(self, result: Task) -> None:
         self.settings_processing_widget.set_selection_mode()
@@ -230,6 +239,7 @@ class MainWindow(QMainWindow):
                 )
             window_error.exec_()
 
+        self.processing_finished_signal.emit()
         self.button_get_filename.setEnabled(True)
 
     def processing_region_changed(self, toggle: bool) -> None:

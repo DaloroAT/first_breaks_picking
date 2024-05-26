@@ -2,7 +2,7 @@ import sys
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from PyQt5.QtCore import QEvent, QPoint, pyqtSignal
+from PyQt5.QtCore import QEvent, QPoint, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QCloseEvent, QColor, QDoubleValidator
 from PyQt5.QtWidgets import (
     QAction,
@@ -35,6 +35,9 @@ from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import generate_color
 
 
+ACTIVE_PICKS_WIDTH = DEFAULT_PICKS_WIDTH * 1.7
+
+
 class ConstantValuesInputDialog(QDialog):
     def __init__(self) -> None:
         super().__init__()
@@ -65,8 +68,16 @@ class ConstantValuesInputDialog(QDialog):
     def get_value(self) -> str:
         return self.line_edit.text()
 
+    @pyqtSlot()
+    def close_widget(self) -> None:
+        self.close()
+
 
 class AggregationDialog(QDialog):
+    MEAN_INDEX = 0
+    MEDIAN_INDEX = 1
+    RMS_INDEX = 2
+
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Select Aggregation Method")
@@ -74,11 +85,11 @@ class AggregationDialog(QDialog):
         layout = QVBoxLayout(self)
 
         mapping = {
-            0: ("Mean", lambda x: np.mean(x, axis=0)),
-            1: ("Median", lambda x: np.median(x, axis=0)),
-            2: ("RMS", lambda x: np.sqrt(np.mean(np.square(x), axis=0))),
+            self.MEAN_INDEX: ("Mean", lambda x: np.mean(x, axis=0)),
+            self.MEDIAN_INDEX: ("Median", lambda x: np.median(x, axis=0)),
+            self.RMS_INDEX: ("RMS", lambda x: np.sqrt(np.mean(np.square(x), axis=0))),
         }
-        self.combo_box = QComboBoxMapping(mapping, current_label="Mean")  # type: ignore
+        self.combo_box = QComboBoxMapping(mapping, current_index=self.MEAN_INDEX)  # type: ignore
 
         layout.addWidget(self.combo_box)
 
@@ -87,6 +98,9 @@ class AggregationDialog(QDialog):
         self.button_box.rejected.connect(self.reject)
 
         layout.addWidget(self.button_box)
+
+    def select_cpu(self):
+        self.combo_box.setCurrentIndex(self.CPU_INEDX)
 
     def get_aggregation_function(self) -> Any:
         return self.combo_box.value()
@@ -121,6 +135,7 @@ class PicksItemWidget(QWidget):
         self.setLayout(layout)
 
         self.radio_button.clicked.connect(self.on_radiobutton_clicked)
+
         self.color_display.mousePressEvent = self.edit_color
 
     def change_name(self, name: str) -> None:
@@ -129,6 +144,7 @@ class PicksItemWidget(QWidget):
     def get_name(self) -> str:
         return self.label.text()
 
+    #
     def on_radiobutton_clicked(self, checked: bool) -> None:
         if checked:  # If the radiobutton is checked, also check the checkbox
             self.checkbox.setChecked(True)
@@ -202,7 +218,11 @@ class PropertiesDialog(QDialog):
         layout.addWidget(self.button_box)
 
     def get_sgy_exporter_settings(self) -> Dict[str, Any]:
-        return self.exports_widgets["SGY"].get_values()
+        # get_values() returns "byte_position" in python style (indexing started from 0), but for user interface we
+        # show this field with shift FIRST_BYTE. To correctly recreate widget later we have to fix such shift
+        values = self.exports_widgets["SGY"].get_values()
+        values["byte_position"] += self.exports_widgets["SGY"].export_params.first_byte
+        return values
 
     def get_txt_exporter_settings(self) -> Dict[str, Any]:
         return self.exports_widgets["TXT"].get_values()
@@ -271,6 +291,10 @@ class PicksManager(QWidget):
         self.items_counter = ItemsCounter()
         self.picks_mapping: Dict[PicksItemWidget, Picks] = {}
         self.sgy: Optional[SGY] = None
+        self._add_menu_widget: Optional[QMenu] = None
+        self._const_values_widget: Optional[ConstantValuesInputDialog] = None
+        self._aggregation_widget: Optional[AggregationDialog] = None
+        self._load_from_headers_widget: Optional[QDialogByteEncodeUnit] = None
 
         self.update_properties_button_state()
         self.hide()
@@ -326,20 +350,28 @@ class PicksManager(QWidget):
 
         button_pos = self.add_button.mapToGlobal(QPoint(0, 0))
         menu_pos = button_pos + QPoint(0, self.add_button.height())
+
+        print(menu, "in code")
+        self._add_menu_widget = menu
         menu.exec_(menu_pos)
 
     def add_constant_values_pick(self) -> Optional[PicksItemWidget]:
         assert self.sgy is not None, "Setup SGY"
 
         dialog = ConstantValuesInputDialog()
+        print(self._add_menu_widget, dialog, "in code")
+        self._const_values_widget = dialog
 
+        print("before if")
         if dialog.exec_() == QDialog.Accepted:
             value = dialog.get_value()
+            print("accepted", value)
             if value:
                 value = int(value)  # type: ignore
                 picks = Picks(
                     values=[value] * self.sgy.num_traces,
                     unit="mcs",
+                    created_manually=True,
                     dt_mcs=self.sgy.dt_mcs,
                     created_by_nn=False,
                 )
@@ -363,6 +395,7 @@ class PicksManager(QWidget):
         selected_picks_items = [self.list_widget.itemWidget(item) for item in self.list_widget.selectedItems()]
 
         dialog = AggregationDialog()
+        self._aggregation_widget = dialog
 
         if dialog.exec_() == QDialog.Accepted:
             func = dialog.get_aggregation_function()
@@ -376,7 +409,6 @@ class PicksManager(QWidget):
                 unit="mcs",
                 dt_mcs=self.sgy.dt_mcs,
                 created_by_nn=False,
-                picks_color=generate_color(),
             )
 
             self.items_counter.aggregated += 1
@@ -386,6 +418,7 @@ class PicksManager(QWidget):
 
     def add_from_headers_pick(self) -> Optional[PicksItemWidget]:
         dialog = QDialogByteEncodeUnit(byte_position=1, first_byte=FIRST_BYTE, encoding="I", picks_unit="mcs")
+        self._load_from_headers_widget = dialog
 
         if dialog.exec_() == QDialog.Accepted:
             params = dialog.get_values()
@@ -398,7 +431,6 @@ class PicksManager(QWidget):
                 unit=params["picks_unit"],
                 dt_mcs=self.sgy.dt_mcs,
                 created_by_nn=False,
-                picks_color=generate_color(),
             )
             self.items_counter.loaded += 1
             return self.add_picks(picks, f"Loaded {self.items_counter.loaded}")
@@ -450,7 +482,7 @@ class PicksManager(QWidget):
     def update_active_picks(self, radio_button: QRadioButton) -> None:
         for widget, picks in self.picks_mapping.items():
             if widget.radio_button is radio_button:
-                width = DEFAULT_PICKS_WIDTH * 1.7
+                width = ACTIVE_PICKS_WIDTH
                 active = True
             else:
                 width = DEFAULT_PICKS_WIDTH
