@@ -53,7 +53,7 @@ class QByteEncodeUnitWidget(QWidget):
         picks_unit: str = "mcs",
         margins: Optional[int] = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
 
@@ -145,9 +145,9 @@ class QDialogByteEncodeUnit(QDialog):
         self.widget = QByteEncodeUnitWidget(*args, **kwargs)
         self.layout.addWidget(self.widget)
 
-        self.button_box = QDialogButtonBox()
-        self.button_box.addButton("Ok", QDialogButtonBox.AcceptRole)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
 
         self.layout.addWidget(self.button_box)
 

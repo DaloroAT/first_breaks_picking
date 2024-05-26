@@ -295,6 +295,7 @@ class PicksManager(QWidget):
         self._const_values_widget: Optional[ConstantValuesInputDialog] = None
         self._aggregation_widget: Optional[AggregationDialog] = None
         self._load_from_headers_widget: Optional[QDialogByteEncodeUnit] = None
+        self._properties_widget: Optional[PropertiesDialog] = None
 
         self.update_properties_button_state()
         self.hide()
@@ -383,6 +384,7 @@ class PicksManager(QWidget):
 
     def add_duplicate_pick(self, selected_picks_item: Optional[QListWidgetItem] = None) -> PicksItemWidget:
         selected_picks_item = selected_picks_item or self.list_widget.itemWidget(self.list_widget.selectedItems()[0])
+        print(selected_picks_item)
 
         picks = self.picks_mapping[selected_picks_item]
         duplicated_picks = picks.create_duplicate(keep_color=False)
@@ -405,7 +407,7 @@ class PicksManager(QWidget):
             aggregated_values = func(selected_values)
 
             picks = Picks(
-                values=aggregated_values,
+                values=aggregated_values.astype(int),
                 unit="mcs",
                 dt_mcs=self.sgy.dt_mcs,
                 created_by_nn=False,
@@ -513,6 +515,7 @@ class PicksManager(QWidget):
             txt_exporter_kwargs=self.txt_exporter_settings,
             json_exporter_kwargs=self.json_exporter_settings,
         )
+        self._properties_widget = dialog
         dialog.exec_()
         self.sgy_exporter_settings = dialog.get_sgy_exporter_settings()
         self.txt_exporter_settings = dialog.get_txt_exporter_settings()
