@@ -29,7 +29,7 @@ from first_breaks.const import FIRST_BYTE
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.export_widgets import ExporterJSON, ExporterSGY, ExporterTXT
-from first_breaks.desktop.utils import set_geometry
+from first_breaks.desktop.utils import set_geometry, LabelWithHelp
 from first_breaks.picking.picks import DEFAULT_PICKS_WIDTH, Picks
 from first_breaks.sgy.reader import SGY
 
@@ -57,7 +57,9 @@ class ConstantValuesInputDialog(QDialog):
 
         layout.addLayout(input_layout)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
+        )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
@@ -91,7 +93,9 @@ class AggregationDialog(QDialog):
 
         layout.addWidget(self.combo_box)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
+        )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
@@ -119,7 +123,9 @@ class PicksItemWidget(QWidget):
 
         self.color_display = QLabel(self)  # Using QLabel to display color
         self.color_display.setFixedSize(20, 20)  # Fixed size for color display
-        self.color_display.setStyleSheet(f"background-color: {color.name()}; border: 1px solid black;")
+        self.color_display.setStyleSheet(
+            f"background-color: {color.name()}; border: 1px solid black;"
+        )
         self.currentColor = color  # Store the current color
 
         layout = QHBoxLayout()
@@ -147,7 +153,9 @@ class PicksItemWidget(QWidget):
     def edit_color(self, event: QEvent) -> None:
         new_color = QColorDialog.getColor(self.currentColor, self)
         if new_color.isValid():
-            self.color_display.setStyleSheet(f"background-color: {new_color.name()}; border: 1px solid black;")
+            self.color_display.setStyleSheet(
+                f"background-color: {new_color.name()}; border: 1px solid black;"
+            )
             self.currentColor = new_color
             self.color_changed_signal.emit(new_color)  # Emit signal with the new color
 
@@ -167,7 +175,9 @@ class PropertiesDialog(QDialog):
         txt_exporter_kwargs = txt_exporter_kwargs or {}
         json_exporter_kwargs = json_exporter_kwargs or {}
 
-        set_geometry(self, width_rel=0.3, height_rel=0.3, centralize=True, fix_size=False)
+        set_geometry(
+            self, width_rel=0.3, height_rel=0.3, centralize=True, fix_size=False
+        )
 
         self.picks_item_widget = picks_item_widget
         self.picks_mapping = picks_mapping
@@ -206,7 +216,9 @@ class PropertiesDialog(QDialog):
         self.tab_all.addTab(self.tab_export, "Export")
         layout.addWidget(self.tab_all)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self
+        )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
@@ -235,6 +247,33 @@ class ItemsCounter:
         self.loaded = 0
 
 
+help_tip = """
+- Click the "+" sign to add a pick:
+   a. Constant values in microseconds;
+   b. Duplicate a pick (you must select one of the existing picks);
+   c. Aggregate picks (you must select 2 or more picks);
+   d. Load from trace headers.
+
+- You can delete picks by selecting them and pressing the "-" button.
+
+- Once you've selected one of the picks, double-click or click the "save" icon to open the export menu and rename 
+option.
+
+- Click on the color panel to open the color editor.
+
+- Picks with enabled checkboxes are displayed in the trace visualization window; disable the checkboxes if you want
+to hide the picks.
+
+- A picks with an active radio button is considered active and can be edited with the mouse.
+
+- You cannot edit a pick created by a neural network directly. However, if an active pick is created by a neural
+network and you try to edit it, a duplicate of this pick will be automatically generated.
+
+- The region of the active picking (or a duplicate if it was created based on a neural network picking) is shown
+as a processing region.
+"""
+
+
 class PicksManager(QWidget):
     ADD_PICKS_NAME_CONSTANT_VALUES = "Constant Values"
     ADD_PICKS_NAME_DUPLICATE = "Duplicate"
@@ -251,13 +290,21 @@ class PicksManager(QWidget):
 
         layout = QVBoxLayout()
 
+        top_layout = QHBoxLayout()
+        top_layout.addStretch(1)
+        self.label_with_help = LabelWithHelp("", help_tip)
+        top_layout.addWidget(self.label_with_help)
+        layout.addLayout(top_layout)
+
         self.sgy_exporter_settings: Dict[str, Any] = {}
         self.txt_exporter_settings: Dict[str, Any] = {}
         self.json_exporter_settings: Dict[str, Any] = {}
 
         self.list_widget = QListWidget(self)
         self.list_widget.itemDoubleClicked.connect(self.open_properties)
-        self.list_widget.itemSelectionChanged.connect(self.update_properties_button_state)
+        self.list_widget.itemSelectionChanged.connect(
+            self.update_properties_button_state
+        )
 
         # Enable multi-selection mode
         self.list_widget.setSelectionMode(QListWidget.ExtendedSelection)
@@ -270,8 +317,12 @@ class PicksManager(QWidget):
         self.remove_button = QPushButton("-", self)
         self.remove_button.clicked.connect(self.remove_items)  # renamed for clarity
         # self.properties_button = QPushButton("\u2699", self)  # Unicode character for gear
-        self.properties_button = QPushButton("\U0001F4BE", self)  # "\U0001F4BE" or "\U0001F5AB"
-        self.properties_button.setFont(self.font())  # to increase the size of the button a bit
+        self.properties_button = QPushButton(
+            "\U0001F4BE", self
+        )  # "\U0001F4BE" or "\U0001F5AB"
+        self.properties_button.setFont(
+            self.font()
+        )  # to increase the size of the button a bit
         self.properties_button.clicked.connect(self.open_properties)
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.remove_button)
@@ -368,23 +419,34 @@ class PicksManager(QWidget):
                     created_by_nn=False,
                 )
                 self.items_counter.constant_values += 1
-                return self.add_picks(picks, f"Manual {self.items_counter.constant_values}")
+                return self.add_picks(
+                    picks, f"Manual {self.items_counter.constant_values}"
+                )
             return None
         else:
             return None
 
-    def add_duplicate_pick(self, selected_picks_item: Optional[QListWidgetItem] = None) -> PicksItemWidget:
-        selected_picks_item = selected_picks_item or self.list_widget.itemWidget(self.list_widget.selectedItems()[0])
+    def add_duplicate_pick(
+        self, selected_picks_item: Optional[QListWidgetItem] = None
+    ) -> PicksItemWidget:
+        selected_picks_item = selected_picks_item or self.list_widget.itemWidget(
+            self.list_widget.selectedItems()[0]
+        )
 
         picks = self.picks_mapping[selected_picks_item]
         duplicated_picks = picks.create_duplicate(keep_color=False)
 
         self.items_counter.duplicated += 1
-        return self.add_picks(duplicated_picks, f"Duplicated from '{selected_picks_item.get_name()}'")
+        return self.add_picks(
+            duplicated_picks, f"Duplicated from '{selected_picks_item.get_name()}'"
+        )
 
     def add_aggregate_pick(self) -> Optional[PicksItemWidget]:
         self.items_counter.aggregated += 1
-        selected_picks_items = [self.list_widget.itemWidget(item) for item in self.list_widget.selectedItems()]
+        selected_picks_items = [
+            self.list_widget.itemWidget(item)
+            for item in self.list_widget.selectedItems()
+        ]
 
         dialog = AggregationDialog()
         self._aggregation_widget = dialog
@@ -412,7 +474,9 @@ class PicksManager(QWidget):
             return None
 
     def add_from_headers_pick(self) -> Optional[PicksItemWidget]:
-        dialog = QDialogByteEncodeUnit(byte_position=1, first_byte=FIRST_BYTE, encoding="I", picks_unit="mcs")
+        dialog = QDialogByteEncodeUnit(
+            byte_position=1, first_byte=FIRST_BYTE, encoding="I", picks_unit="mcs"
+        )
         self._load_from_headers_widget = dialog
 
         if dialog.exec_() == QDialog.Accepted:
@@ -448,7 +512,9 @@ class PicksManager(QWidget):
         item.setSizeHint(picks_item_widget.sizeHint())
 
         picks_item_widget.color_changed_signal.connect(
-            lambda color, widget=picks_item_widget: self.update_picks_color(widget, color)
+            lambda color, widget=picks_item_widget: self.update_picks_color(
+                widget, color
+            )
         )
         picks_item_widget.checkbox.clicked.connect(self.picks_updated_signal)
         picks_item_widget.checkbox.setChecked(True)
@@ -518,7 +584,9 @@ class PicksManager(QWidget):
         selected_items = self.list_widget.selectedItems()
         self.properties_button.setEnabled(len(selected_items) == 1)
 
-    def update_picks_color(self, picks_item_widget: PicksItemWidget, color: QColor) -> None:
+    def update_picks_color(
+        self, picks_item_widget: PicksItemWidget, color: QColor
+    ) -> None:
         pick = self.picks_mapping.get(picks_item_widget)
         if pick:
             pick.color = (color.red(), color.green(), color.blue())
