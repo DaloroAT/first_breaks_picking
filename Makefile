@@ -19,7 +19,7 @@ docker_build:
 	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) .
 
 .PHONY: docker_tests
-docker_tests:
+docker_tests: docker_build
 	docker run -t $(IMAGE_NAME) make run_tests
 
 

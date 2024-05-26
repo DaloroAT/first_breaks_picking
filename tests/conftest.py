@@ -18,7 +18,7 @@ def model_onnx() -> Path:
 
 @pytest.fixture(scope="function")
 def logs_dir_for_tests() -> Path:  # type: ignore
-    logs_dir = Path("tests_logs").absolute().resolve()
+    logs_dir = Path(__file__).resolve().parent / "tests_logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     yield logs_dir
     shutil.rmtree(logs_dir, ignore_errors=True)
