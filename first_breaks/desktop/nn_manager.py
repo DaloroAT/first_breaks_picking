@@ -38,7 +38,9 @@ class NNManager(QObject):
         self.picker: Optional[IPicker] = None
 
     def init_net(self, weights: Union[str, Path]) -> None:
-        task = CallInThread(self.picker_class, model_path=weights, **self.picker_kwargs_init)
+        task = CallInThread(
+            self.picker_class, model_path=weights, **self.picker_kwargs_init
+        )
         task.signals.result.connect(self._store_picker)
         self.threadpool.start(task)
 
@@ -54,8 +56,9 @@ class NNManager(QObject):
             task_kwargs = remove_unused_kwargs(settings_dict, Task)  # type: ignore
             task = Task(source=sgy, **task_kwargs)
 
-            print(task.picking_parameters)
-            worker = PickerQRunnable(picker=self.picker, task=task, interrpution_signal=self.interrupt_on)
+            worker = PickerQRunnable(
+                picker=self.picker, task=task, interrpution_signal=self.interrupt_on
+            )
             worker.signals.started.connect(self.on_start_task)
             worker.signals.result.connect(self.on_result_task)
             worker.signals.progress.connect(self.on_progressbar_task)
