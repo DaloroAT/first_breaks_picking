@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Project is devoted to pick waves that are the first to be detected on a seismogram with neural network (CUDA accelerated)"
 readme = {file = "README.md", content-type = "text/markdown"}
 
-requires-python = ">=3.8,<=3.10"
+requires-python = ">=3.8"
 authors = [
     {name = "Aleksei Tarasov", email = "aleksei.v.tarasov@gmail.com"},
     {name = "Aleksei Tarasov"},
