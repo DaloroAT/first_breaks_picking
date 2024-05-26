@@ -32,8 +32,6 @@ from first_breaks.desktop.export_widgets import ExporterJSON, ExporterSGY, Expor
 from first_breaks.desktop.utils import set_geometry
 from first_breaks.picking.picks import DEFAULT_PICKS_WIDTH, Picks
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.utils import generate_color
-
 
 ACTIVE_PICKS_WIDTH = DEFAULT_PICKS_WIDTH * 1.7
 
@@ -98,9 +96,6 @@ class AggregationDialog(QDialog):
         self.button_box.rejected.connect(self.reject)
 
         layout.addWidget(self.button_box)
-
-    def select_cpu(self):
-        self.combo_box.setCurrentIndex(self.CPU_INEDX)
 
     def get_aggregation_function(self) -> Any:
         return self.combo_box.value()

@@ -275,7 +275,7 @@ def __set_params(qtbot: QtBot, main_window: MainWindow, gain: float, maximum_tim
     assert device_widget is not None
 
     device_widget.setFocus()
-    device_widget.select_cpu()
+    device_widget.setCurrentIndex(device_widget.CPU_INEDX)
 
     maximum_time_widget.setFocus()
     qtbot.keyClick(maximum_time_widget, "a", modifier=Qt.ControlModifier)

@@ -338,9 +338,6 @@ class DeviceLine(QComboBoxMapping, _Extras):
             if not ONNX_CUDA_AVAILABLE:
                 item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
-    def select_cpu(self):
-        self.setCurrentIndex(self.CPU_INEDX)
-
     def dict(self) -> Dict[str, Any]:
         return {"device": self.value()}
 
