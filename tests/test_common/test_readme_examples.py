@@ -36,15 +36,13 @@ def find_code_block(file: Path, start_indicator: str, end_indicator: str) -> str
         "plot-sgy",
         "plot-np",
         "plot-sgy-custom-picks",
-        "plot-sgy-real-picks"
+        "plot-sgy-real-picks",
     ],
 )
-def test_code_blocks_in_readme(block_name: str,
-                               demo_sgy: Path,
-                               logs_dir_for_tests: Path) -> None:
+def test_code_blocks_in_readme(block_name: str, demo_sgy: Path, logs_dir_for_tests: Path) -> None:
     assert logs_dir_for_tests.exists()
     os.chdir(str(logs_dir_for_tests))
-    shutil.copyfile(str(demo_sgy), str(logs_dir_for_tests / 'data.sgy'))
+    shutil.copyfile(str(demo_sgy), str(logs_dir_for_tests / "data.sgy"))
 
     start_indicator = f"[code-block-start]:{block_name}\n"
     end_indicator = f"[code-block-end]:{block_name}\n"
@@ -57,7 +55,7 @@ def test_code_blocks_in_readme(block_name: str,
         f.write(code)
 
     try:
-        code = os.system(f"python {tmp_fname}")
-        assert code == 0
+        exit_code = os.system(f"python {tmp_fname}")
+        assert exit_code == 0
     finally:
         Path(tmp_fname).unlink()

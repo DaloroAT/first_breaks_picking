@@ -1,23 +1,23 @@
-import time
 from pathlib import Path
-from typing import Optional, Type, Tuple, Literal, Union
+from typing import Optional, Tuple, Type, Union
 
-from PyQt5 import QtGui, QtCore
-from PyQt5.QtCore import Qt, QObject, QTimer, QEventLoop
-from PyQt5.QtGui import QPen, QColor
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QMenu, QWidget, QAction, QDialog, QPushButton, QDialogButtonBox, QApplication, QColorDialog
 import numpy as np
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QApplication, QColorDialog, QDialogButtonBox, QMenu, QWidget
 from pytestqt.qtbot import QtBot
 
 from first_breaks.desktop.main_gui import MainWindow
 from first_breaks.desktop.picks_manager_widget import (
-    PicksManager,
-    ConstantValuesInputDialog,
     ACTIVE_PICKS_WIDTH,
     PicksItemWidget,
+    PicksManager,
 )
-from first_breaks.desktop.settings_processing_widget import GainLine, MaximumTimeLine, DeviceLine
+from first_breaks.desktop.settings_processing_widget import (
+    DeviceLine,
+    GainLine,
+    MaximumTimeLine,
+)
 from first_breaks.picking.picks import DEFAULT_PICKS_WIDTH, Picks
 from first_breaks.sgy.reader import SGY
 
@@ -37,40 +37,7 @@ def find_global(widget_class: Type[QWidget]) -> QWidget:
         return found_widgets[0]
 
 
-def click_and_get_response(qtbot: QtBot, qobject: QObject, widget_response_class: Type[QWidget], find_in_parent=True):
-    if hasattr(qobject, "clicked"):
-        signal = qobject.clicked
-        action = lambda: qtbot.mouseClick(qobject, Qt.LeftButton)
-    else:
-        signal = qobject.triggered
-        action = qobject.trigger
-
-    print("before with")
-    with qtbot.waitSignal(signal, timeout=1000):
-        action()
-    print("after with")
-
-    where_to_find = qobject.parent() if find_in_parent else qobject
-    response_widget = where_to_find.findChild(widget_response_class)
-    print(where_to_find.findChildren(widget_response_class), "all children")
-    assert isinstance(response_widget, widget_response_class)
-    return response_widget
-
-
-def wait_for_idle(qtbot, timeout=10000):
-    loop = QEventLoop()
-    timer = QTimer()
-    timer.setSingleShot(True)
-    timer.timeout.connect(loop.quit)
-    timer.start(timeout)
-
-    while timer.isActive():
-        qtbot.wait(10)
-        if not loop.isRunning():
-            loop.exec_()
-
-
-def assert_add_picks_options_enabled(widget: QMenu, aggregate: bool, duplicate: bool):
+def assert_add_picks_options_enabled(widget: QMenu, aggregate: bool, duplicate: bool) -> None:
     for action in widget.actions():
         if action.text() == PicksManager.ADD_PICKS_NAME_AGGREGATE:
             assert action.isEnabled() == aggregate
@@ -80,27 +47,7 @@ def assert_add_picks_options_enabled(widget: QMenu, aggregate: bool, duplicate: 
             assert action.isEnabled()  # others are lways enabled
 
 
-# def enter_const_picks_mcs(qtbot: QtBot, mcs: int):
-#     enter_dialog: ConstantValuesInputDialog = find_global(ConstantValuesInputDialog)
-#     print(enter_dialog, "enter dialog")
-#     line_edit = enter_dialog.line_edit
-#     qtbot.keyClicks(line_edit, str(mcs))
-#     press_ok(qtbot, enter_dialog)
-#     enter_dialog.close()
-#     qtbot.wait(100)
-#     del enter_dialog
-#     # enter_dialog.deleteLater()
-#     # qtbot.wait(100)
-
-
-# def enter_const_picks_mcs(qtbot: QtBot, mcs: int, picks_manager: PicksManager):
-#     enter_dialog = picks_manager._const_values_widget
-#     line_edit = enter_dialog.line_edit
-#     qtbot.keyClicks(line_edit, str(mcs))
-#     click_ok(qtbot, enter_dialog)
-
-
-def change_color(qtbot: QtBot, new_color):
+def change_color(qtbot: QtBot, new_color: QColor) -> None:
     color_dialog: QColorDialog = find_global(QColorDialog)
     color_dialog.setCurrentColor(new_color)
     click_ok(qtbot, color_dialog)
@@ -114,7 +61,7 @@ def rgb2qcolor(rgb: Tuple[int, int, int]) -> QColor:
     return QColor(*rgb)
 
 
-def click_ok(qtbot: QtBot, widget: QWidget):
+def click_ok(qtbot: QtBot, widget: QWidget) -> None:
     button_box = widget.findChild(QDialogButtonBox)
     assert button_box is not None
     ok_button = button_box.button(QDialogButtonBox.Ok)
@@ -122,19 +69,19 @@ def click_ok(qtbot: QtBot, widget: QWidget):
     click(qtbot, ok_button)
 
 
-def click(qtbot: QtBot, widget: QWidget):
+def click(qtbot: QtBot, widget: QWidget) -> None:
     with qtbot.waitSignal(widget.clicked, timeout=1000):
         qtbot.mouseClick(widget, Qt.LeftButton)
 
 
-def enter_const_picks_mcs(qtbot: QtBot, mcs: int, picks_manager: PicksManager):
+def enter_const_picks_mcs(qtbot: QtBot, mcs: int, picks_manager: PicksManager) -> None:
     enter_dialog = picks_manager._const_values_widget
     line_edit = enter_dialog.line_edit
     qtbot.keyClicks(line_edit, str(mcs))
     click_ok(qtbot, enter_dialog)
 
 
-def __select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_window: MainWindow):
+def __select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_window: MainWindow) -> None:
     add_menu = main_window.picks_manager._add_menu_widget
     assert_add_picks_options_enabled(add_menu, aggregate=False, duplicate=False)
     clicked = False
@@ -148,12 +95,12 @@ def __select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_wi
     assert clicked
 
 
-def select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_window: MainWindow):
+def select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_window: MainWindow) -> None:
     QTimer.singleShot(200, lambda: __select_from_menu_and_enter_const_picks_mcs(qtbot, mcs, main_window))
     click(qtbot, main_window.picks_manager.add_button)
 
 
-def load_from_headers(qtbot: QtBot, picks_manager: PicksManager, byte_position: int):
+def load_from_headers(qtbot: QtBot, picks_manager: PicksManager, byte_position: int) -> None:
     load_widget = picks_manager._load_from_headers_widget
 
     load_widget.widget.byte_position_widget.setFocus()
@@ -166,7 +113,7 @@ def load_from_headers(qtbot: QtBot, picks_manager: PicksManager, byte_position: 
     click_ok(qtbot, load_widget)
 
 
-def __select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWindow, byte_position: int):
+def __select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWindow, byte_position: int) -> None:
     add_menu = main_window.picks_manager._add_menu_widget
     main_window.picks_manager.list_widget.clearSelection()
     assert_add_picks_options_enabled(add_menu, aggregate=False, duplicate=False)
@@ -181,12 +128,12 @@ def __select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWind
     assert clicked
 
 
-def select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWindow, byte_position: int):
+def select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWindow, byte_position: int) -> None:
     QTimer.singleShot(200, lambda: __select_from_menu_and_load_from_headers(qtbot, main_window, byte_position))
     click(qtbot, main_window.picks_manager.add_button)
 
 
-def __export_as_sgy(qtbot: QtBot, main_window: MainWindow, filename: Union[str, Path], byte_position: int):
+def __export_as_sgy(qtbot: QtBot, main_window: MainWindow, filename: Union[str, Path], byte_position: int) -> None:
     properties = main_window.picks_manager._properties_widget
     export_tab_index = properties.tab_all.indexOf(properties.tab_export)
     properties.tab_all.setCurrentIndex(export_tab_index)
@@ -205,20 +152,22 @@ def __export_as_sgy(qtbot: QtBot, main_window: MainWindow, filename: Union[str, 
     click_ok(qtbot, properties)
 
 
-def export_as_sgy(qtbot: QtBot, main_window: MainWindow, line_idx: int, filename: Union[str, Path], byte_position: int):
+def export_as_sgy(
+    qtbot: QtBot, main_window: MainWindow, line_idx: int, filename: Union[str, Path], byte_position: int
+) -> None:
     main_window.picks_manager.list_widget.clearSelection()
     main_window.picks_manager.list_widget.item(line_idx).setSelected(True)
     QTimer.singleShot(200, lambda: __export_as_sgy(qtbot, main_window, filename, byte_position))
     click(qtbot, main_window.picks_manager.properties_button)
 
 
-def aggregate_mean(qtbot, picks_manager: PicksManager):
+def aggregate_mean(qtbot: QtBot, picks_manager: PicksManager) -> None:
     aggregate_dialog = picks_manager._aggregation_widget
     aggregate_dialog.combo_box.setCurrentIndex(aggregate_dialog.MEAN_INDEX)
     click_ok(qtbot, aggregate_dialog)
 
 
-def __select_from_menu_and_aggregate_mean(qtbot: QtBot, main_window: MainWindow):
+def __select_from_menu_and_aggregate_mean(qtbot: QtBot, main_window: MainWindow) -> None:
     add_menu = main_window.picks_manager._add_menu_widget
     assert_add_picks_options_enabled(add_menu, aggregate=True, duplicate=False)
     clicked = False
@@ -232,12 +181,12 @@ def __select_from_menu_and_aggregate_mean(qtbot: QtBot, main_window: MainWindow)
     assert clicked
 
 
-def select_from_menu_and_aggregate_mean(qtbot: QtBot, main_window: MainWindow):
+def select_from_menu_and_aggregate_mean(qtbot: QtBot, main_window: MainWindow) -> None:
     QTimer.singleShot(200, lambda: __select_from_menu_and_aggregate_mean(qtbot, main_window))
     click(qtbot, main_window.picks_manager.add_button)
 
 
-def __select_from_menu_and_duplicate(main_window: MainWindow):
+def __select_from_menu_and_duplicate(main_window: MainWindow) -> None:
     add_menu = main_window.picks_manager._add_menu_widget
     assert_add_picks_options_enabled(add_menu, aggregate=False, duplicate=True)
     clicked = False
@@ -250,12 +199,12 @@ def __select_from_menu_and_duplicate(main_window: MainWindow):
     assert clicked
 
 
-def select_from_menu_and_duplicate(qtbot: QtBot, main_window: MainWindow):
+def select_from_menu_and_duplicate(qtbot: QtBot, main_window: MainWindow) -> None:
     QTimer.singleShot(200, lambda: __select_from_menu_and_duplicate(main_window))
     click(qtbot, main_window.picks_manager.add_button)
 
 
-def __set_params(qtbot: QtBot, main_window: MainWindow, gain: float, maximum_time: float):
+def __set_params(qtbot: QtBot, main_window: MainWindow, gain: float, maximum_time: float) -> None:
     settings_widget = main_window.settings_processing_widget
 
     gain_widget = None
@@ -288,7 +237,7 @@ def __set_params(qtbot: QtBot, main_window: MainWindow, gain: float, maximum_tim
     qtbot.keyClicks(gain_widget, str(gain))
 
 
-def set_params_and_run_processing(qtbot: QtBot, main_window: MainWindow, gain: float, maximum_time: float):
+def set_params_and_run_processing(qtbot: QtBot, main_window: MainWindow, gain: float, maximum_time: float) -> None:
     clicked = False
     for action in main_window.toolbar.actions():
         if action.text() == main_window.TOOLBAR_SETTINGS_AND_PROCESSINGS:
@@ -353,7 +302,7 @@ def asserts_set_for_line_in_picks_manager(
         assert picks not in main_window.graph.picks2items
 
 
-def test_main_gui(qtbot: QtBot, demo_sgy: Path, model_onnx: Path, logs_dir_for_tests: Path):
+def test_main_gui(qtbot: QtBot, demo_sgy: Path, model_onnx: Path, logs_dir_for_tests: Path) -> None:
     main_window = MainWindow(show=False)
     qtbot.addWidget(main_window)
     sgy = SGY(demo_sgy)
