@@ -24,7 +24,11 @@ def patch_pathenv_with_default_gpu_paths() -> None:
         extra_potential_paths = [str(p) for p in extra_potential_paths]
         separator = ";"
     elif is_linux():
-        extra_potential_paths = ["/usr/local/cuda", "/usr/include", "/lib/x86_64-linux-gnu"]
+        extra_potential_paths = [
+            "/usr/local/cuda",
+            "/usr/include",
+            "/lib/x86_64-linux-gnu",
+        ]
         separator = ":"
     else:
         extra_potential_paths = []

@@ -221,8 +221,11 @@ class SGY:
 
     def _scalar_raw_traces_headers(self) -> None:
         self.traces_headers = self._traces_headers_raw.copy()
-        for scalar_from, apply_to_columns in self._traces_headers_schema.scalar_from2apply.items():
-            scalar = self._traces_headers_raw[scalar_from].copy()
+        for (
+            scalar_from,
+            apply_to_columns,
+        ) in self._traces_headers_schema.scalar_from2apply.items():
+            scalar = np.array(self._traces_headers_raw[scalar_from].copy())
 
             scalar[scalar == 0] = 1
             scalar[scalar < 0] = 1 / abs(scalar[scalar < 0])
@@ -255,7 +258,10 @@ class SGY:
         return traces
 
     def get_chunked_reader(
-        self, chunk_size: int, min_sample: Optional[int] = None, max_sample: Optional[int] = None
+        self,
+        chunk_size: int,
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
     ) -> Generator[np.ndarray, None, None]:
         chunk_size = min(chunk_size, self.num_traces)
         all_ids = list(range(self.num_traces))
@@ -264,7 +270,10 @@ class SGY:
             yield self.read_traces_by_ids(ids, min_sample, max_sample)
 
     def read_traces_by_ids(
-        self, ids: Sequence[int], min_sample: Optional[int] = None, max_sample: Optional[int] = None
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
     ) -> np.ndarray:
 
         if min_sample is not None:

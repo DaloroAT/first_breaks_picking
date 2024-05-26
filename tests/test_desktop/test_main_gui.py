@@ -87,7 +87,10 @@ def __select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_wi
     clicked = False
     for action in add_menu.actions():
         if action.text() == PicksManager.ADD_PICKS_NAME_CONSTANT_VALUES:
-            QTimer.singleShot(200, lambda: enter_const_picks_mcs(qtbot, mcs, main_window.picks_manager))
+            QTimer.singleShot(
+                200,
+                lambda: enter_const_picks_mcs(qtbot, mcs, main_window.picks_manager),
+            )
             action.trigger()
             clicked = True
             break
@@ -96,7 +99,10 @@ def __select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_wi
 
 
 def select_from_menu_and_enter_const_picks_mcs(qtbot: QtBot, mcs: int, main_window: MainWindow) -> None:
-    QTimer.singleShot(200, lambda: __select_from_menu_and_enter_const_picks_mcs(qtbot, mcs, main_window))
+    QTimer.singleShot(
+        200,
+        lambda: __select_from_menu_and_enter_const_picks_mcs(qtbot, mcs, main_window),
+    )
     click(qtbot, main_window.picks_manager.add_button)
 
 
@@ -120,7 +126,10 @@ def __select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWind
     clicked = False
     for action in add_menu.actions():
         if action.text() == PicksManager.ADD_PICKS_NAME_LOAD_FROM_HEADERS:
-            QTimer.singleShot(200, lambda: load_from_headers(qtbot, main_window.picks_manager, byte_position))
+            QTimer.singleShot(
+                200,
+                lambda: load_from_headers(qtbot, main_window.picks_manager, byte_position),
+            )
             action.trigger()
             clicked = True
             break
@@ -129,11 +138,19 @@ def __select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWind
 
 
 def select_from_menu_and_load_from_headers(qtbot: QtBot, main_window: MainWindow, byte_position: int) -> None:
-    QTimer.singleShot(200, lambda: __select_from_menu_and_load_from_headers(qtbot, main_window, byte_position))
+    QTimer.singleShot(
+        200,
+        lambda: __select_from_menu_and_load_from_headers(qtbot, main_window, byte_position),
+    )
     click(qtbot, main_window.picks_manager.add_button)
 
 
-def __export_as_sgy(qtbot: QtBot, main_window: MainWindow, filename: Union[str, Path], byte_position: int) -> None:
+def __export_as_sgy(
+    qtbot: QtBot,
+    main_window: MainWindow,
+    filename: Union[str, Path],
+    byte_position: int,
+) -> None:
     properties = main_window.picks_manager._properties_widget
     export_tab_index = properties.tab_all.indexOf(properties.tab_export)
     properties.tab_all.setCurrentIndex(export_tab_index)
@@ -143,7 +160,11 @@ def __export_as_sgy(qtbot: QtBot, main_window: MainWindow, filename: Union[str, 
     properties.tab_export.setCurrentIndex(sgy_tab_index)
 
     sgy_export_widget.export_params.byte_position_widget.setFocus()
-    qtbot.keyClick(sgy_export_widget.export_params.byte_position_widget, "a", modifier=Qt.ControlModifier)
+    qtbot.keyClick(
+        sgy_export_widget.export_params.byte_position_widget,
+        "a",
+        modifier=Qt.ControlModifier,
+    )
     qtbot.keyClick(sgy_export_widget.export_params.byte_position_widget, Qt.Key_Delete)
     qtbot.keyClicks(sgy_export_widget.export_params.byte_position_widget, str(byte_position))
 
@@ -153,7 +174,11 @@ def __export_as_sgy(qtbot: QtBot, main_window: MainWindow, filename: Union[str, 
 
 
 def export_as_sgy(
-    qtbot: QtBot, main_window: MainWindow, line_idx: int, filename: Union[str, Path], byte_position: int
+    qtbot: QtBot,
+    main_window: MainWindow,
+    line_idx: int,
+    filename: Union[str, Path],
+    byte_position: int,
 ) -> None:
     main_window.picks_manager.list_widget.clearSelection()
     main_window.picks_manager.list_widget.item(line_idx).setSelected(True)
@@ -360,7 +385,10 @@ def test_main_gui(qtbot: QtBot, demo_sgy: Path, model_onnx: Path, logs_dir_for_t
         total_picks += 1
         set_params_and_run_processing(qtbot, main_window, gain, max_time)
 
-        qtbot.waitUntil(lambda: len(main_window.picks_manager.picks_mapping) == total_picks, timeout=2000)
+        qtbot.waitUntil(
+            lambda: len(main_window.picks_manager.picks_mapping) == total_picks,
+            timeout=2000,
+        )
 
         idx_last_added_picks = main_window.picks_manager.list_widget.count() - 1
         asserts_set_for_line_in_picks_manager(
@@ -386,7 +414,10 @@ def test_main_gui(qtbot: QtBot, demo_sgy: Path, model_onnx: Path, logs_dir_for_t
 
         select_from_menu_and_enter_const_picks_mcs(qtbot, mcs_const, main_window)
 
-        qtbot.waitUntil(lambda: len(main_window.picks_manager.picks_mapping) == total_picks, timeout=2000)
+        qtbot.waitUntil(
+            lambda: len(main_window.picks_manager.picks_mapping) == total_picks,
+            timeout=2000,
+        )
 
         idx_last_added_picks = main_window.picks_manager.list_widget.count() - 1
         asserts_set_for_line_in_picks_manager(
@@ -416,9 +447,10 @@ def test_main_gui(qtbot: QtBot, demo_sgy: Path, model_onnx: Path, logs_dir_for_t
 
         select_from_menu_and_duplicate(qtbot, main_window)
 
-        assert len(main_window.picks_manager.picks_mapping) == total_picks
-
-        qtbot.waitUntil(lambda: len(main_window.picks_manager.picks_mapping) == total_picks, timeout=2000)
+        qtbot.waitUntil(
+            lambda: len(main_window.picks_manager.picks_mapping) == total_picks,
+            timeout=2000,
+        )
 
         asserts_set_for_line_in_picks_manager(
             main_window=main_window,
@@ -446,7 +478,10 @@ def test_main_gui(qtbot: QtBot, demo_sgy: Path, model_onnx: Path, logs_dir_for_t
     select_from_menu_and_aggregate_mean(qtbot, main_window)
 
     total_picks += 1
-    qtbot.waitUntil(lambda: len(main_window.picks_manager.picks_mapping) == total_picks, timeout=2000)
+    qtbot.waitUntil(
+        lambda: len(main_window.picks_manager.picks_mapping) == total_picks,
+        timeout=2000,
+    )
 
     asserts_set_for_line_in_picks_manager(
         main_window=main_window,
@@ -542,7 +577,11 @@ def test_main_gui(qtbot: QtBot, demo_sgy: Path, model_onnx: Path, logs_dir_for_t
     byte_position = 220
     fname_sgy_exported.unlink(missing_ok=True)
     export_as_sgy(
-        qtbot, main_window, line_idx=aggregated_picks_idx, filename=fname_sgy_exported, byte_position=byte_position
+        qtbot,
+        main_window,
+        line_idx=aggregated_picks_idx,
+        filename=fname_sgy_exported,
+        byte_position=byte_position,
     )
 
     main_window.get_filename(fname_sgy_exported)
