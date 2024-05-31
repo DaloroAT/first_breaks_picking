@@ -36,11 +36,11 @@ class IteratorOfTask:
     def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
         gather_ids = self.idx2gather_ids[idx]
         amplitudes = np.array(
-            [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))], dtype=np.float32
+            [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))],
+            dtype=np.float32,
         )
         gather = self.task.sgy.read_traces_by_ids(gather_ids)
-        # gather = np.sign(gather) * gather ** 2
-        # gather = np.gradient(np.gradient(gather, axis=0), axis=0)
+
         gather = preprocess_gather(
             data=gather,
             gain=self.task.gain,
@@ -67,7 +67,10 @@ class IteratorOfTask:
 
             gather_batch = np.stack(gather_batch, axis=0)
             gather_ids_batch = np.hstack(gather_ids_batch)
-            batch = {self.gather_key: gather_batch, self.gather_ids_key: gather_ids_batch}
+            batch = {
+                self.gather_key: gather_batch,
+                self.gather_ids_key: gather_ids_batch,
+            }
             yield batch
 
 
@@ -101,7 +104,9 @@ class PickerONNX(IPicker):
             sess_opt.intra_op_num_threads = 2
             sess_opt.inter_op_num_threads = 2
         self.model = ort.InferenceSession(
-            str(self.model_path), providers=[ONNX_DEVICE2PROVIDER[self.device]], sess_options=sess_opt
+            str(self.model_path),
+            providers=[ONNX_DEVICE2PROVIDER[self.device]],
+            sess_options=sess_opt,
         )
 
     def change_settings(  # type: ignore

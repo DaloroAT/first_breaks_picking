@@ -124,7 +124,14 @@ class GraphWidget(pg.PlotWidget):
         traces = self.sgy.read()
 
         traces = preprocess_gather(
-            traces, gain=gain, clip=clip, normalize=normalize, f1_f2=f1_f2, f3_f4=f3_f4, fs=self.sgy.fs, copy=True
+            traces,
+            gain=gain,
+            clip=clip,
+            normalize=normalize,
+            f1_f2=f1_f2,
+            f3_f4=f3_f4,
+            fs=self.sgy.fs,
+            copy=True,
         )
 
         # we put clearing after preprocessing to reduce time when user see nothing
@@ -173,10 +180,6 @@ class GraphWidget(pg.PlotWidget):
     def _plot_trace_fast(self, trace: np.ndarray, time: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
         connect = np.ones(len(time), dtype=np.int32)
         connect[-1] = 0
-
-        if fill_black == "right":
-            trace = np.sign(trace) * trace**3
-            trace = np.gradient(np.gradient(trace)) * 10
 
         trace[0] = 0
         trace[-1] = 0
@@ -261,7 +264,13 @@ class GraphWidget(pg.PlotWidget):
         sgy_end_time = (num_sample + 2) * self.sgy.dt_ms
         region_start_time = maximum_time if maximum_time > 0 else sgy_end_time
 
-        contour_pen = QPen(QColor(*region_contour_color), region_contour_width, Qt.DashLine, Qt.FlatCap, Qt.MiterJoin)
+        contour_pen = QPen(
+            QColor(*region_contour_color),
+            region_contour_width,
+            Qt.DashLine,
+            Qt.FlatCap,
+            Qt.MiterJoin,
+        )
         poly_brush = QColor(*region_poly_color)
 
         # Vertical lines
@@ -449,7 +458,14 @@ class GraphExporter(GraphWidget):
         self.x_ax_header = x_axis
 
         self.clear()
-        self.plotseis(sgy, normalize=normalize, clip=clip, gain=gain, fill_black=fill_black, refresh_view=True)
+        self.plotseis(
+            sgy,
+            normalize=normalize,
+            clip=clip,
+            gain=gain,
+            fill_black=fill_black,
+            refresh_view=True,
+        )
 
         if task:
             self.plot_picks(task.picks)
