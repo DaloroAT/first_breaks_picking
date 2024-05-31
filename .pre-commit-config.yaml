@@ -1,11 +1,12 @@
 default_language_version:
-  python: python3.8
+  python: python3.9
+files: \.py$|tests/.*\.py$
 default_stages:
 - commit
 repos:
 # general hooks to verify or beautify code
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v3.3.0
+  rev: v4.6.0
   hooks:
   - id: check-added-large-files
     args: [--maxkb=5000]
@@ -25,7 +26,7 @@ repos:
   rev: 22.3.0
   hooks:
   - id: black
-    files: first_breaks
+    files: first_breaks|tests
     args: [-l 120]
 
 
@@ -34,7 +35,7 @@ repos:
   rev: 5.12.0
   hooks:
   - id: isort
-    files: first_breaks
+    files: first_breaks|tests
     args: ["--profile", "black"]
 
 
@@ -43,7 +44,7 @@ repos:
   rev: 3.8.4
   hooks:
   - id: flake8
-    files: first_breaks
+    files: first_breaks|tests
     exclude: __init__.py
 
 
@@ -52,5 +53,5 @@ repos:
   rev: v1.5.1
   hooks:
   - id: mypy
-    files: first_breaks
+    files: first_breaks|tests
     additional_dependencies: [types-requests==2.25.9, pydantic==2.0.3]

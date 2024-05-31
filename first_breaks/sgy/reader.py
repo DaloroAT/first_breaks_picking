@@ -221,8 +221,11 @@ class SGY:
 
     def _scalar_raw_traces_headers(self) -> None:
         self.traces_headers = self._traces_headers_raw.copy()
-        for scalar_from, apply_to_columns in self._traces_headers_schema.scalar_from2apply.items():
-            scalar = self._traces_headers_raw[scalar_from].copy()
+        for (
+            scalar_from,
+            apply_to_columns,
+        ) in self._traces_headers_schema.scalar_from2apply.items():
+            scalar = np.array(self._traces_headers_raw[scalar_from].copy())
 
             scalar[scalar == 0] = 1
             scalar[scalar < 0] = 1 / abs(scalar[scalar < 0])
@@ -255,7 +258,10 @@ class SGY:
         return traces
 
     def get_chunked_reader(
-        self, chunk_size: int, min_sample: Optional[int] = None, max_sample: Optional[int] = None
+        self,
+        chunk_size: int,
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
     ) -> Generator[np.ndarray, None, None]:
         chunk_size = min(chunk_size, self.num_traces)
         all_ids = list(range(self.num_traces))
@@ -264,7 +270,10 @@ class SGY:
             yield self.read_traces_by_ids(ids, min_sample, max_sample)
 
     def read_traces_by_ids(
-        self, ids: Sequence[int], min_sample: Optional[int] = None, max_sample: Optional[int] = None
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
     ) -> np.ndarray:
 
         if min_sample is not None:
@@ -374,14 +383,14 @@ class SGY:
     def export_sgy_with_picks(
         self,
         output_fname: Union[str, Path],
-        picks_in_samples: List[float],
+        picks_in_mcs: List[float],
         byte_position: int = 236,
         encoding: Optional[str] = None,
         picks_unit: Optional[str] = "mcs",
     ) -> None:
         assert not self.is_source_ndarray, "Only true SGY can be used for importing picks"
         assert 0 <= byte_position <= 236, "Only 0-236 bytes can be ised for writing"
-        assert len(picks_in_samples) == self.num_traces, "Number of traces and picks differs"
+        assert len(picks_in_mcs) == self.num_traces, "Number of traces and picks differs"
         assert picks_unit in ["ms", "mcs", "sample"]
 
         Path(output_fname).parent.mkdir(exist_ok=True, parents=True)
@@ -405,11 +414,13 @@ class SGY:
         cast_to = float if encoding in ["f", "d"] else int
 
         if picks_unit == "ms":
-            picks = self.units_converter.index2ms(picks_in_samples, cast_to=cast_to)
+            picks = self.units_converter.mcs2ms(picks_in_mcs, cast_to=cast_to)
         elif picks_unit == "mcs":
-            picks = self.units_converter.index2mcs(picks_in_samples, cast_to=cast_to)
+            picks = picks_in_mcs
+        elif picks_unit == "sample":
+            picks = self.units_converter.mcs2index(picks_in_mcs, cast_to=cast_to)
         else:
-            picks = picks_in_samples
+            raise ValueError("Unsupported 'picking unit'")
 
         self._descriptor = get_io(output_fname, mode="r+b")
         for idx, pick in enumerate(picks):  # type: ignore

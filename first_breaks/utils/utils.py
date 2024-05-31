@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
+import pandas as pd
 import requests
 
 from first_breaks.const import (
@@ -180,3 +181,14 @@ def resolve_xy2postime(vsp_view: bool, x: Any, y: Any) -> Tuple[Any, Any]:
         return y, x
     else:
         return x, y
+
+
+def as_list(sequence: Iterable[Any]) -> List[Any]:
+    if isinstance(sequence, (np.ndarray, pd.Series)):
+        return sequence.tolist()
+    elif isinstance(sequence, (list, tuple)):
+        return list(sequence)
+    elif isinstance(sequence, (np.number, float, int)):
+        return [sequence]
+    else:
+        raise TypeError("Unsupported 'sequence' type")

@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 )
 
 from first_breaks.const import HIGH_DPI
-from first_breaks.data_models.dependent import Device, TraceHeaderParams, XAxis
+from first_breaks.data_models.dependent import Device, XAxis
 from first_breaks.data_models.independent import (
     F1F2,
     F3F4,
@@ -29,14 +29,12 @@ from first_breaks.data_models.independent import (
     InvertY,
     MaximumTime,
     Normalize,
-    PicksUnit,
     TNormalize,
     TracesPerGather,
     VSPView,
 )
 from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.bandfilter_widget import QBandFilterWidget
-from first_breaks.desktop.byte_encode_unit_widget import QByteEncodeUnitWidget
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.radioset_widget import QRadioSetWidget
 from first_breaks.desktop.utils import QHSeparationLine, set_geometry
@@ -81,10 +79,6 @@ class PlotseisSettings(Gain, Clip, Normalize, XAxis, FillBlack, F1F2, F3F4, VSPV
 
 
 class PickingSettings(Gain, Clip, Normalize, F1F2, F3F4, MaximumTime, TracesPerGather, Device):
-    pass
-
-
-class PicksFromFileSettings(TraceHeaderParams, PicksUnit):
     pass
 
 
@@ -292,56 +286,13 @@ class OrientationLine(QWidget, _Extras):
         return {k: w.isChecked() for _, w, _, k in self.widgets}
 
 
-class PicksFromFileLine(QWidget, _Extras):
-    toggle_picks_from_file_signal = pyqtSignal(bool)
-    export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
-
-    def __init__(self, byte_position: int = 1, first_byte: int = 1, encoding: str = "I", picks_unit: str = "mcs"):
-
-        super().__init__()
-        self.picks_from_file_toggle = QCheckBox()
-        self.picks_from_file_toggle.setCheckState(False)
-        # self.picks_from_file_toggle.stateChanged.connect(self.export_picks_from_file_settings)
-        self.picks_from_file_toggle.clicked.connect(self.export_picks_from_file_settings)
-        self.picks_from_file_widget = QByteEncodeUnitWidget(
-            byte_position=byte_position, first_byte=first_byte, encoding=encoding, picks_unit=picks_unit, margins=0
-        )
-        self.picks_from_file_widget.values_changed_signal.connect(self.update_picks_from_file_settings)
-        self.picks_from_file_settings = self.picks_from_file_widget.get_values()
-
-        sub_layout = QHBoxLayout()
-        sub_layout.addWidget(self.picks_from_file_toggle)
-        sub_layout.addWidget(self.picks_from_file_widget)
-        self.setLayout(sub_layout)
-
-    def update_picks_from_file_settings(self, params: Dict[str, Any]) -> None:
-        self.picks_from_file_settings = params
-
-    def export_picks_from_file_settings(self, checked: bool) -> None:
-        if checked:
-            self.picks_from_file_widget.setEnabled(False)
-            self.export_picks_from_file_settings_signal.emit(PicksFromFileSettings(**self.picks_from_file_settings))
-            self.toggle_picks_from_file_signal.emit(True)
-        else:
-            self.toggle_picks_from_file_signal.emit(False)
-            self.picks_from_file_widget.setEnabled(True)
-
-    def enable_fields(self) -> None:
-        self.picks_from_file_toggle.setEnabled(True)
-        if not self.picks_from_file_toggle.isChecked():
-            self.picks_from_file_widget.setEnabled(True)
-
-    def disable_fields(self) -> None:
-        self.picks_from_file_toggle.setEnabled(False)
-        self.picks_from_file_widget.setEnabled(False)
-
-
 class TracesPerGatherLine(QSpinBox, _Extras):
     changed_signal = pyqtSignal()
 
     def __init__(self, traces_per_gather: int = DEFAULTS.traces_per_gather, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.setMinimum(1)
+        self.setMaximum(1_000_000)
         self.setValue(traces_per_gather)
 
     def dict(self) -> Dict[str, Any]:
@@ -363,14 +314,29 @@ class MaximumTimeLine(QLineEdit, _Extras):
 
 
 class DeviceLine(QComboBoxMapping, _Extras):
+    CUDA_INDEX = 0
+    CPU_INEDX = 1
+
     def __init__(self, device: str = DEFAULTS.device):
         if device == "cuda" and ONNX_CUDA_AVAILABLE:
             current_value = device
         else:
             current_value = "cpu"
-        super().__init__({0: ["GPU/CUDA", "cuda"], 1: ["CPU", "cpu"]}, current_value=current_value)
+
         if not ONNX_CUDA_AVAILABLE:
-            self.setEnabled(False)
+            cuda_postfix = "(CUDA drivers or CUDA compatible app are not installed)"
+        else:
+            cuda_postfix = ""
+
+        super().__init__(
+            {self.CUDA_INDEX: [f"GPU/CUDA {cuda_postfix}", "cuda"], self.CPU_INEDX: ["CPU", "cpu"]},
+            current_value=current_value,
+        )
+
+        if not ONNX_CUDA_AVAILABLE:
+            item = self.model().item(self.CUDA_INDEX)
+            if not ONNX_CUDA_AVAILABLE:
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
     def dict(self) -> Dict[str, Any]:
         return {"device": self.value()}
@@ -379,8 +345,6 @@ class DeviceLine(QComboBoxMapping, _Extras):
 class SettingsProcessingWidget(QDialog):
     export_plotseis_settings_signal = pyqtSignal(PlotseisSettings)
     export_picking_settings_signal = pyqtSignal(PickingSettings)
-    export_picks_from_file_settings_signal = pyqtSignal(PicksFromFileSettings)
-    toggle_picks_from_file_signal = pyqtSignal(bool)
     interrupt_signal = pyqtSignal()
 
     def __init__(
@@ -392,10 +356,6 @@ class SettingsProcessingWidget(QDialog):
         f3_f4: Optional[Tuple[float, float]] = None,
         fill_black: Optional[str] = "left",
         x_axis: Optional[str] = None,
-        byte_position: int = 1,
-        first_byte: int = 1,
-        encoding: str = "I",
-        picks_unit: str = "mcs",
         hide_on_close: bool = False,
         vsp_view: bool = False,
         invert_x: bool = False,
@@ -417,8 +377,7 @@ class SettingsProcessingWidget(QDialog):
         self._separators = [
             [QHSeparationLine("Processing"), 0],
             [QHSeparationLine("View"), 5],
-            [QHSeparationLine("External"), 9],
-            [QHSeparationLine("NN picking"), 11],
+            [QHSeparationLine("NN picking"), 10],
         ]
 
         for sep, line in self._separators:
@@ -432,9 +391,9 @@ class SettingsProcessingWidget(QDialog):
             ("Filling wiggles with color", WigglesLine(fill_black=fill_black), 6, True),
             ("X Axis", XAxisLine(x_axis=x_axis), 7, True),
             ("Orientation", OrientationLine(vsp_view=vsp_view, invert_x=invert_x, invert_y=invert_y), 8, True),
-            ("Traces per gather", TracesPerGatherLine(traces_per_gather=traces_per_gather), 12, False),
-            ("Maximum time", MaximumTimeLine(maximum_time=maximum_time), 13, False),
-            ("Runtime", DeviceLine(device=device), 14, False),
+            ("Traces per gather", TracesPerGatherLine(traces_per_gather=traces_per_gather), 11, False),
+            ("Maximum time", MaximumTimeLine(maximum_time=maximum_time), 12, False),
+            ("Runtime", DeviceLine(device=device), 13, False),
         ]
 
         for label, widget, line, is_plotseis_param in self._inputs:
@@ -444,20 +403,10 @@ class SettingsProcessingWidget(QDialog):
             self.layout.addWidget(label, line, 0)
             self.layout.addWidget(widget, line, 1)
 
-        picks_from_file_label = QLabel("Show picks from file")
-        picks_from_file_widget = PicksFromFileLine(
-            byte_position=byte_position, first_byte=first_byte, encoding=encoding, picks_unit=picks_unit
-        )
-        picks_from_file_widget.toggle_picks_from_file_signal.connect(self.toggle_picks_from_file_signal)
-        picks_from_file_widget.export_picks_from_file_settings_signal.connect(
-            self.export_picks_from_file_settings_signal
-        )
-        self.layout.addWidget(picks_from_file_label, 10, 0)
-        self.layout.addWidget(picks_from_file_widget, 10, 1)
-
         self.picking_run = False
         self.run_button = QPushButton("Run picking", self)
         self.run_button.clicked.connect(self.picking_click)
+        self.run_button.setToolTip("Load NN to unlock picking")
         self.layout.addWidget(self.run_button)
         self.disable_picking()
 
@@ -471,6 +420,7 @@ class SettingsProcessingWidget(QDialog):
 
     def enable_picking(self) -> None:
         self.run_button.setEnabled(True)
+        self.run_button.setToolTip("")
 
     def disable_picking(self) -> None:
         self.run_button.setEnabled(False)

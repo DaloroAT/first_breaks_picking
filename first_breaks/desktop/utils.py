@@ -1,14 +1,17 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt5.QtWidgets import (
     QDesktopWidget,
     QDialog,
     QDialogButtonBox,
     QGraphicsSceneMouseEvent,
+    QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
+    QStyle,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -94,47 +97,52 @@ def set_geometry(
     if fix_size:
         widget.setFixedSize(width, height)
 
-    monitor = QDesktopWidget().screenGeometry(1)
-    widget.move(monitor.left(), monitor.top())
+    # monitor = QDesktopWidget().screenGeometry(1)
+    # widget.move(monitor.left(), monitor.top())
 
 
-class QHSeparationLine(QtWidgets.QWidget):
-    def __init__(self, text: str = ""):
+class QSeparationLine(QtWidgets.QWidget):
+    def __init__(self, text: str = "", type_line: Literal["h", "v"] = "h"):
         super().__init__()
 
-        # Create the horizontal line (QFrame)
+        assert type_line in ["h", "v"]
+
+        if type_line == "h":
+            layout = QtWidgets.QHBoxLayout(self)
+            size_policy = (QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            frame_shape = QtWidgets.QFrame.HLine
+        else:
+            layout = QtWidgets.QVBoxLayout(self)
+            size_policy = (QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)
+            frame_shape = QtWidgets.QFrame.VLine
+
         self.line = QtWidgets.QFrame(self)
-        self.line.setFrameShape(QtWidgets.QFrame.HLine)
+        self.line.setFrameShape(frame_shape)
         self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.line.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        # Create the label for the text
-        self.label = QtWidgets.QLabel(text, self)
-        self.label.setStyleSheet("background-color: transparent; color: grey;")
-        self.label.setAlignment(Qt.AlignCenter)
+        self.line.setSizePolicy(*size_policy)
 
-        # Create a horizontal layout to hold the line and the label
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.line, 1)
-        layout.addWidget(self.label, 0)
-        layout.addWidget(self.line, 1)
+        if text:
+            self.label = QtWidgets.QLabel(text, self)
+            self.label.setStyleSheet("background-color: transparent; color: grey;")
+            self.label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(self.label)
+            layout.setSpacing(10)
 
-        # Adjust margins and spacing
-        layout.setSpacing(10)  # space between label and line
-        layout.setContentsMargins(0, 10, 0, 0)  # top margin to position label above line
+        layout.addWidget(self.line)
+        layout.setContentsMargins(1, 1, 1, 1)
 
         self.setLayout(layout)
 
 
-# class QHSeparationLine(QtWidgets.QFrame):
-#     def __init__(self) -> None:
-#         super().__init__()
-#         self.setMinimumWidth(1)
-#         self.setFixedHeight(20)
-#         self.setFrameShape(QtWidgets.QFrame.HLine)
-#         self.setFrameShadow(QtWidgets.QFrame.Sunken)
-#         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+class QHSeparationLine(QSeparationLine):
+    def __init__(self, text: str = ""):
+        super().__init__(text=text, type_line="h")
+
+
+class QVSeparationLine(QSeparationLine):
+    def __init__(self, text: str = ""):
+        super().__init__(text=text, type_line="v")
 
 
 TMappingSetup = Dict[int, Union[Tuple[str, Any], List[Any]]]
@@ -196,3 +204,27 @@ def get_mouse_position_in_scene_coords(
     else:
         raise TypeError("Only events and points are available")
     return viewbox.mapSceneToView(point)
+
+
+class LabelWithHelp(QWidget):
+    def __init__(self, text: str, help_string: str, move_help_close_to_label: bool = True) -> None:
+        super().__init__()
+        self.layout = QHBoxLayout()
+        self.setLayout(self.layout)
+
+        self.label = QLabel(text)
+        self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
+        self.help_button = QPushButton()
+        self.help_button.setFixedWidth(20)
+        icon = self.style().standardIcon(QStyle.SP_MessageBoxQuestion)
+        self.help_button.setIcon(icon)
+        self.help_button.setToolTip(help_string)
+        self.help_button.setStyleSheet("QPushButton { border: none; background-color: transparent; }")
+        self.help_button.setCursor(QtGui.QCursor(QtCore.Qt.WhatsThisCursor))
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.help_button)
+        if move_help_close_to_label:
+            self.layout.addStretch(1)
+        self.layout.setContentsMargins(0, 0, 0, 0)

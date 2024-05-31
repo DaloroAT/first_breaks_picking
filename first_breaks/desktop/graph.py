@@ -2,11 +2,11 @@ import ast
 import os
 import warnings
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QTimer, pyqtSlot
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QCloseEvent, QColor, QFont, QPainterPath, QPen
 from PyQt5.QtWidgets import QApplication
 from pyqtgraph import AxisItem
@@ -18,6 +18,7 @@ from first_breaks.data_models.independent import TColor, TNormalize
 from first_breaks.data_models.initialised_defaults import DEFAULTS
 from first_breaks.desktop.roi_manager import RoiManager
 from first_breaks.desktop.spectrum_window import SpectrumWindow
+from first_breaks.picking.picks import Picks
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
 from first_breaks.sgy.reader import SGY
@@ -30,6 +31,10 @@ if HIGH_DPI:
 
 
 class GraphWidget(pg.PlotWidget):
+    picks_manual_edited_signal = pyqtSignal(Picks)
+    about_to_change_nn_picks_signal = pyqtSignal()
+    graph_updated_signal = pyqtSignal()
+
     def __init__(self, use_open_gl: bool = True, *args: Any, **kwargs: Any):
         super().__init__(useOpenGL=use_open_gl, *args, **kwargs)
         self.plotItem.disableAutoRange()
@@ -42,12 +47,10 @@ class GraphWidget(pg.PlotWidget):
         self.invert_y = DEFAULTS.invert_y
         self.vsp_view = DEFAULTS.vsp_view
         self.sgy: Optional[SGY] = None
-        self.nn_picks_in_ms: Optional[np.ndarray] = None
-        self.nn_picks_as_item: Optional[pg.PlotCurveItem] = None
-        self.extra_picks_as_item_list: Optional[List[pg.PlotCurveItem]] = []
+        # self.picks_as_items: List[pg.PlotCurveItem] = []
+        self.picks2items: Dict[Picks, pg.PlotCurveItem] = {}
         self.processing_region_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
         self.traces_as_items: List[pg.QtWidgets.QGraphicsPathItem] = []
-        self.is_picks_modified_manually = False
         self.pos_ax_header: Optional[str] = None
 
         self.x_ax: Optional[AxisItem] = None
@@ -77,7 +80,7 @@ class GraphWidget(pg.PlotWidget):
 
         self.pos_ax, self.time_ax = self.resolve_xy2postime(self.x_ax, self.y_ax)
 
-        self.pos_ax.tickStrings = self.replace_tick_labels
+        self.pos_ax.tickStrings = self._replace_tick_labels
 
         text_size = 12
         self.label_style = {"font-size": f"{text_size}pt"}
@@ -87,16 +90,15 @@ class GraphWidget(pg.PlotWidget):
         self.time_ax.setLabel("t, ms", **self.label_style)
         self.pos_ax.setTickFont(font)
         self.time_ax.setTickFont(font)
+        self.graph_updated_signal.emit()
 
     def full_clean(self) -> None:
-        self.remove_nn_picks()
+        self.remove_picks()
         self.remove_traces()
         self.remove_processing_region()
-        self.nn_picks_as_item = None
-        self.nn_picks_in_ms = None
-        self.is_picks_modified_manually = False
         self.spectrum_roi_manager.delete_all_rois()
         self.clear()
+        self.graph_updated_signal.emit()
 
     def plotseis(
         self,
@@ -166,10 +168,15 @@ class GraphWidget(pg.PlotWidget):
             self._plot_trace_fast(trace=traces[:, idx], time=t, shift=idx + 1, fill_black=fill_black)
 
         self.pos_ax.showLabel()
+        self.graph_updated_signal.emit()
 
     def _plot_trace_fast(self, trace: np.ndarray, time: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
         connect = np.ones(len(time), dtype=np.int32)
         connect[-1] = 0
+
+        if fill_black == "right":
+            trace = np.sign(trace) * trace**3
+            trace = np.gradient(np.gradient(trace)) * 10
 
         trace[0] = 0
         trace[-1] = 0
@@ -181,7 +188,7 @@ class GraphWidget(pg.PlotWidget):
 
         item = pg.QtWidgets.QGraphicsPathItem(path)
         pen = QPen(Qt.black, 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
-        pen.setWidth(0.1)
+        pen.setCosmetic(True)  # 1 pixel width for any scale and resolution
         item.setPen(pen)
         item.setBrush(Qt.white)
         self.addItem(item)
@@ -202,13 +209,13 @@ class GraphWidget(pg.PlotWidget):
             item = pg.QtWidgets.QGraphicsPathItem(patch)
 
             pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
-            pen.setWidth(0.1)
+            pen.setCosmetic(True)  # 1 pixel width for any scale and resolution
             item.setPen(pen)
             item.setBrush(Qt.black)
             self.addItem(item)
             self.traces_as_items.append(item)
 
-    def replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
+    def _replace_tick_labels(self, *args: Any, **kwargs: Any) -> List[str]:
         self.pos_ax.setLabel(self.pos_ax_header, **self.label_style)
         previous_labels = AxisItem.tickStrings(self.pos_ax, *args, **kwargs)
 
@@ -228,26 +235,17 @@ class GraphWidget(pg.PlotWidget):
         else:
             return previous_labels
 
-    def remove_nn_picks(self) -> None:
-        self.is_picks_modified_manually = False
-        if self.nn_picks_as_item:
-            self.removeItem(self.nn_picks_as_item)
-            self.nn_picks_as_item = None
-            self.nn_picks_in_ms = None
-
-    def remove_extra_picks(self) -> None:
-        for item in self.extra_picks_as_item_list:
-            self.removeItem(item)
-
     def remove_processing_region(self) -> None:
         if self.processing_region_as_items:
             for item in self.processing_region_as_items:
                 self.removeItem(item)
+        self.graph_updated_signal.emit()
 
     def remove_traces(self) -> None:
         if self.traces_as_items:
             for item in self.traces_as_items:
                 self.removeItem(item)
+        self.graph_updated_signal.emit()
 
     def plot_processing_region(
         self,
@@ -288,42 +286,47 @@ class GraphWidget(pg.PlotWidget):
         self.processing_region_as_items.append(poly_item)
         self.addItem(poly_item)
 
-    def get_picks_as_item(
-        self,
-        picks_ms: Sequence[float],
-        color: TColor = DEFAULTS.picks_color,
-    ) -> pg.PlotCurveItem:
-        x, y = self.resolve_postime2xy(np.arange(self.sgy.num_traces) + 1, np.array(picks_ms))
+    def _get_picks_as_item(self, picks: Picks) -> pg.PlotCurveItem:
+        x, y = self.resolve_postime2xy(np.arange(self.sgy.num_traces) + 1, np.array(picks.picks_in_ms))
 
         line = pg.PlotCurveItem()
         line.setData(x, y)
-        pen = pg.mkPen(color=color, width=3)
+        pen = pg.mkPen(color=picks.color, width=picks.width)
         line.setPen(pen)
 
         return line
 
-    def plot_nn_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
-        self.remove_nn_picks()
-        self.is_picks_modified_manually = False
+    def plot_picks(self, picks: Picks) -> None:
+        picks_item = self._get_picks_as_item(picks)
+        self.addItem(picks_item)
+        self.picks2items[picks] = picks_item
+        self.graph_updated_signal.emit()
 
-        self.nn_picks_in_ms = np.array(picks_ms)
-        self.nn_picks_as_item = self.get_picks_as_item(self.nn_picks_in_ms, color)
-
-        self.addItem(self.nn_picks_as_item)
-
-    def plot_extra_picks(self, picks_ms: Sequence[float], color: TColor = DEFAULTS.picks_color) -> None:
-        picks = self.get_picks_as_item(picks_ms, color)
-
-        self.addItem(picks)
-        self.extra_picks_as_item_list.append(picks)
+    def remove_picks(self) -> None:
+        for picks in list(self.picks2items.keys()):
+            self.removeItem(self.picks2items[picks])
+            del self.picks2items[picks]
+        self.graph_updated_signal.emit()
 
     def mouse_clicked(self, ev: Tuple[MouseClickEvent]) -> None:
         ev = ev[0]
-        if self.nn_picks_as_item is not None and ev.button() == 1:
+        active_picks_list = [k for k in self.picks2items.keys() if k.active]
+
+        if active_picks_list:
+            active_picks = active_picks_list[0]
+        else:
+            return
+
+        if active_picks.created_by_nn and not active_picks.modified_manually:
+            self.about_to_change_nn_picks_signal.emit()
+            self.mouse_clicked((ev,))
+            return
+
+        if active_picks and ev.button() == 1:
             mouse_xy = self.getPlotItem().vb.mapSceneToView(ev.scenePos())
             mouse_pos, mouse_time = self.resolve_xy2postime(mouse_xy.x(), mouse_xy.y())
 
-            picks_x, picks_y = self.nn_picks_as_item.getData()
+            picks_x, picks_y = self.picks2items[active_picks].getData()
             picks_pos, picks_time = self.resolve_xy2postime(picks_x, picks_y)
 
             closest = np.argmin(np.abs(picks_pos - mouse_pos))
@@ -331,9 +334,12 @@ class GraphWidget(pg.PlotWidget):
             picks_time[closest] = mouse_time
 
             picks_x, picks_y = self.resolve_postime2xy(picks_pos, picks_time)
-            self.nn_picks_as_item.setData(picks_x, picks_y)
-            self.nn_picks_in_ms = picks_time
-            self.is_picks_modified_manually = True
+
+            self.picks2items[active_picks].setData(picks_x, picks_y)
+            active_picks.from_ms(picks_time)
+
+            self.picks_manual_edited_signal.emit(active_picks)
+            self.graph_updated_signal.emit()
 
     def closeEvent(self, e: QCloseEvent) -> None:
         self.spectrum_window.close()
@@ -408,10 +414,9 @@ class GraphExporter(GraphWidget):
         fill_black: Optional[str] = DEFAULTS.fill_black,
         time_window: Optional[Tuple[float, float]] = None,
         traces_window: Optional[Tuple[float, float]] = None,
-        picks_ms: Optional[Sequence[float]] = None,
+        picks: Optional[Picks] = None,
         task: Optional[Task] = None,
         show_processing_region: bool = True,
-        picks_color: TColor = DEFAULTS.picks_color,
         contour_color: TColor = DEFAULTS.region_contour_color,
         poly_color: TColor = DEFAULTS.region_poly_color,
         contour_width: float = DEFAULTS.region_contour_width,
@@ -429,8 +434,8 @@ class GraphExporter(GraphWidget):
         if args:
             raise need_kwargs_exception
 
-        if picks_ms is not None and task is not None:
-            raise ValueError("'picks_ms' and 'task' are mutually exclusive. Use only one of them or none")
+        if picks is not None and task is not None:
+            raise ValueError("'picks' and 'task' are mutually exclusive. Use only one of them or none")
 
         if width is None:
             if traces_window is None:
@@ -447,14 +452,9 @@ class GraphExporter(GraphWidget):
         self.plotseis(sgy, normalize=normalize, clip=clip, gain=gain, fill_black=fill_black, refresh_view=True)
 
         if task:
-            picks_to_plot = task.picks_in_ms  # type: ignore
-        elif picks_ms is not None:
-            picks_to_plot = picks_ms  # type: ignore
-        else:
-            picks_to_plot = None  # type: ignore
-
-        if picks_to_plot is not None:
-            self.plot_nn_picks(picks_to_plot, color=picks_color)
+            self.plot_picks(task.picks)
+        elif picks is not None:
+            self.plot_picks(picks)
 
         if task is not None and show_processing_region:
             self.plot_processing_region(
@@ -521,9 +521,8 @@ def export_image(
     fill_black: Optional[str] = DEFAULTS.fill_black,
     time_window: Optional[Tuple[float, float]] = None,
     traces_window: Optional[Tuple[float, float]] = None,
-    picks_ms: Optional[Sequence[float]] = None,
+    picks: Optional[Picks] = None,
     show_processing_region: bool = True,
-    picks_color: TColor = DEFAULTS.picks_color,
     contour_color: TColor = DEFAULTS.region_contour_color,
     poly_color: TColor = DEFAULTS.region_poly_color,
     contour_width: float = DEFAULTS.region_contour_width,
@@ -571,10 +570,9 @@ def export_image(
         fill_black=fill_black,
         time_window=time_window,
         traces_window=traces_window,
-        picks_ms=picks_ms,
+        picks=picks,
         task=task,
         show_processing_region=show_processing_region,
-        picks_color=picks_color,
         contour_color=contour_color,
         poly_color=poly_color,
         contour_width=contour_width,

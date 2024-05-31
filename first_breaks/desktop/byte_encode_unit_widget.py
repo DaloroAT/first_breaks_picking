@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from first_breaks.const import HIGH_DPI
+from first_breaks.const import FIRST_BYTE, HIGH_DPI
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.sgy.headers import Headers
 
@@ -49,11 +49,11 @@ class QByteEncodeUnitWidget(QWidget):
         self,
         byte_position: int = 0,
         encoding: str = "I",
-        first_byte: int = 0,
+        first_byte: int = FIRST_BYTE,
         picks_unit: str = "mcs",
         margins: Optional[int] = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
 
@@ -78,11 +78,15 @@ class QByteEncodeUnitWidget(QWidget):
         self.layout.addWidget(self.byte_position_label)
         self.layout.addWidget(self.byte_position_widget)
 
+        self.layout.addStretch(1)
+
         self.encoding_label = QLabel("Encoding")
         self.encoding_widget = QComboBoxMapping(ENCODING_MAPPING, current_value=self.encoding_value)  # type: ignore
 
         self.layout.addWidget(self.encoding_label)
         self.layout.addWidget(self.encoding_widget)
+
+        self.layout.addStretch(1)
 
         self.picks_unit_label = QLabel("Unit")
         self.picks_unit_widget = QComboBoxMapping(
@@ -141,9 +145,9 @@ class QDialogByteEncodeUnit(QDialog):
         self.widget = QByteEncodeUnitWidget(*args, **kwargs)
         self.layout.addWidget(self.widget)
 
-        self.button_box = QDialogButtonBox()
-        self.button_box.addButton("Ok", QDialogButtonBox.AcceptRole)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
 
         self.layout.addWidget(self.button_box)
 
