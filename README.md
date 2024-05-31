@@ -558,7 +558,7 @@ The following mouse interactions are available:
 - Right button drag: Scales the scene. Dragging left/right scales horizontally; dragging up/down scales vertically.
 - Right button click: Open dialog with extra options, such as limit by X/Y axes and export.
 - Wheel spin: Zooms the scene in and out.
-- Left click: *After picking with model*, you can manually change picks.
+- Left click: You can manually change values of active picks.
 
 Spectrum analysis:
 - Hold down the **Shift** key, the left mouse button, and select an area: a window with a spectrum will appear.
@@ -572,7 +572,7 @@ To use picker in desktop app you have to download model. See the `Installation` 
 on how to download the model.
 
 Click on 1 button and select file with model.
-After successfully loading the model, access to the pick will open.
+After successfully loading the model, access to the pick with NN will open.
 
 ### Settings and Processing
 
@@ -581,7 +581,6 @@ Click on 3 button to open window with different settings and picking parameters:
 - The **Processing** section contains parameters for drawing seismograms; these parameters are also used during the
 picking process. Changing them in real time changes the rendering.
 - The **View** section allows you to change the axes' names, content, and orientation.
-- The **External** section allows you to read and display the first picks from the headers of the current file.
 - The **NN Picking** section allows you to select additional parameters for picking the first arrivals and a device
 for calculations. If you have CUDA compatible GPU and installed GPU supported version of library
 (see `Installation` section), you can select `CUDA/GPU` device to use GPU acceleration.
@@ -598,16 +597,18 @@ Click on 4 button to toggle the display of the processing grid on or off. Horizo
 shows `Maximum time` and vertical lines are drawn at intervals equal to `Traces per gather`. The neural network
 processes blocks independently, as separate images.
 
-### Save results
+### Picks manager
 
-Click on 5 button to save picks into file. Depending on file extension, results will be saved as `json`,
-as plain `txt`, or as `segy` file.
+Click on 5 button to open picks manager. 
 
-For extensions `txt` and `json`, picking parameters and model confidence for each peak are additionally saved.
+When picking with a neural network, the result of the picking will appear here. You can also: add manual picks, 
+load picks from headers, duplicate picks, aggregate several picks, or remove picks.
 
-When choosing an extension `segy`, the copy of original SGY file is saved with the values of the first breaks in the
-trace headers. After selecting a file, you will be prompted to choose in which byte to save (counting starts from 1),
-in which units of measurement and how to encode.
+As control and navigation tools, you can choose to show picks or not (checkbox), select active picks (radio button), 
+and change color (color label).
+
+After selecting one of the picks, you can double-click or click the button with the “save” icon to show the 
+export options.
 
 # Picking process
 
