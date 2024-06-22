@@ -10,6 +10,7 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 import requests
+from tqdm.auto import tqdm
 
 from first_breaks.const import (
     DEMO_SGY_HASH,
@@ -34,7 +35,9 @@ def chunk_iterable(it: Iterable[Any], size: int) -> List[Tuple[Any, ...]]:
     return list(iter(lambda: tuple(islice(it, size)), ()))
 
 
-def get_io(source: Union[Path, str, bytes], mode: str = "r") -> Union[io.BytesIO, io.FileIO]:
+def get_io(
+    source: Union[Path, str, bytes], mode: str = "r"
+) -> Union[io.BytesIO, io.FileIO]:
     if isinstance(source, (Path, str)):
         source = Path(source).resolve()
         if "r" in mode:
@@ -57,17 +60,51 @@ def calc_hash(source: Union[Path, str, bytes, io.BytesIO, io.FileIO]) -> str:
     return hash_md5.hexdigest()
 
 
-def download_by_url(url: str, fname: Optional[Union[str, Path]], timeout: float = TIMEOUT) -> Optional[bytes]:
-    response = requests.get(url, timeout=timeout)
-    if response.status_code != 200:
-        response.raise_for_status()
-        return None
-    else:
+# def download_by_url(
+#     url: str, fname: Optional[Union[str, Path]], timeout: float = TIMEOUT
+# ) -> Optional[bytes]:
+#     response = requests.get(url, timeout=timeout, stream=True)
+#     if response.status_code != 200:
+#         response.raise_for_status()
+#         return None
+#     else:
+#         if fname:
+#             Path(fname).parent.mkdir(exist_ok=True, parents=True)
+#             with open(fname, "wb+") as f:
+#                 f.write(response.content)
+#         return response.content
+
+
+def download_by_url(
+    url: str, fname: Optional[Union[str, Path]], timeout: float = TIMEOUT
+) -> bytes:
+    response = requests.get(url, stream=True, timeout=timeout)
+    response.raise_for_status()
+    total_size = int(response.headers.get("content-length", 0))
+    block_size = 1024
+    buffer = io.BytesIO()
+
+    with tqdm(
+        desc=f"Downloading {url}",
+        total=total_size,
+        unit="iB",
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as bar:
+        for data in response.iter_content(block_size):
+            buffer.write(data)
+            bar.update(len(data))
+
+        buffer.seek(0)
+        content = buffer.getvalue()
+
         if fname:
             Path(fname).parent.mkdir(exist_ok=True, parents=True)
             with open(fname, "wb+") as f:
-                f.write(response.content)
-        return response.content
+                f.write(content)
+            bar.set_description(f"File {url} saved to '{Path(fname).resolve()}'")
+
+    return content
 
 
 def download_and_validate_file(
@@ -77,23 +114,31 @@ def download_and_validate_file(
         download_by_url(url=url, fname=fname, timeout=timeout)
     md5_last = calc_hash(fname)
     if md5_last != md5:
-        raise InvalidHash(f"Hash for file {Path(fname).resolve()} in invalid. Got {md5_last}, expected {md5}")
+        raise InvalidHash(
+            f"Hash for file {Path(fname).resolve()} in invalid. Got {md5_last}, expected {md5}"
+        )
     return fname
 
 
 def download_demo_sgy(
-    fname: Union[str, Path] = DEMO_SGY_PATH, url: str = DEMO_SGY_URL, md5: str = DEMO_SGY_HASH
+    fname: Union[str, Path] = DEMO_SGY_PATH,
+    url: str = DEMO_SGY_URL,
+    md5: str = DEMO_SGY_HASH,
 ) -> Union[str, Path]:
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
 def download_model_onnx(
-    fname: Union[str, Path] = MODEL_ONNX_PATH, url: str = MODEL_ONNX_URL, md5: str = MODEL_ONNX_HASH
+    fname: Union[str, Path] = MODEL_ONNX_PATH,
+    url: str = MODEL_ONNX_URL,
+    md5: str = MODEL_ONNX_HASH,
 ) -> Union[str, Path]:
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def multiply_iterable_by(sample: TTimeType, multiplier: float, cast_to: Optional[Any] = None) -> TTimeType:
+def multiply_iterable_by(
+    sample: TTimeType, multiplier: float, cast_to: Optional[Any] = None
+) -> TTimeType:
     if isinstance(sample, (int, float, str)):
         result = sample * multiplier  # type: ignore
         return cast_to(result) if cast_to is not None else result
@@ -116,9 +161,15 @@ class UnitsConverter:
         sgy_ms: Optional[Union[int, float]] = None,
     ):
         if args:
-            raise ValueError("Specify explicitly either `sgy_mcs`or `sgy_ms` as keyword argument")
-        if (sgy_mcs is None and sgy_ms is None) or (sgy_mcs is not None and sgy_ms is not None):
-            raise RuntimeError("One and only one of `sgy_mcs` or `sgy_ms` must be specified")
+            raise ValueError(
+                "Specify explicitly either `sgy_mcs`or `sgy_ms` as keyword argument"
+            )
+        if (sgy_mcs is None and sgy_ms is None) or (
+            sgy_mcs is not None and sgy_ms is not None
+        ):
+            raise RuntimeError(
+                "One and only one of `sgy_mcs` or `sgy_ms` must be specified"
+            )
         elif sgy_mcs is not None:
             self.sgy_mcs = sgy_mcs
             self.sgy_ms = self.mcs2ms(sgy_mcs)  # type: ignore
@@ -150,7 +201,11 @@ class UnitsConverter:
 
 
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
-    return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
+    return {
+        k: v
+        for k, v in kwargs.items()
+        if k in inspect.signature(constructor).parameters
+    }
 
 
 def _color_generator() -> Generator[List[int], None, None]:

@@ -43,6 +43,7 @@ class Picks(DefaultModel):
 
     dt_mcs: Optional[float] = None
     confidence: Optional[Union[np.ndarray, List[Union[int, float]]]] = None
+    heatmap: Optional[np.ndarray] = None
     created_by_nn: Optional[bool] = None
     created_manually: Optional[bool] = None
     modified_manually: Optional[bool] = None
@@ -68,7 +69,10 @@ class Picks(DefaultModel):
         self.model_config["validate_assignment"] = False
 
         if self.dt_mcs is not None:
-            if self._units_converter is None or self._units_converter.sgy_mcs != self.dt_mcs:
+            if (
+                self._units_converter is None
+                or self._units_converter.sgy_mcs != self.dt_mcs
+            ):
                 self._units_converter = UnitsConverter(sgy_mcs=self.dt_mcs)
         else:
             self._units_converter = None
@@ -152,10 +156,12 @@ class Picks(DefaultModel):
     def create_duplicate(self, keep_color: bool = False) -> "Picks":
         values = self.values.copy()
         confidence = self.confidence.copy() if self.confidence is not None else None
+        heatmap = self.heatmap.copy() if self.heatmap is not None else None
 
         return Picks(
             values=values,
             confidence=confidence,
+            heatmap=heatmap,
             dt_mcs=self.dt_mcs,
             unit=self.unit,
             created_manually=True,

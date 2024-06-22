@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
 
+from first_breaks.picking.utils import preprocess_gather
+
 
 def plotseis(
     data: np.ndarray,
@@ -26,24 +28,26 @@ def plotseis(
 
     num_time, num_trace = np.shape(data)
 
-    if normalizing == "indiv":
-        norm_factor = np.mean(np.abs(data), axis=0)
-        norm_factor[np.abs(norm_factor) < 1e-9 * np.max(np.abs(norm_factor))] = 1
-    elif normalizing == "entire":
-        norm_factor = np.tile(np.mean(np.abs(data)), (1, num_trace))
-    elif np.size(normalizing) == 1 and normalizing is not None:
-        norm_factor = np.tile(normalizing, (1, num_trace))
-    elif np.size(normalizing) == num_trace:
-        norm_factor = np.reshape(normalizing, (1, num_trace))
-    elif normalizing is None:
-        norm_factor = np.ones(data.shape[1])
-    else:
-        raise ValueError('Wrong value of "normalizing"')
+    # if normalizing == "indiv":
+    #     norm_factor = np.mean(np.abs(data), axis=0)
+    #     norm_factor[np.abs(norm_factor) < 1e-9 * np.max(np.abs(norm_factor))] = 1
+    # elif normalizing == "entire":
+    #     norm_factor = np.tile(np.mean(np.abs(data)), (1, num_trace))
+    # elif np.size(normalizing) == 1 and normalizing is not None:
+    #     norm_factor = np.tile(normalizing, (1, num_trace))
+    # elif np.size(normalizing) == num_trace:
+    #     norm_factor = np.reshape(normalizing, (1, num_trace))
+    # elif normalizing is None:
+    #     norm_factor = np.ones(data.shape[1])
+    # else:
+    #     raise ValueError('Wrong value of "normalizing"')
+    #
+    # data = data / norm_factor * ampl
 
-    data = data / norm_factor * ampl
+    # mask_overflow = np.abs(data) > clip
+    # data[mask_overflow] = np.sign(data[mask_overflow]) * clip
 
-    mask_overflow = np.abs(data) > clip
-    data[mask_overflow] = np.sign(data[mask_overflow]) * clip
+    data = preprocess_gather(data=data, gain=ampl, clip=clip, normalize=normalizing)
 
     data_time = np.tile((np.arange(num_time) + 1)[:, np.newaxis], (1, num_trace)) * dt
 
@@ -95,7 +99,9 @@ def plotseis(
             tail = np.array((k_trace + 1, num_time * dt))[np.newaxis, :]
             patch_data = np.vstack((head, patch_data, tail))
 
-            polygon = Polygon(patch_data, closed=True, facecolor="black", edgecolor=None)
+            polygon = Polygon(
+                patch_data, closed=True, facecolor="black", edgecolor=None
+            )
             ax.add_patch(polygon)
 
     if picking is not None:
