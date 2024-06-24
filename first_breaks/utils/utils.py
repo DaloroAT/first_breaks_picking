@@ -35,9 +35,7 @@ def chunk_iterable(it: Iterable[Any], size: int) -> List[Tuple[Any, ...]]:
     return list(iter(lambda: tuple(islice(it, size)), ()))
 
 
-def get_io(
-    source: Union[Path, str, bytes], mode: str = "r"
-) -> Union[io.BytesIO, io.FileIO]:
+def get_io(source: Union[Path, str, bytes], mode: str = "r") -> Union[io.BytesIO, io.FileIO]:
     if isinstance(source, (Path, str)):
         source = Path(source).resolve()
         if "r" in mode:
@@ -55,8 +53,10 @@ def calc_hash(source: Union[Path, str, bytes, io.BytesIO, io.FileIO]) -> str:
     hash_md5 = hashlib.md5()
     if not isinstance(source, (io.BytesIO, io.FileIO)):
         source = get_io(source, mode="rb")
+    source.seek(0)
     for chunk in iter(lambda: source.read(4096), b""):  # type: ignore
         hash_md5.update(chunk)
+    source.close()
     return hash_md5.hexdigest()
 
 
@@ -75,9 +75,7 @@ def calc_hash(source: Union[Path, str, bytes, io.BytesIO, io.FileIO]) -> str:
 #         return response.content
 
 
-def download_by_url(
-    url: str, fname: Optional[Union[str, Path]], timeout: float = TIMEOUT
-) -> bytes:
+def download_by_url(url: str, fname: Optional[Union[str, Path]], timeout: float = TIMEOUT) -> bytes:
     response = requests.get(url, stream=True, timeout=timeout)
     response.raise_for_status()
     total_size = int(response.headers.get("content-length", 0))
@@ -114,9 +112,7 @@ def download_and_validate_file(
         download_by_url(url=url, fname=fname, timeout=timeout)
     md5_last = calc_hash(fname)
     if md5_last != md5:
-        raise InvalidHash(
-            f"Hash for file {Path(fname).resolve()} in invalid. Got {md5_last}, expected {md5}"
-        )
+        raise InvalidHash(f"Hash for file {Path(fname).resolve()} in invalid. Got {md5_last}, expected {md5}")
     return fname
 
 
@@ -136,9 +132,7 @@ def download_model_onnx(
     return download_and_validate_file(fname=fname, url=url, md5=md5)
 
 
-def multiply_iterable_by(
-    sample: TTimeType, multiplier: float, cast_to: Optional[Any] = None
-) -> TTimeType:
+def multiply_iterable_by(sample: TTimeType, multiplier: float, cast_to: Optional[Any] = None) -> TTimeType:
     if isinstance(sample, (int, float, str)):
         result = sample * multiplier  # type: ignore
         return cast_to(result) if cast_to is not None else result
@@ -161,15 +155,9 @@ class UnitsConverter:
         sgy_ms: Optional[Union[int, float]] = None,
     ):
         if args:
-            raise ValueError(
-                "Specify explicitly either `sgy_mcs`or `sgy_ms` as keyword argument"
-            )
-        if (sgy_mcs is None and sgy_ms is None) or (
-            sgy_mcs is not None and sgy_ms is not None
-        ):
-            raise RuntimeError(
-                "One and only one of `sgy_mcs` or `sgy_ms` must be specified"
-            )
+            raise ValueError("Specify explicitly either `sgy_mcs`or `sgy_ms` as keyword argument")
+        if (sgy_mcs is None and sgy_ms is None) or (sgy_mcs is not None and sgy_ms is not None):
+            raise RuntimeError("One and only one of `sgy_mcs` or `sgy_ms` must be specified")
         elif sgy_mcs is not None:
             self.sgy_mcs = sgy_mcs
             self.sgy_ms = self.mcs2ms(sgy_mcs)  # type: ignore
@@ -201,11 +189,7 @@ class UnitsConverter:
 
 
 def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, Any]:
-    return {
-        k: v
-        for k, v in kwargs.items()
-        if k in inspect.signature(constructor).parameters
-    }
+    return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
 
 
 def _color_generator() -> Generator[List[int], None, None]:

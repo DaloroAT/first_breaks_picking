@@ -8,10 +8,7 @@ from first_breaks import is_linux, is_macos, is_windows
 
 def get_cache_folder() -> Path:
     if is_linux():
-        return (
-            Path(environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-            / "first_breaks_picking"
-        )
+        return Path(environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "first_breaks_picking"
     elif is_macos():
         return Path.home() / "Library" / "Caches" / "first_breaks_picking"
     elif is_windows():
@@ -31,7 +28,13 @@ DEMO_SGY_HASH = "92fe2992b57d69c6f572c672f63960cf"
 MODEL_ONNX_PATH = CACHE_FOLDER / "fb.onnx"
 MODEL_ONNX_URL = "https://oml.daloroserver.com/download/seis/fb.onnx"
 MODEL_ONNX_HASH = "7e39e017b01325180e36885eccaeb17a"
-MODEL_ONNX_HASHES = [MODEL_ONNX_HASH, "afc03594f49b88ea61b5cf6ba8245be4"]
+MODEL_ONNX_HASHES = [
+    # MODEL_ONNX_HASH,
+    "afc03594f49b88ea61b5cf6ba8245be4",
+    "3930eff8e70b4b29ab8d6def43706918",
+    "cd5492eae6ed543e9c5206bc18ff8b68",
+    "86ddd2a20f02201f4b1363abbabf7106",
+]
 
 TIMEOUT = 60
 

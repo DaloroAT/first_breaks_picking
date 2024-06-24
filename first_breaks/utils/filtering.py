@@ -18,9 +18,10 @@ def savgol_coeffs(window_length: int, polyorder: int, deriv: int = 0) -> np.ndar
     return coeffs
 
 
-def apply_savgol_filter(
-    data: np.ndarray, window_length: int, polyorder: int, deriv: int = 0
-) -> np.ndarray:
+def apply_savgol_filter(data: np.ndarray, window_length: int, polyorder: int, deriv: int = 0) -> np.ndarray:
+    """
+    https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter
+    """
     assert 1 <= data.ndim <= 2
     coeffs = savgol_coeffs(window_length, polyorder, deriv)
 
@@ -34,7 +35,5 @@ def apply_savgol_filter(
 
     padded_data = np.pad(data, padding, mode=pad_mode)
 
-    filtered_data = np.apply_along_axis(
-        lambda m: np.convolve(m, coeffs, mode="valid"), axis=0, arr=padded_data
-    )
+    filtered_data = np.apply_along_axis(lambda m: np.convolve(m, coeffs, mode="valid"), axis=0, arr=padded_data)
     return filtered_data

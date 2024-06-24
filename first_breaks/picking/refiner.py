@@ -34,17 +34,13 @@ def find_extrema_mask(data: np.ndarray, neighbor_range: int = 1) -> np.ndarray:
     return extrema_mask
 
 
-def calc_intersection(
-    data: np.ndarray, data_derivative: np.ndarray, tangent_points: np.ndarray
-) -> np.ndarray:
+def calc_intersection(data: np.ndarray, data_derivative: np.ndarray, tangent_points: np.ndarray) -> np.ndarray:
     slope = data_derivative[tangent_points]
     intercept = data[tangent_points] - slope * tangent_points
     return -intercept / slope
 
 
-def calc_intersection_vectorized(
-    data: np.ndarray, data_derivative: np.ndarray, extrema_mask: np.ndarray
-):
+def calc_intersection_vectorized(data: np.ndarray, data_derivative: np.ndarray, extrema_mask: np.ndarray):
     assert all(arr.ndim == 2 for arr in [data, data_derivative, extrema_mask])
     assert extrema_mask.dtype == np.bool_
 
@@ -56,16 +52,10 @@ def calc_intersection_vectorized(
     sorted_col_indices = col_indices[sorted_indices]
 
     slope = data_derivative[sorted_row_indices, sorted_col_indices]
-    intercept = (
-        data[sorted_row_indices, sorted_col_indices] - slope * sorted_row_indices
-    )
+    intercept = data[sorted_row_indices, sorted_col_indices] - slope * sorted_row_indices
     intersection = -intercept / slope
 
-    to_keep = (
-        (intersection >= 0)
-        & (intersection < (len(data) - 1))
-        & (intersection != np.inf)
-    )
+    to_keep = (intersection >= 0) & (intersection < (len(data) - 1)) & (intersection != np.inf)
 
     intersection = intersection[to_keep]
     sorted_col_indices = sorted_col_indices[to_keep]
@@ -152,9 +142,7 @@ class MinimalPhaseRefiner(Refiner):
             width_after=self.analyse_window_after,
         )
 
-        extrema = find_extrema_mask(
-            data=first_derivateive[band_mask], neighbor_range=self.extrema_window
-        )
+        extrema = find_extrema_mask(data=first_derivateive[band_mask], neighbor_range=self.extrema_window)
 
         tr2intersections = calc_intersection_vectorized(
             data=filtered[band_mask],
@@ -163,10 +151,7 @@ class MinimalPhaseRefiner(Refiner):
         )
 
         # previous intersections obtained based on band data. We need to map band intersections to initail coordintates
-        tr2intersections = {
-            tr: band_mask[0][inter.round().astype(int), tr]
-            for tr, inter in tr2intersections.items()
-        }
+        tr2intersections = {tr: band_mask[0][inter.round().astype(int), tr] for tr, inter in tr2intersections.items()}
 
         refined_picks = refine_picks(
             raw_picks=picks_in_samples,

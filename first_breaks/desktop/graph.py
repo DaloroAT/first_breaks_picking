@@ -2,7 +2,7 @@ import ast
 import os
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pyqtgraph as pg
@@ -60,12 +60,8 @@ class GraphWidget(pg.PlotWidget):
         self.setup_axes()
 
         self.spectrum_roi_manager = RoiManager(viewbox=self.getViewBox())
-        self.spectrum_window = SpectrumWindow(
-            use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager
-        )
-        self.mouse_click_signal = pg.SignalProxy(
-            self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked
-        )
+        self.spectrum_window = SpectrumWindow(use_open_gl=use_open_gl, roi_manager=self.spectrum_roi_manager)
+        self.mouse_click_signal = pg.SignalProxy(self.sceneObj.sigMouseClicked, rateLimit=60, slot=self.mouse_clicked)
 
     def resolve_postime2xy(self, position: Any, time: Any) -> Tuple[Any, Any]:
         return postime2xy(vsp_view=self.vsp_view, position=position, time=time)
@@ -176,16 +172,12 @@ class GraphWidget(pg.PlotWidget):
             self.getPlotItem().setXRange(min=0, max=x_max)
 
         for idx in range(num_traces):
-            self._plot_trace_fast(
-                trace=traces[:, idx], time=t, shift=idx + 1, fill_black=fill_black
-            )
+            self._plot_trace_fast(trace=traces[:, idx], time=t, shift=idx + 1, fill_black=fill_black)
 
         self.pos_ax.showLabel()
         self.graph_updated_signal.emit()
 
-    def _plot_trace_fast(
-        self, trace: np.ndarray, time: np.ndarray, shift: int, fill_black: Optional[str]
-    ) -> None:
+    def _plot_trace_fast(self, trace: np.ndarray, time: np.ndarray, shift: int, fill_black: Optional[str]) -> None:
         connect = np.ones(len(time), dtype=np.int32)
         connect[-1] = 0
 
@@ -211,9 +203,7 @@ class GraphWidget(pg.PlotWidget):
             sign = -1 if fill_black == "left" else 1
 
             x, y = self.resolve_postime2xy(shift, time[0])
-            w, h = self.resolve_postime2xy(
-                sign * 1.1 * max(np.abs(shifted_trace)), time[-1]
-            )
+            w, h = self.resolve_postime2xy(sign * 1.1 * max(np.abs(shifted_trace)), time[-1])
 
             rect = QPainterPath()
             rect.addRect(x, y, w, h)
@@ -221,9 +211,7 @@ class GraphWidget(pg.PlotWidget):
             patch = path.intersected(rect)
             item = pg.QtWidgets.QGraphicsPathItem(patch)
 
-            pen = QPen(
-                QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin
-            )
+            pen = QPen(QColor(255, 255, 255, 0), 1, Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin)
             pen.setCosmetic(True)  # 1 pixel width for any scale and resolution
             item.setPen(pen)
             item.setBrush(Qt.black)
@@ -241,9 +229,7 @@ class GraphWidget(pg.PlotWidget):
                 if v % 1 == 0:
                     v = int(v) - 1
                     if 0 <= v < self.sgy.num_traces:
-                        labels_from_headers.append(
-                            str(self.sgy.traces_headers[self.pos_ax_header].iloc[v])
-                        )
+                        labels_from_headers.append(str(self.sgy.traces_headers[self.pos_ax_header].iloc[v]))
                     else:
                         labels_from_headers.append("")
                 else:
@@ -289,9 +275,7 @@ class GraphWidget(pg.PlotWidget):
 
         # Vertical lines
         line_time = np.array([0, region_start_time])
-        for idx in np.arange(
-            traces_per_gather + 0.5, num_traces - 1, traces_per_gather
-        ):
+        for idx in np.arange(traces_per_gather + 0.5, num_traces - 1, traces_per_gather):
             line_pos = np.array([idx, idx])
             line_x, line_y = self.resolve_postime2xy(line_pos, line_time)
             line_path = pg.arrayToQPath(line_x, line_y, np.ones(2, dtype=np.int32))
@@ -302,9 +286,7 @@ class GraphWidget(pg.PlotWidget):
 
         # Transparent polygon on ignored part
         poly_pos = np.array([-2, num_traces + 2, num_traces + 2, -2])
-        poly_time = np.array(
-            [region_start_time, region_start_time, sgy_end_time, sgy_end_time]
-        )
+        poly_time = np.array([region_start_time, region_start_time, sgy_end_time, sgy_end_time])
         poly_x, poly_y = self.resolve_postime2xy(poly_pos, poly_time)
         poly_path = pg.arrayToQPath(poly_x, poly_y, np.ones(4, dtype=np.int32))
         poly_item = pg.QtWidgets.QGraphicsPathItem(poly_path)
@@ -314,9 +296,7 @@ class GraphWidget(pg.PlotWidget):
         self.addItem(poly_item)
 
     def _get_picks_as_item(self, picks: Picks) -> pg.PlotCurveItem:
-        x, y = self.resolve_postime2xy(
-            np.arange(self.sgy.num_traces) + 1, np.array(picks.picks_in_ms)
-        )
+        x, y = self.resolve_postime2xy(np.arange(self.sgy.num_traces) + 1, np.array(picks.picks_in_ms))
 
         line = pg.PlotCurveItem()
         line.setData(x, y)
@@ -468,10 +448,7 @@ class GraphExporter(GraphWidget):
                 num_traces = sgy.num_traces
                 width = int(width_per_trace * num_traces) + headers_total_pixels
             else:
-                width = (
-                    int(width_per_trace * (traces_window[1] - traces_window[0]))
-                    + headers_total_pixels
-                )
+                width = int(width_per_trace * (traces_window[1] - traces_window[0])) + headers_total_pixels
 
         self.avoid_memory_bomb(height, width)
 

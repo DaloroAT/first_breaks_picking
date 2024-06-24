@@ -23,10 +23,7 @@ class IteratorOfTask:
 
     def __init__(self, task: Task):
         self.task = task
-        self.idx2gather_ids = {
-            idx: gather_ids
-            for idx, gather_ids in enumerate(self.task.get_gathers_ids())
-        }
+        self.idx2gather_ids = {idx: gather_ids for idx, gather_ids in enumerate(self.task.get_gathers_ids())}
         if self.task.normalize == "gather" and len(self.idx2gather_ids) > 1:
             raise AssertionError(
                 "'gather' normalization can't be used for picking when number of gathers > 1. "
@@ -39,10 +36,7 @@ class IteratorOfTask:
     def __getitem__(self, idx: int) -> Dict[str, np.ndarray]:
         gather_ids = self.idx2gather_ids[idx]
         amplitudes = np.array(
-            [
-                -1 if idx in self.task.traces_to_inverse else 1
-                for idx in range(len(gather_ids))
-            ],
+            [-1 if idx in self.task.traces_to_inverse else 1 for idx in range(len(gather_ids))],
             dtype=np.float32,
         )
         gather = self.task.sgy.read_traces_by_ids(gather_ids)
@@ -62,9 +56,7 @@ class IteratorOfTask:
 
         return {self.gather_key: gather, self.gather_ids_key: np.array(gather_ids)}
 
-    def get_batch_generator(
-        self, batch_size: int = 1
-    ) -> Generator[Dict[str, np.ndarray], None, None]:
+    def get_batch_generator(self, batch_size: int = 1) -> Generator[Dict[str, np.ndarray], None, None]:
         for ids in chunk_iterable(range(len(self)), batch_size):
             gather_batch = []
             gather_ids_batch = []
@@ -132,9 +124,7 @@ class PickerONNX(IPicker):
 
         return self
 
-    def pick_batch_of_gathers(
-        self, gather: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def pick_batch_of_gathers(self, gather: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         assert gather.ndim == 4
         assert all(dim > 0 for dim in gather.shape)
         outputs = self.model.run(["picks", "confs", "heatmap"], {"input": gather})
@@ -149,9 +139,7 @@ class PickerONNX(IPicker):
         counter_step_finished = 0
         self.callback_processing_started(len(task_iterator))
 
-        for idx, batch in enumerate(
-            task_iterator.get_batch_generator(batch_size=self.batch_size)
-        ):
+        for idx, batch in enumerate(task_iterator.get_batch_generator(batch_size=self.batch_size)):
             self.interrupt_if_need()
             data = batch["gather"].astype(np.float32)
             picks, confidence, heatmap = self.pick_batch_of_gathers(data)

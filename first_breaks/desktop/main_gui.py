@@ -23,8 +23,8 @@ from first_breaks.const import (
     DEMO_SGY_PATH,
     HIGH_DPI,
     MODEL_ONNX_HASH,
-    MODEL_ONNX_PATH,
     MODEL_ONNX_HASHES,
+    MODEL_ONNX_PATH,
 )
 from first_breaks.data_models.independent import ExceptionOptional
 from first_breaks.desktop.graph import GraphWidget
@@ -37,8 +37,8 @@ from first_breaks.desktop.settings_processing_widget import (
     SettingsProcessingWidget,
 )
 from first_breaks.desktop.utils import MessageBox, set_geometry
-from first_breaks.picking.task import Task
 from first_breaks.picking.refiner import MinimalPhaseRefiner
+from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import calc_hash, download_demo_sgy, download_model_onnx
 
@@ -88,9 +88,7 @@ class MainWindow(QMainWindow):
         else:
             self.main_folder = Path(__file__).parent
 
-        set_geometry(
-            self, width_rel=0.6, height_rel=0.6, fix_size=False, centralize=True
-        )
+        set_geometry(self, width_rel=0.6, height_rel=0.6, fix_size=False, centralize=True)
         self.setWindowTitle("First breaks picking")
 
         self.threadpool = QThreadPool()
@@ -110,33 +108,23 @@ class MainWindow(QMainWindow):
 
         icon_get_filename = self.style().standardIcon(QStyle.SP_DirIcon)
         # icon_get_filename = QIcon(str(self.main_folder / "icons" / "sgy.png"))
-        self.button_get_filename = QAction(
-            icon_get_filename, self.TOOLDBAR_OPEN_SGY, self
-        )
+        self.button_get_filename = QAction(icon_get_filename, self.TOOLDBAR_OPEN_SGY, self)
         self.button_get_filename.triggered.connect(self.get_filename)
         self.button_get_filename.setEnabled(True)
         self.toolbar.addAction(self.button_get_filename)
 
         self.toolbar.addSeparator()
 
-        icon_visual_settings = self.style().standardIcon(
-            QStyle.SP_FileDialogContentsView
-        )
-        self.button_settings_processing = QAction(
-            icon_visual_settings, self.TOOLBAR_SETTINGS_AND_PROCESSINGS, self
-        )
-        self.button_settings_processing.triggered.connect(
-            self.show_settings_processing_window
-        )
+        icon_visual_settings = self.style().standardIcon(QStyle.SP_FileDialogContentsView)
+        self.button_settings_processing = QAction(icon_visual_settings, self.TOOLBAR_SETTINGS_AND_PROCESSINGS, self)
+        self.button_settings_processing.triggered.connect(self.show_settings_processing_window)
         self.button_settings_processing.setEnabled(False)
         self.toolbar.addAction(self.button_settings_processing)
 
         self.need_processing_region = True
         icon_processing_show = self.style().standardIcon(QStyle.SP_FileDialogListView)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        self.button_processing_show = QAction(
-            icon_processing_show, self.TOOLBAR_SHOW_GRID, self
-        )
+        self.button_processing_show = QAction(icon_processing_show, self.TOOLBAR_SHOW_GRID, self)
         self.button_processing_show.triggered.connect(self.processing_region_changed)
         self.button_processing_show.setChecked(self.need_processing_region)
         self.button_processing_show.setEnabled(True)
@@ -149,9 +137,7 @@ class MainWindow(QMainWindow):
 
         icon_picks_manager = self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
         # icon_export = QIcon(str(self.main_folder / "icons" / "export.png"))
-        self.button_picks_manager = QAction(
-            icon_picks_manager, self.TOOLBAR_PICKS_MANAGER, self
-        )
+        self.button_picks_manager = QAction(icon_picks_manager, self.TOOLBAR_PICKS_MANAGER, self)
         self.button_picks_manager.triggered.connect(self.show_picks_manager)
         self.button_picks_manager.setEnabled(False)
         self.toolbar.addAction(self.button_picks_manager)
@@ -187,12 +173,8 @@ class MainWindow(QMainWindow):
             **self.plotseis_settings.model_dump(),
         )
         self.settings_processing_widget.hide()
-        self.settings_processing_widget.export_plotseis_settings_signal.connect(
-            self.update_plotseis_settings
-        )
-        self.settings_processing_widget.export_picking_settings_signal.connect(
-            self.pick_fb
-        )
+        self.settings_processing_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
+        self.settings_processing_widget.export_picking_settings_signal.connect(self.pick_fb)
 
         # nn manager
         self.nn_manager = NNManager(
@@ -202,21 +184,15 @@ class MainWindow(QMainWindow):
             interrupt_on=self.settings_processing_widget.interrupt_signal,
         )
         self.nn_manager.picking_finished_signal.connect(self.on_picking_finished)
-        self.nn_manager.picking_not_started_error_signal.connect(
-            self.on_picking_not_started_error
-        )
+        self.nn_manager.picking_not_started_error_signal.connect(self.on_picking_not_started_error)
 
         # picks manager
         self.picks_manager = PicksManager()
         self.picks_manager.picks_updated_signal.connect(self.update_plot)
         self.picks_manager.hide()
 
-        self.graph.picks_manual_edited_signal.connect(
-            self.picks_manager.update_picks_from_external
-        )
-        self.graph.about_to_change_nn_picks_signal.connect(
-            self.picks_manager.duplicate_active_created_by_nn_picks
-        )
+        self.graph.picks_manual_edited_signal.connect(self.picks_manager.update_picks_from_external)
+        self.graph.about_to_change_nn_picks_signal.connect(self.picks_manager.duplicate_active_created_by_nn_picks)
 
         self.is_toggled_picks_from_file = False
         # placeholders
@@ -308,9 +284,7 @@ class MainWindow(QMainWindow):
         self.update_plot(False)
 
     def update_plot(self, refresh_view: bool = False) -> None:
-        self.graph.plotseis(
-            self.sgy, refresh_view=refresh_view, **self.plotseis_settings.model_dump()
-        )
+        self.graph.plotseis(self.sgy, refresh_view=refresh_view, **self.plotseis_settings.model_dump())
         self.show_processing_region()
 
         self.graph.remove_picks()
@@ -339,10 +313,7 @@ class MainWindow(QMainWindow):
             )
 
         if filename:
-            if (
-                FileState.get_file_state(filename, self.picker_hashes)
-                == FileState.valid_file
-            ):
+            if FileState.get_file_state(filename, self.picker_hashes) == FileState.valid_file:
                 self.nn_manager.init_net(weights=filename)
                 self.button_load_nn.setEnabled(False)
                 self.ready_to_process.model_loaded = True
@@ -398,9 +369,7 @@ class MainWindow(QMainWindow):
                 last_folder_manager.set_last_folder(filename)
 
             except Exception as e:
-                window_err = MessageBox(
-                    self, title=e.__class__.__name__, message=str(e)
-                )
+                window_err = MessageBox(self, title=e.__class__.__name__, message=str(e))
                 window_err.exec_()
 
     def show_picks_manager(self) -> None:

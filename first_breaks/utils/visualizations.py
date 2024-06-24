@@ -99,9 +99,7 @@ def plotseis(
             tail = np.array((k_trace + 1, num_time * dt))[np.newaxis, :]
             patch_data = np.vstack((head, patch_data, tail))
 
-            polygon = Polygon(
-                patch_data, closed=True, facecolor="black", edgecolor=None
-            )
+            polygon = Polygon(patch_data, closed=True, facecolor="black", edgecolor=None)
             ax.add_patch(polygon)
 
     if picking is not None:

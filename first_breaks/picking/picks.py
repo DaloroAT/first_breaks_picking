@@ -69,10 +69,7 @@ class Picks(DefaultModel):
         self.model_config["validate_assignment"] = False
 
         if self.dt_mcs is not None:
-            if (
-                self._units_converter is None
-                or self._units_converter.sgy_mcs != self.dt_mcs
-            ):
+            if self._units_converter is None or self._units_converter.sgy_mcs != self.dt_mcs:
                 self._units_converter = UnitsConverter(sgy_mcs=self.dt_mcs)
         else:
             self._units_converter = None
