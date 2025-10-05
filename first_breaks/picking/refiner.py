@@ -1,17 +1,14 @@
-from pprint import pprint
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 
-from first_breaks.const import PROJECT_ROOT
 from first_breaks.picking.picks import Picks
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.debug import Performance
 from first_breaks.utils.filtering import apply_savgol_filter
 
 
 class Refiner:
-    def refine(self, sgy: SGY, picks: Picks):
+    def refine(self, sgy: SGY, picks: Picks) -> Picks:
         raise NotImplementedError
 
 
@@ -40,7 +37,9 @@ def calc_intersection(data: np.ndarray, data_derivative: np.ndarray, tangent_poi
     return -intercept / slope
 
 
-def calc_intersection_vectorized(data: np.ndarray, data_derivative: np.ndarray, extrema_mask: np.ndarray):
+def calc_intersection_vectorized(
+    data: np.ndarray, data_derivative: np.ndarray, extrema_mask: np.ndarray
+) -> Dict[int, Tuple[np.ndarray, ...]]:
     assert all(arr.ndim == 2 for arr in [data, data_derivative, extrema_mask])
     assert extrema_mask.dtype == np.bool_
 
@@ -75,7 +74,7 @@ def get_band_mask(
     return row_indices_clipped, np.arange(num_cols)
 
 
-def refine_picks(
+def refine_picks(  # type: ignore
     raw_picks: np.ndarray,
     probability_heatmap: np.ndarray,
     traces2intersections,
@@ -145,7 +144,9 @@ class MinimalPhaseRefiner(Refiner):
         )
 
         # previous intersections obtained based on band data. We need to map band intersections to initail coordintates
-        tr2intersections = {tr: band_mask[0][inter.round().astype(int), tr] for tr, inter in tr2intersections.items()}
+        tr2intersections = {
+            tr: band_mask[0][inter.round().astype(int), tr] for tr, inter in tr2intersections.items()  # type: ignore
+        }
 
         refined_picks = refine_picks(
             raw_picks=picks_in_samples,

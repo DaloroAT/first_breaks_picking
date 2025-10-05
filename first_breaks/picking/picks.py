@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Literal, Optional, Union, Annotated
+from typing import Annotated, List, Literal, Optional, Union
 
 import numpy as np
 from pydantic import UUID4, Field, model_validator

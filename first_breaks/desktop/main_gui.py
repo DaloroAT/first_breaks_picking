@@ -1,7 +1,7 @@
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PyQt5.QtCore import QSize, Qt, QThreadPool, pyqtSignal
 from PyQt5.QtGui import QCloseEvent
@@ -22,7 +22,6 @@ from PyQt5.QtWidgets import (
 from first_breaks.const import (
     DEMO_SGY_PATH,
     HIGH_DPI,
-    MODEL_ONNX_HASH,
     MODEL_ONNX_HASHES,
     MODEL_ONNX_PATH,
 )
@@ -54,7 +53,7 @@ class FileState:
     file_changed = 2
 
     @classmethod
-    def get_file_state(cls, fname: Union[str, Path], fhashes: str) -> int:
+    def get_file_state(cls, fname: Union[str, Path], fhashes: List[str]) -> int:
         if not Path(fname).is_file():
             return cls.file_not_exists
         else:

@@ -31,7 +31,7 @@ def apply_savgol_filter(data: np.ndarray, window_length: int, polyorder: int, de
     if data.ndim == 1:
         padding = (half_window, half_window)
     else:
-        padding = ((half_window, half_window), (0, 0))
+        padding = ((half_window, half_window), (0, 0))  # type: ignore
 
     padded_data = np.pad(data, padding, mode=pad_mode)
 

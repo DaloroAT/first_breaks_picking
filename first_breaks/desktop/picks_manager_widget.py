@@ -303,7 +303,7 @@ class PicksManager(QWidget):
         self.remove_button = QPushButton("-", self)
         self.remove_button.clicked.connect(self.remove_items)  # renamed for clarity
         # self.properties_button = QPushButton("\u2699", self)  # Unicode character for gear
-        self.properties_button = QPushButton("\U0001F4BE", self)  # "\U0001F4BE" or "\U0001F5AB"
+        self.properties_button = QPushButton("\U0001f4be", self)  # "\U0001F4BE" or "\U0001F5AB"
         self.properties_button.setFont(self.font())  # to increase the size of the button a bit
         self.properties_button.clicked.connect(self.open_properties)
         button_layout.addWidget(self.add_button)

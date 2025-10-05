@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Union
 
 import numpy as np
 import onnxruntime as ort
@@ -100,11 +100,13 @@ class PickerONNX(IPicker):
         self.model: Optional[ort.InferenceSession] = None
         self.init_model()
 
-        self._available_outputs = sorted(o.name for o in self.model.get_outputs())
-        self._input_name = self.model.get_inputs()[0].name
+        self._available_outputs = sorted(o.name for o in self.model.get_outputs())  # type: ignore
+        self._input_name = self.model.get_inputs()[0].name  # type: ignore
 
         for mandatory_key in [self.OUTPUT_PICKS_KEY, self.OUTPUT_CONFS_KEY]:
-            assert mandatory_key in self._available_outputs, f"`mandatory_key` not found in model outputs `{self._available_outputs}`"
+            assert (
+                mandatory_key in self._available_outputs
+            ), f"`mandatory_key` not found in model outputs `{self._available_outputs}`"
 
     def is_heatmap_available(self) -> bool:
         return self.OUTPUT_HEATMAP_KEY in self._available_outputs
@@ -163,7 +165,6 @@ class PickerONNX(IPicker):
 
             picks = results[self.OUTPUT_PICKS_KEY]
             confidence = results[self.OUTPUT_CONFS_KEY]
-
 
             indices = batch["gather_ids"]
 

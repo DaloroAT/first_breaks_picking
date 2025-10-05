@@ -30,7 +30,7 @@ class QRadioSetWidget(QWidget):
         orientation: str = "horizontal",
         margins: Optional[int] = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super().__init__(*args, **kwargs)
         assert orientation in ["horizontal", "vertical"]

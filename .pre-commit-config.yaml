@@ -1,12 +1,10 @@
 default_language_version:
-  python: python3.9
+  python: python3.12
 files: \.py$|tests/.*\.py$
-default_stages:
-- commit
 repos:
 # general hooks to verify or beautify code
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v6.0.0
   hooks:
   - id: check-added-large-files
     args: [--maxkb=5000]
@@ -23,7 +21,7 @@ repos:
 
 # autoformat code with black formatter
 - repo: https://github.com/psf/black
-  rev: 22.3.0
+  rev: 25.9.0
   hooks:
   - id: black
     files: first_breaks|tests
@@ -32,7 +30,7 @@ repos:
 
 # beautify and sort imports
 - repo: https://github.com/pycqa/isort
-  rev: 5.12.0
+  rev: 6.1.0
   hooks:
   - id: isort
     files: first_breaks|tests
@@ -41,7 +39,7 @@ repos:
 
 # check code style
 - repo: https://github.com/pycqa/flake8
-  rev: 3.8.4
+  rev: 7.3.0
   hooks:
   - id: flake8
     files: first_breaks|tests
@@ -50,7 +48,7 @@ repos:
 
 # static type checking
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.5.1
+  rev: v1.18.2
   hooks:
   - id: mypy
     files: first_breaks|tests

@@ -30,7 +30,7 @@ class QComboBoxMapping(QComboBox):
         current_label: Optional[str] = None,
         current_value: Optional[str] = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super().__init__(*args, **kwargs)
 
