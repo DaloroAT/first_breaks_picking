@@ -37,7 +37,6 @@ from first_breaks.desktop.settings_processing_widget import (
     SettingsProcessingWidget,
 )
 from first_breaks.desktop.utils import MessageBox, set_geometry
-from first_breaks.picking.refiner import MinimalPhaseRefiner
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.utils import calc_hash, download_demo_sgy, download_model_onnx
@@ -59,7 +58,6 @@ class FileState:
         if not Path(fname).is_file():
             return cls.file_not_exists
         else:
-            print(calc_hash(fname), fhashes)
             return cls.valid_file if calc_hash(fname) in fhashes else cls.file_changed
 
 
@@ -229,11 +227,6 @@ class MainWindow(QMainWindow):
 
         if result.success:
             self.picks_manager.add_nn_picks(result.picks)
-            refined_picks = result.picks.create_duplicate()
-            refiner = MinimalPhaseRefiner()
-            refined_picks = refiner.refine(self.sgy, refined_picks)
-            self.picks_manager.add_picks(refined_picks, "Refined picks")
-
             self.update_plot(refresh_view=False)
             self.run_processing_region()
         else:
@@ -396,13 +389,10 @@ def run_app() -> None:
 
 
 def fetch_data_and_run_app() -> None:
-    from first_breaks.const import PROJECT_ROOT
-
     download_model_onnx(MODEL_ONNX_PATH)
     download_demo_sgy(DEMO_SGY_PATH)
     app, window = create_app()
-    # window.load_nn(MODEL_ONNX_PATH)
-    window.load_nn(PROJECT_ROOT / "fb_heatmap_afc03594f49b88ea61b5cf6ba8245be4.onnx")
+    window.load_nn(MODEL_ONNX_PATH)
     window.get_filename(DEMO_SGY_PATH)
     app.exec_()
 

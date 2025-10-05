@@ -75,6 +75,10 @@ class IteratorOfTask:
 
 
 class PickerONNX(IPicker):
+    OUTPUT_PICKS_KEY = "picks"
+    OUTPUT_CONFS_KEY = "confs"
+    OUTPUT_HEATMAP_KEY = "heatmap"
+
     def __init__(
         self,
         model_path: Optional[Union[str, Path]] = None,
@@ -95,6 +99,15 @@ class PickerONNX(IPicker):
 
         self.model: Optional[ort.InferenceSession] = None
         self.init_model()
+
+        self._available_outputs = sorted(o.name for o in self.model.get_outputs())
+        self._input_name = self.model.get_inputs()[0].name
+
+        for mandatory_key in [self.OUTPUT_PICKS_KEY, self.OUTPUT_CONFS_KEY]:
+            assert mandatory_key in self._available_outputs, f"`mandatory_key` not found in model outputs `{self._available_outputs}`"
+
+    def is_heatmap_available(self) -> bool:
+        return self.OUTPUT_HEATMAP_KEY in self._available_outputs
 
     def init_model(self) -> None:
         sess_opt = ort.SessionOptions()
@@ -124,16 +137,20 @@ class PickerONNX(IPicker):
 
         return self
 
-    def pick_batch_of_gathers(self, gather: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def pick_batch_of_gathers(self, gather: np.ndarray) -> Dict[str, np.ndarray]:
         assert gather.ndim == 4
         assert all(dim > 0 for dim in gather.shape)
-        outputs = self.model.run(["picks", "confs", "heatmap"], {"input": gather})
-        return outputs[0], outputs[1], outputs[2]
+        outputs_list = self.model.run(self._available_outputs, {self._input_name: gather})
+        return dict(zip(self._available_outputs, outputs_list))
 
     def process_task(self, task: Task) -> Task:
         task_picks_in_sample = np.zeros(task.sgy.num_traces)
         task_confidence = np.zeros(task.sgy.num_traces)
-        task_heatmap = np.zeros((task.sgy.num_samples, task.sgy.num_traces))
+
+        if self.is_heatmap_available():
+            task_heatmap = np.zeros((task.sgy.num_samples, task.sgy.num_traces))
+        else:
+            task_heatmap = None
 
         task_iterator = IteratorOfTask(task)
         counter_step_finished = 0
@@ -142,15 +159,22 @@ class PickerONNX(IPicker):
         for idx, batch in enumerate(task_iterator.get_batch_generator(batch_size=self.batch_size)):
             self.interrupt_if_need()
             data = batch["gather"].astype(np.float32)
-            picks, confidence, heatmap = self.pick_batch_of_gathers(data)
+            results = self.pick_batch_of_gathers(data)
+
+            picks = results[self.OUTPUT_PICKS_KEY]
+            confidence = results[self.OUTPUT_CONFS_KEY]
+
 
             indices = batch["gather_ids"]
 
             task_picks_in_sample[indices.flatten()] = picks.flatten()  # (B, W) -> (BxW)
             task_confidence[indices.flatten()] = confidence.flatten()  # (B, W) -> (BxW)
-            heatmap = heatmap.transpose(1, 0, 2)  # (B, H, W) -> (H, B, W)
-            heatmap = heatmap.reshape(heatmap.shape[0], -1)  # (H, B, W) -> (H, BxW)
-            task_heatmap[: len(heatmap), indices.flatten()] = heatmap
+
+            if self.is_heatmap_available():
+                heatmap = results[self.OUTPUT_HEATMAP_KEY]
+                heatmap = heatmap.transpose(1, 0, 2)  # (B, H, W) -> (H, B, W)
+                heatmap = heatmap.reshape(heatmap.shape[0], -1)  # (H, B, W) -> (H, BxW)
+                task_heatmap[: len(heatmap), indices.flatten()] = heatmap
 
             counter_step_finished += len(data)
             self.callback_step_finished(counter_step_finished)
@@ -166,7 +190,7 @@ class PickerONNX(IPicker):
             modified_manually=False,
             created_manually=False,
             created_by_nn=True,
-            picks_color=generate_color(),
+            color=generate_color(),
             picking_parameters=task.picking_parameters,
         )
 

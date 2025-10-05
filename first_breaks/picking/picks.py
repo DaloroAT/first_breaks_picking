@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union, Annotated
 
 import numpy as np
 from pydantic import UUID4, Field, model_validator
@@ -49,7 +49,7 @@ class Picks(DefaultModel):
     modified_manually: Optional[bool] = None
     picking_parameters: Optional[PickingParameters] = None
     color: TColor = Field(default_factory=generate_color, description="Color for picks")  # type: ignore
-    width: float = Field(DEFAULT_PICKS_WIDTH, description="Width of pick line")
+    width: Annotated[float, Field(description="Width of pick line")] = DEFAULT_PICKS_WIDTH
 
     active: Optional[bool] = None
 
@@ -165,5 +165,5 @@ class Picks(DefaultModel):
             created_by_nn=self.created_by_nn,
             modified_manually=True,
             picking_parameters=self.picking_parameters,
-            picks_color=self.color if keep_color else generate_color(),
+            color=self.color if keep_color else generate_color(),
         )

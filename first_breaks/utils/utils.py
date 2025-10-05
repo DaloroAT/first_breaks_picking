@@ -35,8 +35,10 @@ def chunk_iterable(it: Iterable[Any], size: int) -> List[Tuple[Any, ...]]:
     return list(iter(lambda: tuple(islice(it, size)), ()))
 
 
-def get_io(source: Union[Path, str, bytes], mode: str = "r") -> Union[io.BytesIO, io.FileIO]:
-    if isinstance(source, (Path, str)):
+def get_io(source: Union[Path, str, bytes, io.BytesIO, io.FileIO], mode: str = "r") -> Union[io.BytesIO, io.FileIO]:
+    if isinstance(source, (io.BytesIO, io.FileIO)):
+        return source
+    elif isinstance(source, (Path, str)):
         source = Path(source).resolve()
         if "r" in mode:
             if not source.exists():
@@ -51,28 +53,12 @@ def get_io(source: Union[Path, str, bytes], mode: str = "r") -> Union[io.BytesIO
 
 def calc_hash(source: Union[Path, str, bytes, io.BytesIO, io.FileIO]) -> str:
     hash_md5 = hashlib.md5()
-    if not isinstance(source, (io.BytesIO, io.FileIO)):
-        source = get_io(source, mode="rb")
+    source = get_io(source, mode="rb")
     source.seek(0)
     for chunk in iter(lambda: source.read(4096), b""):  # type: ignore
         hash_md5.update(chunk)
     source.close()
     return hash_md5.hexdigest()
-
-
-# def download_by_url(
-#     url: str, fname: Optional[Union[str, Path]], timeout: float = TIMEOUT
-# ) -> Optional[bytes]:
-#     response = requests.get(url, timeout=timeout, stream=True)
-#     if response.status_code != 200:
-#         response.raise_for_status()
-#         return None
-#     else:
-#         if fname:
-#             Path(fname).parent.mkdir(exist_ok=True, parents=True)
-#             with open(fname, "wb+") as f:
-#                 f.write(response.content)
-#         return response.content
 
 
 def download_by_url(url: str, fname: Optional[Union[str, Path]], timeout: float = TIMEOUT) -> bytes:
@@ -192,19 +178,19 @@ def remove_unused_kwargs(kwargs: Dict[str, Any], constructor: Any) -> Dict[str, 
     return {k: v for k, v in kwargs.items() if k in inspect.signature(constructor).parameters}
 
 
-def _color_generator() -> Generator[List[int], None, None]:
+def _color_generator() -> Generator[Tuple[int, ...], None, None]:
     golden_ratio = 0.618033988749895
     hue = random.random()  # start from a random position
     while True:
         hue += golden_ratio
         hue %= 1
-        yield [int(255 * v) for v in colorsys.hsv_to_rgb(hue, 0.5, 0.95)]
+        yield tuple(int(255 * v) for v in colorsys.hsv_to_rgb(hue, 0.5, 0.95))
 
 
 cgen = _color_generator()
 
 
-def generate_color() -> List[int]:
+def generate_color() -> Tuple[int, ...]:
     return next(cgen)
 
 

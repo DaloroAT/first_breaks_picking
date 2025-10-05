@@ -5,7 +5,7 @@ from uuid import uuid4
 import numpy as np
 from pydantic import UUID4, BaseModel, Field, field_validator
 
-TColor = Union[Tuple[int, int, int, int], Tuple[int, int, int]]
+TColor = Union[Tuple[int, int, int], Tuple[int, int, int, int], Tuple[int, ...]]
 TNormalize = Union[Literal["trace", "gather"], float, int, np.ndarray, None]
 
 
