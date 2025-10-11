@@ -1,7 +1,7 @@
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PyQt5.QtCore import QSize, Qt, QThreadPool, pyqtSignal
 from PyQt5.QtGui import QCloseEvent
@@ -19,7 +19,12 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from first_breaks.const import DEMO_SGY_PATH, HIGH_DPI, MODEL_ONNX_HASH, MODEL_ONNX_PATH
+from first_breaks.const import (
+    DEMO_SGY_PATH,
+    HIGH_DPI,
+    MODEL_ONNX_HASHES,
+    MODEL_ONNX_PATH,
+)
 from first_breaks.data_models.independent import ExceptionOptional
 from first_breaks.desktop.graph import GraphWidget
 from first_breaks.desktop.last_folder_manager import last_folder_manager
@@ -48,11 +53,11 @@ class FileState:
     file_changed = 2
 
     @classmethod
-    def get_file_state(cls, fname: Union[str, Path], fhash: str) -> int:
+    def get_file_state(cls, fname: Union[str, Path], fhashes: List[str]) -> int:
         if not Path(fname).is_file():
             return cls.file_not_exists
         else:
-            return cls.valid_file if calc_hash(fname) == fhash else cls.file_changed
+            return cls.valid_file if calc_hash(fname) in fhashes else cls.file_changed
 
 
 class ReadyToProcess:
@@ -195,7 +200,7 @@ class MainWindow(QMainWindow):
         self.settings: Optional[Dict[str, Any]] = None
         self.last_folder: Optional[Union[str, Path]] = None
         self.picks_from_file_in_ms: Optional[Tuple[Union[int, float], ...]] = None
-        self.picker_hash = MODEL_ONNX_HASH
+        self.picker_hashes = MODEL_ONNX_HASHES
 
         if show:
             self.show()
@@ -255,7 +260,10 @@ class MainWindow(QMainWindow):
     def show_processing_region(self) -> None:
         for picks in self.picks_manager.picks_mapping.values():
             if picks.created_by_nn and picks.active:
-                tps, max_time = picks.picking_parameters.traces_per_gather, picks.picking_parameters.maximum_time
+                tps, max_time = (
+                    picks.picking_parameters.traces_per_gather,
+                    picks.picking_parameters.maximum_time,
+                )
                 self.graph.plot_processing_region(tps, max_time)
                 break
 
@@ -290,11 +298,14 @@ class MainWindow(QMainWindow):
         if not filename:
             options = QFileDialog.Options()
             filename, _ = QFileDialog.getOpenFileName(
-                self, "Select file with NN weights", directory=last_folder_manager.get_last_folder(), options=options
+                self,
+                "Select file with NN weights",
+                directory=last_folder_manager.get_last_folder(),
+                options=options,
             )
 
         if filename:
-            if FileState.get_file_state(filename, self.picker_hash) == FileState.valid_file:
+            if FileState.get_file_state(filename, self.picker_hashes) == FileState.valid_file:
                 self.nn_manager.init_net(weights=filename)
                 self.button_load_nn.setEnabled(False)
                 self.ready_to_process.model_loaded = True

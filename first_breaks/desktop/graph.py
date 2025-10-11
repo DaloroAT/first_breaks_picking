@@ -2,7 +2,7 @@ import ast
 import os
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pyqtgraph as pg
@@ -423,7 +423,7 @@ class GraphExporter(GraphWidget):
         fill_black: Optional[str] = DEFAULTS.fill_black,
         time_window: Optional[Tuple[float, float]] = None,
         traces_window: Optional[Tuple[float, float]] = None,
-        picks: Optional[Picks] = None,
+        picks_list: Optional[Sequence[Picks]] = None,
         task: Optional[Task] = None,
         show_processing_region: bool = True,
         contour_color: TColor = DEFAULTS.region_contour_color,
@@ -442,9 +442,6 @@ class GraphExporter(GraphWidget):
     ) -> None:
         if args:
             raise need_kwargs_exception
-
-        if picks is not None and task is not None:
-            raise ValueError("'picks' and 'task' are mutually exclusive. Use only one of them or none")
 
         if width is None:
             if traces_window is None:
@@ -467,10 +464,12 @@ class GraphExporter(GraphWidget):
             refresh_view=True,
         )
 
-        if task:
+        if task and task.picks is not None:
             self.plot_picks(task.picks)
-        elif picks is not None:
-            self.plot_picks(picks)
+        if picks_list:
+            assert all(len(picks) == sgy.num_traces for picks in picks_list)
+            for picks in picks_list:
+                self.plot_picks(picks)
 
         if task is not None and show_processing_region:
             self.plot_processing_region(
@@ -537,7 +536,7 @@ def export_image(
     fill_black: Optional[str] = DEFAULTS.fill_black,
     time_window: Optional[Tuple[float, float]] = None,
     traces_window: Optional[Tuple[float, float]] = None,
-    picks: Optional[Picks] = None,
+    picks_list: Optional[Sequence[Picks]] = None,
     show_processing_region: bool = True,
     contour_color: TColor = DEFAULTS.region_contour_color,
     poly_color: TColor = DEFAULTS.region_poly_color,
@@ -586,7 +585,7 @@ def export_image(
         fill_black=fill_black,
         time_window=time_window,
         traces_window=traces_window,
-        picks=picks,
+        picks_list=picks_list,
         task=task,
         show_processing_region=show_processing_region,
         contour_color=contour_color,

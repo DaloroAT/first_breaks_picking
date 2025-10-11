@@ -476,7 +476,7 @@ picks_ms = np.random.uniform(low=0,
                              size=sgy.ntr)
 picks = Picks(values=picks_ms, unit="ms", dt_mcs=sgy.dt_mcs, color=(0, 100, 100))
 export_image(sgy, image_filename,
-             picks=picks)
+             picks_list=[picks])
 ```
 [code-block-end]:plot-sgy-custom-picks
 

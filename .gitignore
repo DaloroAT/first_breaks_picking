@@ -143,3 +143,4 @@ dmypy.json
 fb.onnx
 
 local_dev
+/debug/

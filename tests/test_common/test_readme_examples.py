@@ -49,7 +49,7 @@ def test_code_blocks_in_readme(block_name: str, demo_sgy: Path, logs_dir_for_tes
     code = find_code_block(PROJECT_ROOT / "README.md", start_indicator, end_indicator)
     assert code
 
-    tmp_fname = "tmp.py"
+    tmp_fname = f"{block_name}.py"
 
     with open(tmp_fname, "w") as f:
         f.write(code)

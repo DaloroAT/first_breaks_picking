@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Literal, Optional, Union
+from typing import Annotated, List, Literal, Optional, Union
 
 import numpy as np
 from pydantic import UUID4, Field, model_validator
@@ -43,12 +43,13 @@ class Picks(DefaultModel):
 
     dt_mcs: Optional[float] = None
     confidence: Optional[Union[np.ndarray, List[Union[int, float]]]] = None
+    heatmap: Optional[np.ndarray] = None
     created_by_nn: Optional[bool] = None
     created_manually: Optional[bool] = None
     modified_manually: Optional[bool] = None
     picking_parameters: Optional[PickingParameters] = None
     color: TColor = Field(default_factory=generate_color, description="Color for picks")  # type: ignore
-    width: float = Field(DEFAULT_PICKS_WIDTH, description="Width of pick line")
+    width: Annotated[float, Field(description="Width of pick line")] = DEFAULT_PICKS_WIDTH
 
     active: Optional[bool] = None
 
@@ -152,15 +153,17 @@ class Picks(DefaultModel):
     def create_duplicate(self, keep_color: bool = False) -> "Picks":
         values = self.values.copy()
         confidence = self.confidence.copy() if self.confidence is not None else None
+        heatmap = self.heatmap.copy() if self.heatmap is not None else None
 
         return Picks(
             values=values,
             confidence=confidence,
+            heatmap=heatmap,
             dt_mcs=self.dt_mcs,
             unit=self.unit,
             created_manually=True,
             created_by_nn=self.created_by_nn,
             modified_manually=True,
             picking_parameters=self.picking_parameters,
-            picks_color=self.color if keep_color else generate_color(),
+            color=self.color if keep_color else generate_color(),
         )

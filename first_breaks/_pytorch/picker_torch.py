@@ -80,7 +80,7 @@ class PickerTorch(IPicker):
         device: Optional[str] = None,
         segmentation_hw: Optional[Tuple[int, int]] = None,
         num_workers: Optional[int] = None,
-        batch_size: Optional[int] = None
+        batch_size: Optional[int] = None,
     ) -> None:
         if args:
             raise ValueError("Use named arguments instead of positional")
