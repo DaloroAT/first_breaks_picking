@@ -4,9 +4,6 @@ on:
   push:
     branches: [main]
     paths: ['first_breaks/VERSION']
-  pull_request:
-    branches: [main]
-    paths: ['first_breaks/VERSION']
 
 
 permissions:
@@ -17,24 +14,38 @@ jobs:
   autotag:
     name: Create tag if VERSION changed
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # needed for pushing tags
     outputs:
-      tagcreated: ${{ steps.autotag.outputs.tagcreated }}
-      tagname: ${{ steps.autotag.outputs.tagname }}
+      tagcreated: ${{ steps.set.outputs.tagcreated }}
+      tagname: ${{ steps.set.outputs.tagname }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Autotag (push only)
-        if: ${{ github.event_name == 'push' }}
-        id: autotag
-        uses: butlerlogic/action-autotag@v1.1.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          strategy: regex
-          root: first_breaks/VERSION
-          # Match a single version line like "1.2.3" or "1.2.3a"
-          regex_pattern: ^\s*(\d+\.\d+\.\d+[a-z]?)\s*$
-          tag_prefix: v
+          fetch-depth: 0   # we need full tag history
+
+      - id: read
+        run: |
+          ver="$(tr -d '[:space:]' < first_breaks/VERSION)"
+          echo "ver=$ver" >> "$GITHUB_OUTPUT"
+
+      - id: set
+        if: ${{ github.event_name == 'push' }}
+        env:
+          VER: ${{ steps.read.outputs.ver }}
+        run: |
+          git fetch --tags
+          if git rev-parse "v$VER" >/dev/null 2>&1; then
+            echo "tagcreated=no" >> "$GITHUB_OUTPUT"
+            echo "tagname=v$VER"  >> "$GITHUB_OUTPUT"
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "v$VER" -m "Release v$VER"
+            git push origin "v$VER"
+            echo "tagcreated=yes" >> "$GITHUB_OUTPUT"
+            echo "tagname=v$VER"  >> "$GITHUB_OUTPUT"
+          fi
 
   publish_assets:
     name: Build and publish assets
@@ -43,7 +54,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        type: ['CPU', 'GPU']
+        type: ['CPU']
     steps:
       - name: Checkout
         uses: actions/checkout@v4

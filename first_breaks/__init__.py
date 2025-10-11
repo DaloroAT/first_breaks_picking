@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from sys import platform
 
@@ -35,6 +36,26 @@ def patch_pathenv_with_default_gpu_paths() -> None:
         separator = ":"
 
     os.environ["PATH"] = separator.join([os.environ["PATH"]] + extra_potential_paths)
+
+
+if is_windows():
+    base = os.path.dirname(sys.executable)
+    app_pkgs = os.path.join(base, "app_packages")
+
+    # Common locations for ORT binaries in wheels
+    cand = [
+        app_pkgs,
+        os.path.join(app_pkgs, "onnxruntime"),
+        os.path.join(app_pkgs, "onnxruntime", "capi"),
+    ]
+    for p in cand:
+        if os.path.isdir(p):
+            try:
+                os.add_dll_directory(p)  # type: ignore
+            except Exception:
+                pass
+
+    import onnxruntime as ort
 
 
 patch_pathenv_with_default_gpu_paths()
