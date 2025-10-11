@@ -26,7 +26,7 @@ jobs:
       - name: Autotag (push only)
         if: ${{ github.event_name == 'push' }}
         id: autotag
-        uses: butlerlogic/action-autotag@stable
+        uses: butlerlogic/action-autotag@v1.1.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

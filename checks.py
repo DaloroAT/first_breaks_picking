@@ -1,14 +1,14 @@
 from pathlib import Path
 
-import tomli
+import tomllib
 
 
 def compare_main_and_gpu_tomls() -> None:
     with open(Path(__file__).parent / "pyproject.toml", "rb") as fin:
-        pyproject_main = tomli.load(fin)
+        pyproject_main = tomllib.load(fin)
 
     with open(Path(__file__).parent / "pyproject_gpu.toml", "rb") as fin:
-        pyproject_gpu = tomli.load(fin)
+        pyproject_gpu = tomllib.load(fin)
 
     deps_main = set(pyproject_main["project"].pop("dependencies"))
     deps_gpu = set(pyproject_gpu["project"].pop("dependencies"))
@@ -100,7 +100,7 @@ def compare_versions_of_repo() -> None:
         project_version = fin.read()
 
     with open(Path(__file__).parent / "pyproject.toml", "rb") as fin:
-        briefcase_version = tomli.load(fin)["tool"]["briefcase"]["version"]
+        briefcase_version = tomllib.load(fin)["tool"]["briefcase"]["version"]
 
     if project_version != briefcase_version:
         raise EnvironmentError(
