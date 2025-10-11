@@ -4,9 +4,6 @@ on:
   push:
     branches: [main]
     paths: ['first_breaks/VERSION']
-  pull_request:
-    branches: [main]
-    paths: ['first_breaks/VERSION']
 
 
 permissions:
@@ -33,6 +30,7 @@ jobs:
           echo "ver=$ver" >> "$GITHUB_OUTPUT"
 
       - id: set
+        if: ${{ github.event_name == 'push' }}
         env:
           VER: ${{ steps.read.outputs.ver }}
         run: |
@@ -56,7 +54,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        type: ['CPU', 'GPU']
+        type: ['CPU']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
