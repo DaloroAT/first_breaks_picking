@@ -1,38 +1,40 @@
 name: Release
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'first_breaks/VERSION'
   push:
-    branches:
-      - main
-    paths:
-      - 'first_breaks/VERSION'
+    branches: [main]
+    paths: ['first_breaks/VERSION']
+  pull_request:
+    branches: [main]
+    paths: ['first_breaks/VERSION']
+
+
+permissions:
+  contents: write
+
 
 jobs:
   autotag:
-    name: Create tag if the commit has new version implemented
-    runs-on: ubuntu-latest
+    name: Create tag if VERSION changed
+    runs-on: ubuntu-24.04
     outputs:
       tagcreated: ${{ steps.autotag.outputs.tagcreated }}
       tagname: ${{ steps.autotag.outputs.tagname }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Autotag
+      - name: Autotag (push only)
+        if: ${{ github.event_name == 'push' }}
         id: autotag
-        uses: butlerlogic/action-autotag@1.1.2
+        uses: ButlerLogic/action-autotag@v1.1.4
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           strategy: regex
-          root: "first_breaks/VERSION"
-          regex_pattern: >
-            (\d+\.\d+\.\d+[a-z]?)
-          tag_prefix: "v"
+          root: first_breaks/VERSION
+          # Match a single version line like "1.2.3" or "1.2.3a"
+          regex_pattern: ^\s*(\d+\.\d+\.\d+[a-z]?)\s*$
+          tag_prefix: v
 
   publish_assets:
     name: Build and publish assets
@@ -41,54 +43,76 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        type: [ 'CPU', 'GPU' ]
+        type: ['CPU', 'GPU']
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.8.0"
-    - name: Check versions
-      run: |
-        pip install tomli==2.0.1
-        python checks.py
-    - name: Setup for ${{ matrix.type }} Build
-      env:
-        BUILD_TYPE: ${{ matrix.type }}
-      run: |
-        if ($env:BUILD_TYPE -eq 'GPU') {
-          Move-Item -Path .\pyproject_gpu.toml -Destination .\pyproject.toml -Force
-        }
-    - name: ${{ matrix.type }} - Install Wheels
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade setuptools wheel build twine
-        python -m build --sdist --wheel
-    - name: ${{ matrix.type }} - Upload to PyPi
-      run: |
-        twine upload dist/* --username __token__ --password ${{ secrets.PY_PI_TOKEN }}
-    - name: ${{ matrix.type }} - Install Builder
-      run: |
-        python -m pip install briefcase
-    - name: ${{ matrix.type }} - Create Package
-      run: |
-        Remove-Item -Path .\build -Recurse -Force
-        briefcase create
-    - name: ${{ matrix.type }} - Build Package
-      run: |
-        briefcase build
-    - name: ${{ matrix.type }} - Create Installer MSI
-      run: |
-        briefcase package --adhoc-sign --packaging-format msi
-        Remove-Item -Path .\dist\*.wixpdb -Force
-    - name: ${{ matrix.type }} - Create Installer ZIP
-      run: |
-        briefcase package --adhoc-sign --packaging-format zip
-    - name: ${{ matrix.type }} - Upload assets to Release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ needs.autotag.outputs.tagname }}
-        file_glob: true
-        file: dist/*
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check versions
+        shell: bash
+        run: |
+          pip install tomli
+          python checks.py
+
+      - name: Setup for ${{ matrix.type }} Build
+        shell: pwsh
+        env:
+          BUILD_TYPE: ${{ matrix.type }}
+        run: |
+          if ($env:BUILD_TYPE -eq 'GPU') {
+            Move-Item -Path .\pyproject_gpu.toml -Destination .\pyproject.toml -Force
+          }
+
+      - name: ${{ matrix.type }} - Install Wheels
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools wheel build twine
+          python -m build --sdist --wheel
+
+      - name: ${{ matrix.type }} - Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PY_PI_TOKEN }}
+        shell: bash
+        run: twine upload dist/*
+
+      - name: ${{ matrix.type }} - Install Builder
+        run: |
+          python -m pip install briefcase
+          # Install WiX v5 CLI (required by recent Briefcase)
+          dotnet tool install --global wix --version 5.*
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: ${{ matrix.type }} - Create Package
+        shell: pwsh
+        run: |
+          Remove-Item -Path .\build -Recurse -Force
+          briefcase create
+
+      - name: ${{ matrix.type }} - Build Package
+        shell: pwsh
+        run: briefcase build
+
+      - name: ${{ matrix.type }} - Create Installer MSI
+        shell: pwsh
+        run: |
+          briefcase package --adhoc-sign --packaging-format msi
+          Remove-Item -Path .\dist\*.wixpdb -Force
+      - name: ${{ matrix.type }} - Create Installer ZIP
+        shell: pwsh
+        run: briefcase package --adhoc-sign --packaging-format zip
+
+      - name: ${{ matrix.type }} - Upload assets to GitHub Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.autotag.outputs.tagname }}
+          file_glob: true
+          file: dist/*
+          overwrite: true
