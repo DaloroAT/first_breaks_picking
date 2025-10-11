@@ -16,9 +16,15 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Install package
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12.0"
+    - name: Install dependencies
       run: |
-        make docker_build
+        sudo apt-get update
+        sudo apt-get install -y cmake
+        pip install -e .
     - name: Tests
       run: |
-        make docker_tests
+        make run_tests
