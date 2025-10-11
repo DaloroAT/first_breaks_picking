@@ -51,7 +51,7 @@ if is_windows():
     for p in cand:
         if os.path.isdir(p):
             try:
-                os.add_dll_directory(p)  # Python 3.8+ (works on 3.12)
+                os.add_dll_directory(p)  # type: ignore
             except Exception:
                 pass
 
