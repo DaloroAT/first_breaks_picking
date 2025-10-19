@@ -75,13 +75,6 @@ def is_onnx_cuda_initializable() -> bool:
         return False
 
 
-# def is_zlib_installed() -> bool:
-#     if is_windows():
-#         for path in os.environ["PATH"].split(";"):
-#             if Path(path) / "zlibwapi.dll":
-#                 pass
-
-
 def is_onnx_cuda_available() -> bool:
     return is_onnx_gpu_version_installed() and is_onnx_cuda_initializable()
 
