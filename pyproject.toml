@@ -48,8 +48,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-engine-cpu = ["onnxruntime>=1.20"]
-engine-cuda = ["onnxruntime-gpu[cuda]>=1.20"]
+engine-cpu = ["onnxruntime>=1.23"]
+engine-cuda = ["onnxruntime-gpu[cuda,cudnn]>=1.23"]
+engine-openvino = ["onnxruntime-openvino>=1.23", "openvino>=2025"]
 
 desktop = [
     "PyQt5>=5.15.9",
@@ -57,7 +58,7 @@ desktop = [
 ]
 
 standard = [
-    "onnxruntime>=1.20",
+    "onnxruntime>=1.23",
     "PyQt5>=5.15.9",
     "pyqtgraph>=0.13.3",
 ]

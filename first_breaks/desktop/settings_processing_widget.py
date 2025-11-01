@@ -38,7 +38,7 @@ from first_breaks.desktop.bandfilter_widget import QBandFilterWidget
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.radioset_widget import QRadioSetWidget
 from first_breaks.desktop.utils import QHSeparationLine, set_geometry
-from first_breaks.utils.cuda import ONNX_CUDA_AVAILABLE, get_recommended_device
+from first_breaks.utils.engine import get_recommended_device, is_onnx_cuda_available
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -318,24 +318,24 @@ class DeviceLine(QComboBoxMapping, _Extras):
     CPU_INEDX = 1
 
     def __init__(self, device: str = DEFAULTS.device):
-        if device == "cuda" and ONNX_CUDA_AVAILABLE:
+        if device == "cuda" and is_onnx_cuda_available():
             current_value = device
         else:
             current_value = "cpu"
 
-        if not ONNX_CUDA_AVAILABLE:
+        if not is_onnx_cuda_available():
             cuda_postfix = "(CUDA drivers or CUDA compatible app are not installed)"
         else:
             cuda_postfix = ""
 
         super().__init__(
-            {self.CUDA_INDEX: [f"GPU/CUDA {cuda_postfix}", "cuda"], self.CPU_INEDX: ["CPU", "cpu"]},
+            {self.CUDA_INDEX: [f"GPU/CUDA {cuda_postfix}", Device], self.CPU_INEDX: ["CPU", "cpu"]},
             current_value=current_value,
         )
 
-        if not ONNX_CUDA_AVAILABLE:
+        if not is_onnx_cuda_available():
             item = self.model().item(self.CUDA_INDEX)
-            if not ONNX_CUDA_AVAILABLE:
+            if not is_onnx_cuda_available():
                 item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
     def dict(self) -> Dict[str, Any]:

@@ -7,7 +7,7 @@ from pydantic_core.core_schema import FieldValidationInfo
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
 from first_breaks.sgy.headers import Headers, TraceHeaders
 from first_breaks.sgy.reader import SGY
-from first_breaks.utils.cuda import get_recommended_device
+from first_breaks.utils.engine import get_recommended_device
 
 TRACE_HEADER_NAMES = [v[1] for v in TraceHeaders().headers_schema]
 

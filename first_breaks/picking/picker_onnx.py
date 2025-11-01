@@ -8,7 +8,10 @@ from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picks import Picks
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.utils.cuda import ONNX_DEVICE2PROVIDER, get_recommended_device
+from first_breaks.utils.engine import (
+    ONNX_DEVICE2PROVIDER,
+    get_recommended_device,
+)
 from first_breaks.utils.utils import (
     calc_hash,
     chunk_iterable,
@@ -87,7 +90,7 @@ class PickerONNX(IPicker):
         batch_size: int = 1,
     ):
         super().__init__(show_progressbar=show_progressbar)
-        assert device in ["cpu", "cuda"]
+        assert device in ONNX_DEVICE2PROVIDER.keys()
 
         if model_path is None:
             model_path = download_model_onnx()
@@ -114,10 +117,6 @@ class PickerONNX(IPicker):
     def init_model(self) -> None:
         sess_opt = ort.SessionOptions()
         sess_opt.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        if self.device == "cuda":
-            sess_opt = ort.SessionOptions()
-            sess_opt.intra_op_num_threads = 2
-            sess_opt.inter_op_num_threads = 2
         self.model = ort.InferenceSession(
             str(self.model_path),
             providers=[ONNX_DEVICE2PROVIDER[self.device]],

@@ -3,6 +3,12 @@ import sys
 from pathlib import Path
 from sys import platform
 
+try:
+    # try to load torch first to get access to CUDA and CuDNN
+    import torch
+except Exception:
+    pass
+
 
 def is_windows() -> bool:
     return "win" in platform
