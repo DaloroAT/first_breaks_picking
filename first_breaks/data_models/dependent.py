@@ -72,6 +72,6 @@ class SGYModel(Source):
 
 
 class Device(DefaultModel):
-    device: Literal["cpu", "cuda"] = Field(
+    device: Literal["cpu", "cuda", "openvino"] = Field(
         get_recommended_device(), description="Device to compute first breaks"
     )  # type: ignore

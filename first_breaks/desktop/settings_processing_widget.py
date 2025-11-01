@@ -38,7 +38,12 @@ from first_breaks.desktop.bandfilter_widget import QBandFilterWidget
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.radioset_widget import QRadioSetWidget
 from first_breaks.desktop.utils import QHSeparationLine, set_geometry
-from first_breaks.utils.engine import get_recommended_device, is_onnx_cuda_available
+from first_breaks.utils.engine import (
+    Engine,
+    get_recommended_device,
+    is_onnx_cuda_available,
+    is_onnx_openvino_available,
+)
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -315,28 +320,36 @@ class MaximumTimeLine(QLineEdit, _Extras):
 
 class DeviceLine(QComboBoxMapping, _Extras):
     CUDA_INDEX = 0
-    CPU_INEDX = 1
+    OPENVINO_INDEX = 1
+    CPU_INDEX = 2
 
     def __init__(self, device: str = DEFAULTS.device):
-        if device == "cuda" and is_onnx_cuda_available():
-            current_value = device
-        else:
-            current_value = "cpu"
-
         if not is_onnx_cuda_available():
             cuda_postfix = "(CUDA drivers or CUDA compatible app are not installed)"
         else:
             cuda_postfix = ""
 
+        if not is_onnx_openvino_available():
+            openvino_postfix = "(OpenVino or OpenVino compatible app are not installed)"
+        else:
+            openvino_postfix = ""
+
         super().__init__(
-            {self.CUDA_INDEX: [f"GPU/CUDA {cuda_postfix}", Device], self.CPU_INEDX: ["CPU", "cpu"]},
-            current_value=current_value,
+            {
+                self.CUDA_INDEX: [f"CUDA {cuda_postfix}", Engine.CUDA.value],
+                self.OPENVINO_INDEX: [f"OpenVino {openvino_postfix}", Engine.OPENVINO.value],
+                self.CPU_INDEX: ["CPU", Engine.CPU.value],
+            },
+            current_value=device,
         )
 
         if not is_onnx_cuda_available():
             item = self.model().item(self.CUDA_INDEX)
-            if not is_onnx_cuda_available():
-                item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+            item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
+
+        if not is_onnx_openvino_available():
+            item = self.model().item(self.OPENVINO_INDEX)
+            item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
     def dict(self) -> Dict[str, Any]:
         return {"device": self.value()}
