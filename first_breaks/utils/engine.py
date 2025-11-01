@@ -26,7 +26,6 @@ FULL_INSTALLATION_MESSAGE = """
 
 def raise_onnx_device_init(device: str) -> None:
     try:
-        print(device)
         ort.OrtValue.ortvalue_from_numpy(np.array([0], dtype=np.float32), device, 0)
     except Exception as exc:
         err_message = f"{str(exc)}\n" f"{'_' * 20}\n" f"Recommendations:\n" f"{FULL_INSTALLATION_MESSAGE}"

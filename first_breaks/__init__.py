@@ -44,6 +44,9 @@ def patch_pathenv_with_default_gpu_paths() -> None:
     os.environ["PATH"] = separator.join([os.environ["PATH"]] + extra_potential_paths)
 
 
+patch_pathenv_with_default_gpu_paths()
+
+
 if is_windows():
     base = os.path.dirname(sys.executable)
     app_pkgs = os.path.join(base, "app_packages")
@@ -63,5 +66,3 @@ if is_windows():
 
     import onnxruntime as ort
 
-
-patch_pathenv_with_default_gpu_paths()
