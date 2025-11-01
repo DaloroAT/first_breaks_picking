@@ -50,6 +50,7 @@ class Picks(DefaultModel):
     picking_parameters: Optional[PickingParameters] = None
     color: TColor = Field(default_factory=generate_color, description="Color for picks")  # type: ignore
     width: float = Field(DEFAULT_PICKS_WIDTH, description="Width of pick line")
+    refined: bool = False
 
     active: Optional[bool] = None
 

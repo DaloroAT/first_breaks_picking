@@ -229,11 +229,7 @@ class MainWindow(QMainWindow):
 
         if result.success:
             self.picks_manager.add_nn_picks(result.picks)
-            refined_picks = result.picks.create_duplicate()
-            refiner = MinimalPhaseRefiner()
-            refined_picks = refiner.refine(self.sgy, refined_picks)
-            self.picks_manager.add_picks(refined_picks, "Refined picks")
-
+            self.picks_manager.set_model_hash(self.nn_manager.picker.model_hash)
             self.update_plot(refresh_view=False)
             self.run_processing_region()
         else:

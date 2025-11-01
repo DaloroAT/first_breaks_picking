@@ -1,4 +1,6 @@
+import json
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -23,14 +25,19 @@ from PyQt5.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QFileDialog,
+    QMessageBox,
 )
 
+from first_breaks.benchmark import benchmark
 from first_breaks.const import FIRST_BYTE
 from first_breaks.desktop.byte_encode_unit_widget import QDialogByteEncodeUnit
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.export_widgets import ExporterJSON, ExporterSGY, ExporterTXT
+from first_breaks.desktop.last_folder_manager import last_folder_manager
 from first_breaks.desktop.utils import LabelWithHelp, set_geometry
 from first_breaks.picking.picks import DEFAULT_PICKS_WIDTH, Picks
+from first_breaks.picking.refiner import MinimalPhaseRefiner
 from first_breaks.sgy.reader import SGY
 
 ACTIVE_PICKS_WIDTH = DEFAULT_PICKS_WIDTH * 1.7
@@ -267,6 +274,7 @@ class PicksManager(QWidget):
     ADD_PICKS_NAME_DUPLICATE = "Duplicate"
     ADD_PICKS_NAME_AGGREGATE = "Aggregate"
     ADD_PICKS_NAME_LOAD_FROM_HEADERS = "Load from Headers"
+    ADD_PICKS_NAME_REFINE_MIN_PHASE = "Refine (minimal phase)"
 
     picks_updated_signal = pyqtSignal()
 
@@ -306,9 +314,15 @@ class PicksManager(QWidget):
         self.properties_button = QPushButton("\U0001F4BE", self)  # "\U0001F4BE" or "\U0001F5AB"
         self.properties_button.setFont(self.font())  # to increase the size of the button a bit
         self.properties_button.clicked.connect(self.open_properties)
+        self.benchmark_button = QPushButton("Benchmark", self)
+        self.benchmark_button.clicked.connect(self.run_benchmark)
+        self.benchmark_button.setToolTip("Select one neural network picks and the second manual or downloaded")
+        self.model_hash = None
+
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.remove_button)
         button_layout.addWidget(self.properties_button)
+        button_layout.addWidget(self.benchmark_button)
         layout.addLayout(button_layout)
 
         self.radio_group = QButtonGroup(self)  # Group for radio buttons
@@ -327,6 +341,47 @@ class PicksManager(QWidget):
 
         self.update_properties_button_state()
         self.hide()
+
+    def set_model_hash(self, model_hash: str) -> None:
+        self.model_hash = model_hash
+
+    def run_benchmark(self):
+        formats = ";; ".join(
+            [
+                "JSON-file (*.json)",
+            ]
+        )
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Save benchmark results", directory=last_folder_manager.get_last_folder(), filter=formats
+        )
+
+        if filename:
+            filename = Path(filename).resolve()
+            filename.parent.mkdir(parents=True, exist_ok=True)
+
+            last_folder_manager.set_last_folder(filename)
+
+            try:
+                selected_items = self.list_widget.selectedItems()
+                selected_picks = [self.picks_mapping[self.list_widget.itemWidget(item)] for item in selected_items]
+
+                if selected_picks[0].created_by_nn:
+                    predicted_picks = selected_picks[0]
+                    manual_picks = selected_picks[1]
+                else:
+                    predicted_picks = selected_picks[1]
+                    manual_picks = selected_picks[0]
+
+                to_export = benchmark(
+                    self.sgy, manual_picks=manual_picks, predicted_picks=predicted_picks, model_hash=self.model_hash
+                )
+
+                with open(filename, "w") as f:
+                    json.dump(to_export, f)
+
+                QMessageBox.information(self, "Benchmark Successful", f"Benchmark was successfully saved to {filename}")
+            except Exception as e:
+                QMessageBox.critical(self, "Benchmark Failed", f"Failed to benchmark due to {e}")
 
     def duplicate_active_created_by_nn_picks(self) -> None:
         for item, picks in self.picks_mapping.items():
@@ -362,20 +417,30 @@ class PicksManager(QWidget):
         duplicate_action = QAction(self.ADD_PICKS_NAME_DUPLICATE, self)
         aggregate_action = QAction(self.ADD_PICKS_NAME_AGGREGATE, self)
         from_headers_action = QAction(self.ADD_PICKS_NAME_LOAD_FROM_HEADERS, self)
+        refine_min_phase_action = QAction(self.ADD_PICKS_NAME_REFINE_MIN_PHASE, self)
 
         menu.addAction(constant_values_action)
         menu.addAction(duplicate_action)
         menu.addAction(aggregate_action)
         menu.addAction(from_headers_action)
+        menu.addAction(refine_min_phase_action)
 
         constant_values_action.triggered.connect(self.add_constant_values_pick)
         duplicate_action.triggered.connect(self.add_duplicate_pick)
         aggregate_action.triggered.connect(self.add_aggregate_pick)
         from_headers_action.triggered.connect(self.add_from_headers_pick)
+        refine_min_phase_action.triggered.connect(self.add_refine_min_phase_pick)
 
         num_selected_items = len(self.list_widget.selectedItems())
         duplicate_action.setEnabled(num_selected_items == 1)
         aggregate_action.setEnabled(num_selected_items >= 2)
+
+        enable_min_phase_option = False
+        if num_selected_items == 1:
+            selected_picks_item = self.list_widget.itemWidget(self.list_widget.selectedItems()[0])
+            selected_picks = self.picks_mapping[selected_picks_item]
+            enable_min_phase_option = selected_picks.created_by_nn
+        refine_min_phase_action.setEnabled(enable_min_phase_option)
 
         button_pos = self.add_button.mapToGlobal(QPoint(0, 0))
         menu_pos = button_pos + QPoint(0, self.add_button.height())
@@ -414,6 +479,17 @@ class PicksManager(QWidget):
 
         self.items_counter.duplicated += 1
         return self.add_picks(duplicated_picks, f"Duplicated from '{selected_picks_item.get_name()}'")
+
+    def add_refine_min_phase_pick(self, selected_picks_item: Optional[QListWidgetItem] = None) -> PicksItemWidget:
+        selected_picks_item = selected_picks_item or self.list_widget.itemWidget(self.list_widget.selectedItems()[0])
+
+        picks = self.picks_mapping[selected_picks_item]
+        refined_picks = picks.create_duplicate(keep_color=False)
+
+        refiner = MinimalPhaseRefiner()
+        refined_picks = refiner.refine(self.sgy, refined_picks)
+        refined_picks.refined = True
+        return self.add_picks(refined_picks, f"Refined from '{selected_picks_item.get_name()}'")
 
     def add_aggregate_pick(self) -> Optional[PicksItemWidget]:
         self.items_counter.aggregated += 1
@@ -550,6 +626,13 @@ class PicksManager(QWidget):
     def update_properties_button_state(self) -> None:
         selected_items = self.list_widget.selectedItems()
         self.properties_button.setEnabled(len(selected_items) == 1)
+
+        if len(selected_items) == 2:
+            selected_picks = [self.picks_mapping[self.list_widget.itemWidget(item)] for item in selected_items]
+            by_nn = [picks.created_by_nn for picks in selected_picks]
+            self.benchmark_button.setEnabled(sum(by_nn) == 1)
+        else:
+            self.benchmark_button.setEnabled(False)
 
     def update_picks_color(self, picks_item_widget: PicksItemWidget, color: QColor) -> None:
         pick = self.picks_mapping.get(picks_item_widget)

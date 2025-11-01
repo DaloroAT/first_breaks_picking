@@ -75,3 +75,6 @@ formal_name = "FirstBreaksPicking"
 #description = "Project is devoted to pick waves that are the first to be detected on a seismogram with neural network"
 #icon = "src/mypysideapp/resources/appicon" # Briecase will choose the right extension depending the os (png,ico,...)
 sources = ['first_breaks']
+
+[tool.briefcase.app.first_breaks.files]
+exclude = ["**/*.onnx", "**/*.pth", "**/*.pt"]

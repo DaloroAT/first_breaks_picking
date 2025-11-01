@@ -9,7 +9,7 @@ import numpy as np
 from first_breaks.const import FIRST_BYTE
 from first_breaks.desktop.graph import export_image
 from first_breaks.picking.picker_onnx import PickerONNX
-from first_breaks.picking.picks import Picks
+from first_breaks.picking.picks import Picks, PickingParameters
 from first_breaks.picking.refiner import MinimalPhaseRefiner
 from first_breaks.picking.task import Task
 from first_breaks.sgy.reader import SGY
@@ -80,7 +80,39 @@ def calc_snr10(traces: np.ndarray, picks: Picks, smooth: bool = False, symmetric
     return snr10
 
 
-def benchmark(
+def benchmark(sgy: SGY, manual_picks: Picks, predicted_picks: Picks, model_hash: Optional[str] = None):
+    assert predicted_picks.created_by_nn and predicted_picks.picking_parameters is not None
+
+    to_export = {"model_hash": model_hash, "refined": predicted_picks.refined}
+
+    to_export["picking_parameters"] = predicted_picks.picking_parameters.model_dump()
+
+    difference = (np.array(manual_picks.picks_in_mcs) - np.array(predicted_picks.picks_in_mcs)).astype(int).tolist()
+    to_export["difference"] = difference
+
+    confidence = as_list(predicted_picks.confidence)
+    to_export["confidence"] = confidence
+
+    traces = sgy.read()
+    traces_hash = calc_hash(traces.tobytes(order="C"))
+    to_export["traces_hash"] = traces_hash
+
+    for header in ["CHAN", "SOURCE", "FFID"]:
+        to_export[header] = sgy.traces_headers[header].apply(lambda x: calc_hash(str(x).encode())[:10]).tolist()
+
+    to_export["shape"] = sgy.shape
+    to_export["dt_mcs"] = sgy.dt_mcs
+
+    # I want to analyse how picking parameters and result correlate with SNR
+    to_export["SNR10"] = []
+    for smooth, symmetric in product((True, False), (True, False)):
+        snr10 = calc_snr10(traces, manual_picks, smooth=smooth, symmetric=symmetric)
+        to_export["SNR10"].append({"smooth": smooth, "symmetric": symmetric, "values": snr10})
+
+    return to_export
+
+
+def benchmark_grid(
     sgy_filename: Union[str, Path],
     model_filename: Union[str, Path],
     report_filename: Union[str, Path],
@@ -201,7 +233,7 @@ if __name__ == "__main__":
     traces_per_gather_list_ = [12]
     saved_picks_byte_position_ = 237
 
-    benchmark(
+    benchmark_grid(
         sgy_filename=sgy_filename_,
         model_filename=model_filename_,
         report_filename=report_filename_,
