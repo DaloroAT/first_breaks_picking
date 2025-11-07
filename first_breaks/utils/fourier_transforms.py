@@ -93,6 +93,9 @@ def build_amplitude_filter(
 
             amp_filter += fall_part
 
+        if f1_f2 and f3_f4:
+            amp_filter -= 1
+
         if filter_type == "reject":
             amp_filter = 1 - amp_filter
 
