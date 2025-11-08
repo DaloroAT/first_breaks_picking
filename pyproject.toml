@@ -50,6 +50,7 @@ dependencies = [
 [project.optional-dependencies]
 engine-cpu = ["onnxruntime>=1.23"]
 engine-cuda = ["onnxruntime-gpu[cuda,cudnn]>=1.23"]
+engine-cuda-system = ["onnxruntime-gpu>=1.23"]
 engine-openvino = ["onnxruntime-openvino>=1.23", "openvino>=2025"]
 
 desktop = [
@@ -82,7 +83,7 @@ include = ["first_breaks*"]
 [tool.briefcase]
 project_name = "FirstBreaksPicking"
 bundle = "com.example"
-version = "0.9.0a2"
+version = "0.9.0a3"
 url = "https://github.com/DaloroAT/first_breaks_picking"
 license = {file = "LICENSE"}
 author = "Aleksei Tarasov"
@@ -91,21 +92,28 @@ long_description = "Project is devoted to pick waves that are the first to be de
 
 # CPU build
 [tool.briefcase.app.fbcpu]
-formal_name = "FirstBreaksPicking (CPU)"
+formal_name = "FirstBreaksPicking-CPU"
 description = "Desktop app for seismic first-breaks-picking (CPU)"
 sources = ["fbcpu"]
 requires = [ ".[engine-cpu,desktop]" ]
 
 # CUDA build
 [tool.briefcase.app.fbcuda]
-formal_name = "FirstBreaksPicking (CUDA)"
+formal_name = "FirstBreaksPicking-CUDA"
 description = "Desktop app for seismic first-breaks-picking (CUDA)"
 sources = ["fbcuda"]
 requires = [ ".[engine-cuda,desktop]" ]
 
+# CUDA build without CUDA+CuDNN libs
+[tool.briefcase.app.fbcudasystem]
+formal_name = "FirstBreaksPicking-CUDASystem"
+description = "Desktop app for seismic first-breaks-picking (CUDA System)"
+sources = ["fbcudasystem"]
+requires = [ ".[engine-cuda,desktop]" ]
+
 # OpenVINO build
 [tool.briefcase.app.fbopenvino]
-formal_name = "FirstBreaksPicking (OpenVINO)"
+formal_name = "FirstBreaksPicking-OpenVINO"
 description = "Desktop app for seismic first-breaks-picking (OpenVINO)"
 sources = ["fbopenvino"]
 requires = [ ".[engine-openvino,desktop]" ]
