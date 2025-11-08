@@ -115,9 +115,9 @@ jobs:
         shell: pwsh
         run: |
           $app = switch ("${{ matrix.flavor }}") {
-            "cpu"      { "fb_cpu" }
-            "cuda"     { "fb_cuda" }
-            "openvino" { "fb_openvino" }
+            "cpu"      { "fbcpu" }
+            "cuda"     { "fbcuda" }
+            "openvino" { "fbopenvino" }
           }
           echo "APP=$app" >> $env:GITHUB_OUTPUT
 
@@ -128,12 +128,6 @@ jobs:
       - name: Build
         shell: pwsh
         run: briefcase build windows --app ${{ steps.map.outputs.APP }} -r
-
-      - name: Package MSI
-        shell: pwsh
-        run: |
-          briefcase package windows --app ${{ steps.map.outputs.APP }} --adhoc-sign --packaging-format msi
-          Remove-Item -Path .\dist\*.wixpdb -Force
 
       - name: Package ZIP
         shell: pwsh

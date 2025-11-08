@@ -82,40 +82,30 @@ include = ["first_breaks*"]
 [tool.briefcase]
 project_name = "FirstBreaksPicking"
 bundle = "com.example"
-version = "0.9.0a1"
+version = "0.9.0a2"
 url = "https://github.com/DaloroAT/first_breaks_picking"
 license = {file = "LICENSE"}
+author = "Aleksei Tarasov"
+author_email = "aleksei.v.tarasov@gmail.com"
+long_description = "Project is devoted to pick waves that are the first to be detected on a seismogram with neural network"
 
 # CPU build
-[tool.briefcase.app.fb_cpu]
+[tool.briefcase.app.fbcpu]
 formal_name = "FirstBreaksPicking (CPU)"
-description = "Seismic first-breaks picking (CPU)"
-sources = ["first_breaks"]
-requires = [
-  "PyQt5>=5.15.9",
-  "pyqtgraph>=0.13.3",
-  "onnxruntime>=1.23",
-]
+description = "Desktop app for seismic first-breaks-picking (CPU)"
+sources = ["fbcpu"]
+requires = [ ".[engine-cpu,desktop]" ]
 
 # CUDA build
-[tool.briefcase.app.fb_cuda]
+[tool.briefcase.app.fbcuda]
 formal_name = "FirstBreaksPicking (CUDA)"
-description = "Seismic first-breaks picking (CUDA)"
-sources = ["first_breaks"]
-requires = [
-  "PyQt5>=5.15.9",
-  "pyqtgraph>=0.13.3",
-  "onnxruntime-gpu[cuda,cudnn]>=1.23",
-]
+description = "Desktop app for seismic first-breaks-picking (CUDA)"
+sources = ["fbcuda"]
+requires = [ ".[engine-cuda,desktop]" ]
 
 # OpenVINO build
-[tool.briefcase.app.fb_openvino]
+[tool.briefcase.app.fbopenvino]
 formal_name = "FirstBreaksPicking (OpenVINO)"
-description = "Seismic first-breaks picking (OpenVINO)"
-sources = ["first_breaks"]
-requires = [
-  "PyQt5>=5.15.9",
-  "pyqtgraph>=0.13.3",
-  "onnxruntime-openvino>=1.23",
-  "openvino>=2025",
-]
+description = "Desktop app for seismic first-breaks-picking (OpenVINO)"
+sources = ["fbopenvino"]
+requires = [ ".[engine-openvino,desktop]" ]
