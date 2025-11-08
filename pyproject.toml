@@ -83,7 +83,7 @@ include = ["first_breaks*"]
 [tool.briefcase]
 project_name = "FirstBreaksPicking"
 bundle = "com.example"
-version = "0.9.0a3"
+version = "0.9.0a4"
 url = "https://github.com/DaloroAT/first_breaks_picking"
 license = {file = "LICENSE"}
 author = "Aleksei Tarasov"
@@ -109,7 +109,7 @@ requires = [ ".[engine-cuda,desktop]" ]
 formal_name = "FirstBreaksPicking-CUDASystem"
 description = "Desktop app for seismic first-breaks-picking (CUDA System)"
 sources = ["fbcudasystem"]
-requires = [ ".[engine-cuda,desktop]" ]
+requires = [ ".[engine-cuda-system,desktop]" ]
 
 # OpenVINO build
 [tool.briefcase.app.fbopenvino]
