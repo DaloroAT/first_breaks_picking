@@ -4,8 +4,6 @@ from pathlib import Path
 
 import pytest
 
-from first_breaks.const import PROJECT_ROOT
-
 
 def find_code_block(file: Path, start_indicator: str, end_indicator: str) -> str:
     with open(file, encoding="utf-8") as f:
@@ -17,6 +15,13 @@ def find_code_block(file: Path, start_indicator: str, end_indicator: str) -> str
     code_block = "".join(text[i:j])
 
     return code_block
+
+
+@pytest.fixture(scope="session")
+def readme_path(pytestconfig: pytest.Config) -> Path:
+    p = Path(pytestconfig.rootpath) / "README.md"
+    assert p.exists(), f"README.md not found at {p}"
+    return p
 
 
 @pytest.mark.parametrize(
@@ -39,14 +44,14 @@ def find_code_block(file: Path, start_indicator: str, end_indicator: str) -> str
         "plot-sgy-real-picks",
     ],
 )
-def test_code_blocks_in_readme(block_name: str, demo_sgy: Path, logs_dir_for_tests: Path) -> None:
+def test_code_blocks_in_readme(block_name: str, demo_sgy: Path, logs_dir_for_tests: Path, readme_path: Path) -> None:
     assert logs_dir_for_tests.exists()
     os.chdir(str(logs_dir_for_tests))
     shutil.copyfile(str(demo_sgy), str(logs_dir_for_tests / "data.sgy"))
 
     start_indicator = f"[code-block-start]:{block_name}\n"
     end_indicator = f"[code-block-end]:{block_name}\n"
-    code = find_code_block(PROJECT_ROOT / "README.md", start_indicator, end_indicator)
+    code = find_code_block(readme_path, start_indicator, end_indicator)
     assert code
 
     tmp_fname = f"{block_name}.py"
