@@ -8,7 +8,7 @@ from first_breaks.const import PROJECT_ROOT
 
 
 def find_code_block(file: Path, start_indicator: str, end_indicator: str) -> str:
-    with open(file) as f:
+    with open(file, encoding="utf-8") as f:
         text = f.readlines()
 
     i = text.index(start_indicator) + 2

@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-#    branches: [main]
+    branches: [main]
     paths: ['first_breaks/VERSION']
 
 
@@ -92,8 +92,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-#        flavor: [ cpu, cuda, cudasystem, openvino ]
-        flavor: [ cudasystem ]
+        flavor: [ cpu, cuda, openvino ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +117,6 @@ jobs:
           $app = switch ("${{ matrix.flavor }}") {
             "cpu"      { "fbcpu" }
             "cuda"     { "fbcuda" }
-            "cudasystem"     { "fbcudasystem" }
             "openvino" { "fbopenvino" }
           }
           echo "APP=$app" >> $env:GITHUB_OUTPUT
