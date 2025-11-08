@@ -169,7 +169,7 @@ class MainWindow(QMainWindow):
             hide_on_close=True,
             **self.plotseis_settings.model_dump(),
         )
-        self.settings_processing_widget.hide()
+        self.settings_processing_widget.setEnabled(False)
         self.settings_processing_widget.export_plotseis_settings_signal.connect(self.update_plotseis_settings)
         self.settings_processing_widget.export_picking_settings_signal.connect(self.pick_fb)
 
@@ -284,6 +284,7 @@ class MainWindow(QMainWindow):
             self.graph.plot_picks(picks)
 
     def show_settings_processing_window(self) -> None:
+        self.settings_processing_widget.setEnabled(True)
         self.settings_processing_widget.show()
         self.settings_processing_widget.focusWidget()
 

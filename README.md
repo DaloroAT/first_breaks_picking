@@ -83,30 +83,29 @@ The latest model was trained similarly, but:
 
 # Installation
 
-Library is available in [PyPI](https://pypi.org/project/first-breaks-picking/):
+The easiest way to install:
 ```shell
-pip install -U first-breaks-picking
+pip install -U first-breaks-picking[standard]
 ```
 
-### GPU support
+With a `standard` installation, you can run a desktop application and all calculations will be done using the CPU. 
 
-You can use the capabilities of GPU (discrete, not integrated with CPU) to significantly reduce picking time. Before started, check
-[here](https://developer.nvidia.com/cuda-gpus) that your GPU is CUDA compatible.
-
-Install GPU supported version of library:
+Other installation methods:
 ```shell
-pip install -U first-breaks-picking-gpu
+# CPU, NO desktop application
+pip install -U first-breaks-picking[engine-cpu]  
+
+# CUDA accelerated, NO desktop application
+pip install -U first-breaks-picking[engine-cuda]  
+
+# CPU + desktop application, same as `standard`
+pip install -U first-breaks-picking[engine-cpu,desktop]  
+
+# CUDA accelerated + desktop application
+pip install -U first-breaks-picking[engine-cuda,desktop]
 ```
 
-The following steps are operating system dependent and must be performed manually:
-
-- Install [latest NVIDIA drivers](https://www.nvidia.com/Download/index.aspx).
-- Install [CUDA toolkit](https://developer.nvidia.com/cuda-downloads).
-**The version must be between 11.x, starting with 11.6.
-Version 12 also may work, but versions >=11.6 are recommended**.
-- Install ZLib and CuDNN:
-[Windows](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-windows) and
-[Linux](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-linux).
+We use `onnxruntime` as engine for neural network. You can find the engine's dependencies on the [official page](https://onnxruntime.ai/docs/install/).
 
 ### Compiled desktop application
 
