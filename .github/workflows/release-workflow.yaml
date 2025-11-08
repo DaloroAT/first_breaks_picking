@@ -92,7 +92,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        flavor: [ cpu, cuda, cudasystem, openvino ]
+#        flavor: [ cpu, cuda, cudasystem, openvino ]
+        flavor: [ cudasystem ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

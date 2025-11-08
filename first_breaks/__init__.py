@@ -23,6 +23,17 @@ def is_macos() -> bool:
 
 
 if is_windows():
+    extra_potential_paths = []
+    extra_potential_paths.extend(list(Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA").glob("*")))
+    extra_potential_paths.extend(list(Path(r"C:\Program Files\NVIDIA GPU Computing Toolkit").glob("*")))
+    extra_potential_paths.extend(list(Path(r"C:\Program Files\NVIDIA\CUDNN").glob("*")))
+    extra_potential_paths = [str(p) for p in extra_potential_paths]
+    separator = ";"
+
+    os.environ["PATH"] = separator.join([os.environ["PATH"]] + extra_potential_paths)
+
+
+if is_windows():
     base = os.path.dirname(sys.executable)
     app_pkgs = os.path.join(base, "app_packages")
 
