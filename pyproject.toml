@@ -82,10 +82,40 @@ include = ["first_breaks*"]
 [tool.briefcase]
 project_name = "FirstBreaksPicking"
 bundle = "com.example"
-version = "0.8.0"
+version = "0.9.0a1"
 url = "https://github.com/DaloroAT/first_breaks_picking"
 license = {file = "LICENSE"}
 
-[tool.briefcase.app.first_breaks]
-formal_name = "FirstBreaksPicking"
-sources = ['first_breaks']
+# CPU build
+[tool.briefcase.app.fb_cpu]
+formal_name = "FirstBreaksPicking (CPU)"
+description = "Seismic first-breaks picking (CPU)"
+sources = ["first_breaks"]
+requires = [
+  "PyQt5>=5.15.9",
+  "pyqtgraph>=0.13.3",
+  "onnxruntime>=1.23",
+]
+
+# CUDA build
+[tool.briefcase.app.fb_cuda]
+formal_name = "FirstBreaksPicking (CUDA)"
+description = "Seismic first-breaks picking (CUDA)"
+sources = ["first_breaks"]
+requires = [
+  "PyQt5>=5.15.9",
+  "pyqtgraph>=0.13.3",
+  "onnxruntime-gpu[cuda,cudnn]>=1.23",
+]
+
+# OpenVINO build
+[tool.briefcase.app.fb_openvino]
+formal_name = "FirstBreaksPicking (OpenVINO)"
+description = "Seismic first-breaks picking (OpenVINO)"
+sources = ["first_breaks"]
+requires = [
+  "PyQt5>=5.15.9",
+  "pyqtgraph>=0.13.3",
+  "onnxruntime-openvino>=1.23",
+  "openvino>=2025",
+]
