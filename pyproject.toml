@@ -82,7 +82,7 @@ include = ["first_breaks*"]
 [tool.briefcase]
 project_name = "FirstBreaksPicking"
 bundle = "com.example"
-version = "0.9.0a5"
+version = "0.9.0"
 url = "https://github.com/DaloroAT/first_breaks_picking"
 license = {file = "LICENSE"}
 author = "Aleksei Tarasov"
