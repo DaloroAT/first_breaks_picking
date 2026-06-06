@@ -32,7 +32,7 @@ def test_reader_open_different_sources(demo_sgy: Path) -> None:
 @pytest.mark.parametrize("picks_in_samples_type", [list, np.ndarray])
 def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, logs_dir_for_tests: Path) -> None:  # type: ignore
     sgy = SGY(demo_sgy)
-    picks_col_name = sgy._traces_headers_schema.fb_pick_default
+    picks_col_name = sgy.traces_headers_schema.fb_pick_default
 
     assert np.all(sgy.traces_headers[picks_col_name] == 0), sgy.traces_headers[picks_col_name]
 
