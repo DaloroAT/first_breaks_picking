@@ -5,11 +5,11 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
-from first_breaks.sgy.headers import Headers, TraceHeaders
+from first_breaks.sgy.headers import FORMAT_TO_SIZE, TraceHeaderField
 from first_breaks.sgy.reader import SGY
 from first_breaks.utils.engine import get_recommended_device
 
-TRACE_HEADER_NAMES = [v[1] for v in TraceHeaders().headers_schema]
+TRACE_HEADER_NAMES = [field.name for field in TraceHeaderField]
 
 
 class XAxis(DefaultModel):
@@ -31,8 +31,8 @@ class Encoding(DefaultModel):
 
     @field_validator("encoding")
     def validate_encoding(cls, v: str) -> str:
-        if v not in Headers().format2size.keys():
-            raise ValueError(f"'encoding' must be one of {Headers().format2size.keys()}")
+        if v not in FORMAT_TO_SIZE.keys():
+            raise ValueError(f"'encoding' must be one of {FORMAT_TO_SIZE.keys()}")
         else:
             return v
 
@@ -41,7 +41,7 @@ class TraceHeaderParams(TraceBytePosition, Encoding):
     @field_validator("byte_position")
     def validate_position_depends_on_encoding(cls, v: int, based_validation_info: FieldValidationInfo) -> int:
         encoding = based_validation_info.data["encoding"]
-        size = Headers.format2size[encoding]
+        size = FORMAT_TO_SIZE[encoding]
         if v + size > 240:
             raise ValueError(
                 f"'byte_position' is greater than allowed for '{encoding}' encoding. "

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Dict, IO, Mapping, NamedTuple, Optional, Type, Union
 
+import numpy as np
 import pandas as pd
 
-from first_breaks.sgy.types import SGYLayout
+from first_breaks.sgy.types import SGYLayout, Endianness
 
 
 class InvalidHeaders(Exception):
@@ -18,23 +19,7 @@ class HeaderInfo(NamedTuple):
     format: str
 
 
-@dataclass(frozen=True)
-class HeaderField:
-    key: Optional[Enum]
-    name: str
-    offset: int
-    format: str
-
-    @property
-    def legacy_tuple(self) -> Tuple[int, str, str]:
-        return self.offset, self.name, self.format
-
-
-THeadersAttr = List[Tuple[int, str, str]]
-THeaderEnum = TypeVar("THeaderEnum", bound=Enum)
-
-
-class FileHeaderEnum(Enum):
+class FileHeaderField(Enum):
     TEXTUAL_FILE_HEADER = HeaderInfo(0, "3200s")
     JOB = HeaderInfo(3200, "i")
     LINE = HeaderInfo(3204, "i")
@@ -70,7 +55,7 @@ class FileHeaderEnum(Enum):
     UNASSIGNED2 = HeaderInfo(3506, "94s")
 
 
-class TraceHeaderEnum(Enum):
+class TraceHeaderField(Enum):
     TRACENO = HeaderInfo(0, "i")
     TRACE_SEQUENCE_FILE = HeaderInfo(4, "i")
     FFID = HeaderInfo(8, "i")
@@ -182,6 +167,67 @@ FORMAT_TO_SIZE: Dict[str, int] = {
     "s": 1,
 }
 
+FORMAT_TO_NUMPY_DTYPE: Dict[str, str] = {
+    "b": "i1",
+    "B": "u1",
+    "h": "i2",
+    "H": "u2",
+    "i": "i4",
+    "I": "u4",
+    "l": "i4",
+    "L": "u4",
+    "q": "i8",
+    "Q": "u8",
+    "f": "f4",
+    "d": "f8",
+}
+
+RADEX_FILE_HEADER_NAMES: Mapping[FileHeaderField, str] = {
+    field: field.name.lower() for field in FileHeaderField
+}
+
+RADEX_TRACE_HEADER_NAMES: Mapping[TraceHeaderField, str] = {
+    field: field.name for field in TraceHeaderField
+}
+RADEX_TRACE_HEADER_NAMES = {
+    **RADEX_TRACE_HEADER_NAMES,
+    TraceHeaderField.TRACE_SEQUENCE_FILE: "trace_sequence_file",
+    TraceHeaderField.DATA_USE: "data_use",
+    TraceHeaderField.ELEVATION_SCALAR: "elevation_scalar",
+    TraceHeaderField.SOURCE_GROUP_SCALAR: "source_group_scalar",
+    TraceHeaderField.COORDINATE_UNITS: "coordinate_units",
+    TraceHeaderField.WEATHERING_VELOCITY: "weathering_velocity",
+    TraceHeaderField.SUBWEATHERING_VELOCITY: "subweathering_velocity",
+    TraceHeaderField.LAG_TIME_A: "lag_time_a",
+    TraceHeaderField.LAG_TIME_B: "lag_time_b",
+    TraceHeaderField.DELAY_RECORDING_TIME: "delay_recording_time",
+    TraceHeaderField.TIME_BASIC_CODE: "time_basic_code",
+    TraceHeaderField.TRACE_WEIGHTING_FACTOR: "trace_weighting_factor",
+    TraceHeaderField.GEOPHONE_GROUP_NUMBER_ROLL1: "geophone_group_number_roll1",
+    TraceHeaderField.GEOPHONE_GROUP_NUMBER_FIRST: "geophone_group_number_first",
+    TraceHeaderField.GEOPHONE_GROUP_NUMBER_LAST: "geophone_group_number_last",
+    TraceHeaderField.GAP_SIZE: "gap_size",
+    TraceHeaderField.OVER_TRAVEL: "over_travel",
+    TraceHeaderField.SHOT_POINT: "shot_point",
+    TraceHeaderField.SHOT_POINT_SCALAR: "shot_point_scalar",
+    TraceHeaderField.TRACE_VALUE_MEASUREMENT: "trace_value_measurement",
+    TraceHeaderField.TRANSDUCTION_CONSTANT_MANTISSA: "transduction_constant_mantissa",
+    TraceHeaderField.TRANSDUCTION_CONSTANT_POWER: "transduction_constant_power",
+    TraceHeaderField.TRANSDUCTION_UNIT: "transduction_unit",
+    TraceHeaderField.TRACE_IDENTIFIER: "trace_identifier",
+    TraceHeaderField.SCALAR_TRACE_HEADER: "scalar_trace_header",
+    TraceHeaderField.SOURCE_TYPE: "source_type",
+    TraceHeaderField.SOURCE_ENERGY_DIRECTION_MANTISSA: "source_energy_direction_mantissa",
+    TraceHeaderField.SOURCE_ENERGY_DIRECTION_EXPONENT: "source_energy_direction_exponent",
+    TraceHeaderField.SOURCE_MEASUREMENT_MANTISSA: "source_measurement_mantissa",
+    TraceHeaderField.SOURCE_MEASUREMENT_EXPONENT: "source_measurement_exponent",
+    TraceHeaderField.SOURCE_MEASUREMENT_UNIT: "source_measurement_unit",
+    TraceHeaderField.UNASSIGNED1: "unassigned1",
+}
+
+FileHeaderNameMapping = Optional[Mapping[FileHeaderField, str]]
+TraceHeaderNameMapping = Optional[Mapping[TraceHeaderField, str]]
+
 
 def get_num_bytes(fmt: str) -> int:
     tp = fmt[-1]
@@ -192,322 +238,460 @@ def get_num_bytes(fmt: str) -> int:
     return FORMAT_TO_SIZE[tp] * num
 
 
-class HeaderSchema:
-    def __init__(self, fields: Sequence[HeaderField]) -> None:
-        self._fields = tuple(fields)
-        self.headers_schema: THeadersAttr = [field.legacy_tuple for field in self._fields]
-        self.validate()
-
-    @property
-    def fields(self) -> Tuple[HeaderField, ...]:
-        return self._fields
-
-    @property
-    def names(self) -> Tuple[str, ...]:
-        return tuple(field.name for field in self._fields)
-
-    def field_for_name(self, name: str) -> HeaderField:
-        for field in self._fields:
-            if field.name == name:
-                return field
-        raise InvalidHeaders(f"Unknown header name: {name}")
-
-    def field_for_key(self, key: Enum) -> HeaderField:
-        for field in self._fields:
-            if field.key == key:
-                return field
-        raise InvalidHeaders(f"Unknown header key: {key}")
-
-    def get_num_bytes(self, fmt: str) -> int:
-        return get_num_bytes(fmt)
-
-    def validate(self) -> None:
-        names = [field.name for field in self._fields]
-        if len(set(names)) != len(names):
-            raise InvalidHeaders("Header names must be unique")
-
-    @classmethod
-    def from_enum(
-        cls,
-        enum_cls: Iterable[THeaderEnum],
-        names: Dict[THeaderEnum, str],
-    ) -> "HeaderSchema":
-        fields = [
-            HeaderField(key=header, name=names[header], offset=header.value.offset, format=header.value.format)
-            for header in enum_cls
-        ]
-        return cls(fields)
+def normalize_file_header_field(key: Union[str, FileHeaderField]) -> FileHeaderField:
+    return _normalize_header_field(key, FileHeaderField)
 
 
-class Headers(HeaderSchema):
-    format2size: Dict[str, int] = FORMAT_TO_SIZE
-
-    def __init__(self, headers_schema: Optional[THeadersAttr] = None) -> None:
-        fields = [
-            HeaderField(key=None, name=name, offset=offset, format=fmt)
-            for idx, (offset, name, fmt) in enumerate(headers_schema or [])
-        ]
-        super().__init__(fields)
-
-    def fill_offsets_if_empty(self) -> THeadersAttr:
-        raise NotImplementedError
+def normalize_trace_header_field(key: Union[str, TraceHeaderField]) -> TraceHeaderField:
+    return _normalize_header_field(key, TraceHeaderField)
 
 
-class FileHeaderSchema(HeaderSchema):
-    _ENUM_TO_NAME: Dict[FileHeaderEnum, str] = {
-        FileHeaderEnum.TEXTUAL_FILE_HEADER: "textual_file_header",
-        FileHeaderEnum.JOB: "job",
-        FileHeaderEnum.LINE: "line",
-        FileHeaderEnum.REEL: "reel",
-        FileHeaderEnum.DATA_TRACE_PER_ENSEMBLE: "data_trace_per_ensemble",
-        FileHeaderEnum.AUXILIARY_TRACE_PER_ENSEMBLE: "auxiliary_trace_per_ensemble",
-        FileHeaderEnum.DT: "dt",
-        FileHeaderEnum.DT_ORIG: "dt_orig",
-        FileHeaderEnum.NS: "ns",
-        FileHeaderEnum.NS_ORIG: "ns_orig",
-        FileHeaderEnum.DATA_SAMPLE_FORMAT: "data_sample_format",
-        FileHeaderEnum.ENSEMBLE_FOLD: "ensemble_fold",
-        FileHeaderEnum.TRACE_SORTING: "trace_sorting",
-        FileHeaderEnum.VERTICAL_SUM_CODE: "vertical_sum_code",
-        FileHeaderEnum.SWEEP_FREQUENCY_START: "sweep_frequency_start",
-        FileHeaderEnum.SWEEP_FREQUENCY_END: "sweep_frequency_end",
-        FileHeaderEnum.SWEEP_LENGTH: "sweep_length",
-        FileHeaderEnum.SWEEP_TYPE: "sweep_type",
-        FileHeaderEnum.SWEEP_CHANNEL: "sweep_channel",
-        FileHeaderEnum.SWEEP_TAPER_LENGTH_START: "sweep_taper_length_start",
-        FileHeaderEnum.SWEEP_TAPER_LENGTH_END: "sweep_taper_length_end",
-        FileHeaderEnum.TAPER_TYPE: "taper_type",
-        FileHeaderEnum.CORRELATED_DATA_TRACES: "correlated_data_traces",
-        FileHeaderEnum.BINARY_GAIN: "binary_gain",
-        FileHeaderEnum.AMPLITUDE_RECOVERY_METHOD: "amplitude_recovery_method",
-        FileHeaderEnum.MEASUREMENT_SYSTEM: "measurement_system",
-        FileHeaderEnum.IMPULSE_SIGNAL_POLARITY: "impulse_signal_polarity",
-        FileHeaderEnum.VIBRATORY_POLARITY_CODE: "vibratory_polarity_code",
-        FileHeaderEnum.UNASSIGNED1: "unassigned1",
-        FileHeaderEnum.SEGY_FORMAT_REVISION_NUMBER: "segy_format_revision_number",
-        FileHeaderEnum.FIXED_LENGTH_TRACE_FLAG: "fixed_length_trace_flag",
-        FileHeaderEnum.NUMBER_OF_TEXTUAL_HEADERS: "number_of_textual_headers",
-        FileHeaderEnum.UNASSIGNED2: "unassigned2",
-    }
-
-    def __init__(self) -> None:
-        self.dt_name = self._ENUM_TO_NAME[FileHeaderEnum.DT]
-        self.dt_name_orig = self._ENUM_TO_NAME[FileHeaderEnum.DT_ORIG]
-        self.ns_name = self._ENUM_TO_NAME[FileHeaderEnum.NS]
-        self.ns_name_orig = self._ENUM_TO_NAME[FileHeaderEnum.NS_ORIG]
-        self.data_sample_format_name = self._ENUM_TO_NAME[FileHeaderEnum.DATA_SAMPLE_FORMAT]
-        super().__init__(
-            [
-                HeaderField(key=header, name=self._ENUM_TO_NAME[header], offset=header.value.offset, format=header.value.format)
-                for header in FileHeaderEnum
-            ]
-        )
+def _normalize_file_header_dict(headers: Mapping[Union[str, FileHeaderField], Any]) -> Dict[FileHeaderField, Any]:
+    return _normalize_header_dict(headers, FileHeaderField)
 
 
-class TraceHeaderSchema(HeaderSchema):
-    _ENUM_TO_NAME: Dict[TraceHeaderEnum, str] = {header: header.name for header in TraceHeaderEnum}
-    _ENUM_TO_NAME.update(
-        {
-            TraceHeaderEnum.TRACE_SEQUENCE_FILE: "trace_sequence_file",
-            TraceHeaderEnum.DATA_USE: "data_use",
-            TraceHeaderEnum.ELEVATION_SCALAR: "elevation_scalar",
-            TraceHeaderEnum.SOURCE_GROUP_SCALAR: "source_group_scalar",
-            TraceHeaderEnum.COORDINATE_UNITS: "coordinate_units",
-            TraceHeaderEnum.WEATHERING_VELOCITY: "weathering_velocity",
-            TraceHeaderEnum.SUBWEATHERING_VELOCITY: "subweathering_velocity",
-            TraceHeaderEnum.LAG_TIME_A: "lag_time_a",
-            TraceHeaderEnum.LAG_TIME_B: "lag_time_b",
-            TraceHeaderEnum.DELAY_RECORDING_TIME: "delay_recording_time",
-            TraceHeaderEnum.TIME_BASIC_CODE: "time_basic_code",
-            TraceHeaderEnum.TRACE_WEIGHTING_FACTOR: "trace_weighting_factor",
-            TraceHeaderEnum.GEOPHONE_GROUP_NUMBER_ROLL1: "geophone_group_number_roll1",
-            TraceHeaderEnum.GEOPHONE_GROUP_NUMBER_FIRST: "geophone_group_number_first",
-            TraceHeaderEnum.GEOPHONE_GROUP_NUMBER_LAST: "geophone_group_number_last",
-            TraceHeaderEnum.GAP_SIZE: "gap_size",
-            TraceHeaderEnum.OVER_TRAVEL: "over_travel",
-            TraceHeaderEnum.SHOT_POINT: "shot_point",
-            TraceHeaderEnum.SHOT_POINT_SCALAR: "shot_point_scalar",
-            TraceHeaderEnum.TRACE_VALUE_MEASUREMENT: "trace_value_measurement",
-            TraceHeaderEnum.TRANSDUCTION_CONSTANT_MANTISSA: "transduction_constant_mantissa",
-            TraceHeaderEnum.TRANSDUCTION_CONSTANT_POWER: "transduction_constant_power",
-            TraceHeaderEnum.TRANSDUCTION_UNIT: "transduction_unit",
-            TraceHeaderEnum.TRACE_IDENTIFIER: "trace_identifier",
-            TraceHeaderEnum.SCALAR_TRACE_HEADER: "scalar_trace_header",
-            TraceHeaderEnum.SOURCE_TYPE: "source_type",
-            TraceHeaderEnum.SOURCE_ENERGY_DIRECTION_MANTISSA: "source_energy_direction_mantissa",
-            TraceHeaderEnum.SOURCE_ENERGY_DIRECTION_EXPONENT: "source_energy_direction_exponent",
-            TraceHeaderEnum.SOURCE_MEASUREMENT_MANTISSA: "source_measurement_mantissa",
-            TraceHeaderEnum.SOURCE_MEASUREMENT_EXPONENT: "source_measurement_exponent",
-            TraceHeaderEnum.SOURCE_MEASUREMENT_UNIT: "source_measurement_unit",
-            TraceHeaderEnum.UNASSIGNED1: "unassigned1",
-        }
-    )
+def _validate_file_header_fields(fields: Any) -> None:
+    _validate_header_fields(fields, FileHeaderField)
 
-    def __init__(self) -> None:
-        self.fb_pick_default = self._ENUM_TO_NAME[TraceHeaderEnum.FB_PICK]
-        super().__init__(
-            [
-                HeaderField(key=header, name=self._ENUM_TO_NAME[header], offset=header.value.offset, format=header.value.format)
-                for header in TraceHeaderEnum
-            ]
-        )
-        n = self._ENUM_TO_NAME
-        self.scalar_from2apply: Dict[str, List[str]] = {
-            n[TraceHeaderEnum.ELEVATION_SCALAR]: [
-                n[TraceHeaderEnum.REC_ELEV],
-                n[TraceHeaderEnum.SOU_ELEV],
-                n[TraceHeaderEnum.DEPTH],
-                n[TraceHeaderEnum.REC_DATUM],
-                n[TraceHeaderEnum.SOU_DATUM],
-                n[TraceHeaderEnum.SOU_H2OD],
-                n[TraceHeaderEnum.REC_H2OD],
-            ],
-            n[TraceHeaderEnum.SOURCE_GROUP_SCALAR]: [
-                n[TraceHeaderEnum.SOU_X],
-                n[TraceHeaderEnum.SOU_Y],
-                n[TraceHeaderEnum.REC_X],
-                n[TraceHeaderEnum.REC_Y],
-            ],
-            n[TraceHeaderEnum.SHOT_POINT_SCALAR]: [n[TraceHeaderEnum.SHOT_POINT]],
-            n[TraceHeaderEnum.SCALAR_TRACE_HEADER]: [
-                n[TraceHeaderEnum.UPHOLE],
-                n[TraceHeaderEnum.REC_UPHOLE],
-                n[TraceHeaderEnum.SOU_STAT],
-                n[TraceHeaderEnum.REC_STAT],
-                n[TraceHeaderEnum.TOT_STAT],
-                n[TraceHeaderEnum.LAG_TIME_A],
-                n[TraceHeaderEnum.LAG_TIME_B],
-                n[TraceHeaderEnum.DELAY_RECORDING_TIME],
-                n[TraceHeaderEnum.TLIVE_S],
-                n[TraceHeaderEnum.TFULL_S],
-            ],
-        }
+
+def _validate_trace_header_fields(fields: Any) -> None:
+    _validate_header_fields(fields, TraceHeaderField)
+
+
+def _normalize_header_field(key: Union[str, Enum], enum_cls: Type[Enum]) -> Any:
+    if isinstance(key, enum_cls):
+        return key
+    if isinstance(key, str):
+        try:
+            return enum_cls[key]
+        except KeyError as exc:
+            raise InvalidHeaders(f"Unknown header name: {key}") from exc
+    raise InvalidHeaders(f"Unsupported header key type: {type(key)!r}")
+
+
+def _normalize_header_dict(headers: Mapping[Union[str, Enum], Any], enum_cls: Type[Enum]) -> Dict[Any, Any]:
+    normalized = {_normalize_header_field(key, enum_cls): value for key, value in headers.items()}
+    _validate_header_fields(normalized.keys(), enum_cls)
+    return normalized
+
+
+def _validate_header_fields(fields: Any, enum_cls: Type[Enum]) -> None:
+    actual = set(fields)
+    required = set(enum_cls)
+    redundant = actual - required
+    missed = required - actual
+    if redundant:
+        raise InvalidHeaders(f"Redundant header keys: {sorted(field.name for field in redundant)}")
+    if missed:
+        raise InvalidHeaders(f"Missed header keys: {sorted(field.name for field in missed)}")
+
+
+def _file_header_name(field: FileHeaderField, name_mapping: FileHeaderNameMapping = None) -> str:
+    if name_mapping is None:
+        return field.name
+    return name_mapping.get(field, field.name)
+
+
+def _trace_header_name(field: TraceHeaderField, name_mapping: TraceHeaderNameMapping = None) -> str:
+    if name_mapping is None:
+        return field.name
+    return name_mapping.get(field, field.name)
+
+
+def _endian_prefix(endianness: Union[Endianness, str]) -> str:
+    return Endianness(endianness).value
+
+
+def _default_value_for_format(fmt: str) -> Any:
+    if fmt.endswith("s"):
+        return b""
+    return 0
+
+
+def _scale_values(values: pd.DataFrame, scalar: pd.Series) -> pd.DataFrame:
+    scalar_values = scalar.astype(np.float64).replace(0, 1)
+    scalar_values = np.where(scalar_values < 0, 1 / np.abs(scalar_values), scalar_values)
+    return values.multiply(scalar_values, axis=0)
+
+
+def _unscale_values(values: pd.DataFrame, scalar: pd.Series) -> pd.DataFrame:
+    scalar_values = scalar.astype(np.float64).replace(0, 1)
+    scalar_values = np.where(scalar_values < 0, np.abs(scalar_values), 1 / scalar_values)
+    return values.multiply(scalar_values, axis=0)
 
 
 class FileHeaders:
-    def __init__(
-        self,
-        values: Optional[Mapping[str, Any]] = None,
-        *,
-        schema: Optional[FileHeaderSchema] = None,
-    ) -> None:
-        self.schema = schema or FileHeaderSchema()
-        self._values: Dict[str, Any] = {}
-        if values is not None:
-            self.replace(values)
+    dt_name = FileHeaderField.DT.name
+    dt_name_orig = FileHeaderField.DT_ORIG.name
+    ns_name = FileHeaderField.NS.name
+    ns_name_orig = FileHeaderField.NS_ORIG.name
+    data_sample_format_name = FileHeaderField.DATA_SAMPLE_FORMAT.name
+
+    def __init__(self, raw: Union[bytes, bytearray], layout: SGYLayout) -> None:
+        if len(raw) != layout.file_header_size:
+            raise InvalidHeaders(f"File headers require {layout.file_header_size} bytes, got {len(raw)}")
+        self.__layout = layout
+        self.__raw = bytearray(raw)
+        self.__headers_cache: Optional[Dict[FileHeaderField, Any]] = None
 
     @classmethod
     def from_layout(
         cls,
         layout: SGYLayout,
-        values: Optional[Mapping[str, Any]] = None,
-        *,
-        schema: Optional[FileHeaderSchema] = None,
+        overrides: Optional[Mapping[Union[str, FileHeaderField], Any]] = None,
     ) -> "FileHeaders":
-        obj = cls(values=values, schema=schema)
-        obj._values.setdefault(obj.schema.dt_name, layout.dt_mcs)
-        obj._values.setdefault(obj.schema.dt_name_orig, layout.dt_mcs)
-        obj._values.setdefault(obj.schema.ns_name, layout.num_samples)
-        obj._values.setdefault(obj.schema.ns_name_orig, layout.num_samples)
-        obj._values.setdefault(obj.schema.data_sample_format_name, int(layout.data_format))
-        return obj
+        headers = {field: _default_value_for_format(field.value.format) for field in FileHeaderField}
+        headers[FileHeaderField.DT] = layout.dt_mcs
+        headers[FileHeaderField.DT_ORIG] = layout.dt_mcs
+        headers[FileHeaderField.NS] = layout.num_samples
+        headers[FileHeaderField.NS_ORIG] = layout.num_samples
+        headers[FileHeaderField.DATA_SAMPLE_FORMAT] = int(layout.data_format)
+        headers[FileHeaderField.SEGY_FORMAT_REVISION_NUMBER] = int(layout.revision)
+        if overrides is not None:
+            for key, value in overrides.items():
+                headers[normalize_file_header_field(key)] = value
+        return cls.from_values(headers, layout)
+
+    @classmethod
+    def from_values(cls, values: Mapping[Union[str, FileHeaderField], Any], layout: SGYLayout) -> "FileHeaders":
+        headers = _normalize_file_header_dict(values)
+        raw = bytearray(layout.file_header_size)
+        _patch_record(raw, 0, headers, FileHeaderField, layout, layout.file_header_size)
+        return cls(raw, layout)
+
+    @classmethod
+    def from_sgy_pointer(cls, pointer: IO[bytes], layout: SGYLayout) -> "FileHeaders":
+        pointer.seek(0)
+        raw = pointer.read(layout.file_header_size)
+        if len(raw) != layout.file_header_size:
+            raise InvalidHeaders(f"Cannot read {layout.file_header_size} bytes for file headers")
+        return cls(raw, layout)
+
+    # Backward-compatible alias while this module is settling.
+    read_from_sgy_pointer = from_sgy_pointer
+
+    def write_with_sgy_pointer(self, pointer: IO[bytes]) -> None:
+        pointer.seek(0)
+        pointer.write(self.to_bytes())
+
+    def headers(self, name_mapping: FileHeaderNameMapping = None) -> Dict[str, Any]:
+        headers = self.__materialize_headers()
+        return {_file_header_name(field, name_mapping): deepcopy(value) for field, value in headers.items()}
 
     @property
-    def headers_schema(self) -> THeadersAttr:
-        return self.schema.headers_schema
+    def fields(self) -> tuple[FileHeaderField, ...]:
+        return tuple(FileHeaderField)
 
-    @property
-    def fields(self) -> Tuple[HeaderField, ...]:
-        return self.schema.fields
+    def to_bytes(self) -> bytes:
+        return bytes(self.__raw)
 
-    @property
-    def names(self) -> Tuple[str, ...]:
-        return self.schema.names
+    def set(self, key: Union[str, FileHeaderField], value: Any) -> None:
+        field = normalize_file_header_field(key)
+        _patch_record(self.__raw, 0, {field: value}, FileHeaderField, self.__layout, self.__layout.file_header_size)
+        self.__headers_cache = None
 
-    @property
-    def values(self) -> Dict[str, Any]:
-        return self._values.copy()
+    def __getitem__(self, key: Union[str, FileHeaderField]) -> Any:
+        field = normalize_file_header_field(key)
+        return deepcopy(_read_field_from_record(self.__raw, 0, field, self.__layout))
 
-    def get(self, name: str, default: Any = None) -> Any:
-        return self._values.get(name, default)
-
-    def set(self, name: str, value: Any) -> None:
-        if name not in self.schema.names:
-            raise InvalidHeaders(f"Unknown file header: {name}")
-        self._values[name] = value
-
-    def replace(self, values: Mapping[str, Any]) -> None:
-        unknown = set(values) - set(self.schema.names)
-        if unknown:
-            raise InvalidHeaders(f"Unknown file headers: {sorted(unknown)}")
-        self._values = dict(values)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return self.values
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.schema, name)
+    def __materialize_headers(self) -> Dict[FileHeaderField, Any]:
+        if self.__headers_cache is None:
+            self.__headers_cache = _materialize_record(self.__raw, 0, FileHeaderField, self.__layout)
+        return self.__headers_cache
 
 
 class TraceHeaders:
-    def __init__(
-        self,
-        values: Optional[pd.DataFrame] = None,
-        *,
-        raw_values: Optional[pd.DataFrame] = None,
-        schema: Optional[TraceHeaderSchema] = None,
-    ) -> None:
-        self.schema = schema or TraceHeaderSchema()
-        self._values = self._normalize(values)
-        self._raw_values = self._normalize(raw_values) if raw_values is not None else self._values.copy()
+    fb_pick_default = TraceHeaderField.FB_PICK.name
+    scalar_from2apply: Dict[TraceHeaderField, tuple[TraceHeaderField, ...]] = {
+        TraceHeaderField.ELEVATION_SCALAR: (
+            TraceHeaderField.REC_ELEV,
+            TraceHeaderField.SOU_ELEV,
+            TraceHeaderField.DEPTH,
+            TraceHeaderField.REC_DATUM,
+            TraceHeaderField.SOU_DATUM,
+            TraceHeaderField.SOU_H2OD,
+            TraceHeaderField.REC_H2OD,
+        ),
+        TraceHeaderField.SOURCE_GROUP_SCALAR: (
+            TraceHeaderField.SOU_X,
+            TraceHeaderField.SOU_Y,
+            TraceHeaderField.REC_X,
+            TraceHeaderField.REC_Y,
+        ),
+        TraceHeaderField.SHOT_POINT_SCALAR: (TraceHeaderField.SHOT_POINT,),
+        TraceHeaderField.SCALAR_TRACE_HEADER: (
+            TraceHeaderField.UPHOLE,
+            TraceHeaderField.REC_UPHOLE,
+            TraceHeaderField.SOU_STAT,
+            TraceHeaderField.REC_STAT,
+            TraceHeaderField.TOT_STAT,
+            TraceHeaderField.LAG_TIME_A,
+            TraceHeaderField.LAG_TIME_B,
+            TraceHeaderField.DELAY_RECORDING_TIME,
+            TraceHeaderField.TLIVE_S,
+            TraceHeaderField.TFULL_S,
+        ),
+    }
+
+    def __init__(self, raw: Union[bytes, bytearray], layout: SGYLayout) -> None:
+        expected_size = layout.num_traces * layout.trace_header_size
+        if len(raw) != expected_size:
+            raise InvalidHeaders(f"Trace headers require {expected_size} bytes, got {len(raw)}")
+        self.__layout = layout
+        self.__raw = bytearray(raw)
+        self.__raw_dataframe_cache: Optional[pd.DataFrame] = None
+        self.__scaled_dataframe_cache: Optional[pd.DataFrame] = None
 
     @classmethod
-    def empty(
-        cls,
-        num_traces: int,
-        *,
-        schema: Optional[TraceHeaderSchema] = None,
-    ) -> "TraceHeaders":
-        index = range(num_traces)
-        return cls(pd.DataFrame(index=index), schema=schema)
+    def empty(cls, layout: SGYLayout) -> "TraceHeaders":
+        headers = {
+            field.name: np.zeros(layout.num_traces, dtype=np.int64)
+            for field in TraceHeaderField
+        }
+        return cls.from_values(pd.DataFrame(headers), layout)
+
+    @classmethod
+    def from_values(cls, values: pd.DataFrame, layout: SGYLayout) -> "TraceHeaders":
+        normalized = _normalize_trace_dataframe(values)
+        if len(normalized) != layout.num_traces:
+            raise InvalidHeaders(f"Trace headers contain {len(normalized)} rows, expected {layout.num_traces}")
+        raw = bytearray(layout.num_traces * layout.trace_header_size)
+        for trace_idx, (_, row) in enumerate(normalized.iterrows()):
+            values_by_field = {field: row[field.name] for field in TraceHeaderField}
+            _patch_record(raw, trace_idx, values_by_field, TraceHeaderField, layout, layout.trace_header_size)
+        return cls(raw, layout)
+
+    @classmethod
+    def from_sgy_pointer(cls, pointer: IO[bytes], layout: SGYLayout) -> "TraceHeaders":
+        raw = bytearray(layout.num_traces * layout.trace_header_size)
+        for trace_idx in range(layout.num_traces):
+            pointer.seek(layout.file_header_size + trace_idx * layout.trace_block_size)
+            start = trace_idx * layout.trace_header_size
+            stop = start + layout.trace_header_size
+            block = pointer.read(layout.trace_header_size)
+            if len(block) != layout.trace_header_size:
+                raise InvalidHeaders(f"Cannot read {layout.trace_header_size} bytes for trace header {trace_idx}")
+            raw[start:stop] = block
+        return cls(raw, layout)
+
+    # Backward-compatible alias while this module is settling.
+    read_from_sgy_pointer = from_sgy_pointer
+
+    def write_with_sgy_pointer(self, pointer: IO[bytes]) -> None:
+        for trace_idx in range(self.__layout.num_traces):
+            pointer.seek(self.__layout.file_header_size + trace_idx * self.__layout.trace_block_size)
+            start = trace_idx * self.__layout.trace_header_size
+            stop = start + self.__layout.trace_header_size
+            pointer.write(self.__raw[start:stop])
+
+    def raw(self, name_mapping: TraceHeaderNameMapping = None) -> pd.DataFrame:
+        return self.__rename_dataframe(self.__materialize_raw(), name_mapping)
+
+    def scaled(self, name_mapping: TraceHeaderNameMapping = None) -> pd.DataFrame:
+        if self.__scaled_dataframe_cache is None:
+            scaled = self.__materialize_raw().copy()
+            for scalar_field, value_fields in self.scalar_from2apply.items():
+                columns = [field.name for field in value_fields]
+                scaled[columns] = _scale_values(scaled[columns], self.__materialize_raw()[scalar_field.name])
+            self.__scaled_dataframe_cache = scaled
+        return self.__rename_dataframe(self.__scaled_dataframe_cache, name_mapping)
 
     @property
-    def headers_schema(self) -> THeadersAttr:
-        return self.schema.headers_schema
+    def fields(self) -> tuple[TraceHeaderField, ...]:
+        return tuple(TraceHeaderField)
 
-    @property
-    def fields(self) -> Tuple[HeaderField, ...]:
-        return self.schema.fields
+    def __getitem__(self, key: Union[str, TraceHeaderField]) -> pd.Series:
+        field = normalize_trace_header_field(key)
+        return self.scaled()[field.name]
 
-    @property
-    def names(self) -> Tuple[str, ...]:
-        return self.schema.names
+    def to_bytes(self) -> bytes:
+        return bytes(self.__raw)
 
-    @property
-    def values(self) -> pd.DataFrame:
-        return self._values.copy()
+    def set(self, field: Union[str, TraceHeaderField], values: Union[Any, pd.Series, np.ndarray]) -> None:
+        parsed_field = normalize_trace_header_field(field)
+        values_array = np.asarray(values)
+        if values_array.ndim == 0:
+            values_array = np.full(self.__layout.num_traces, values_array.item())
+        if len(values_array) != self.__layout.num_traces:
+            raise InvalidHeaders(f"Trace header update contains {len(values_array)} values, expected {self.__layout.num_traces}")
+        for trace_idx, value in enumerate(values_array):
+            _patch_record(self.__raw, trace_idx, {parsed_field: value}, TraceHeaderField, self.__layout, self.__layout.trace_header_size)
+        self.__invalidate_cache()
 
-    @property
-    def raw_values(self) -> pd.DataFrame:
-        return self._raw_values.copy()
+    def __materialize_raw(self) -> pd.DataFrame:
+        if self.__raw_dataframe_cache is None:
+            records = _records_from_raw(self.__raw, TraceHeaderField, self.__layout, self.__layout.trace_header_size)
+            self.__raw_dataframe_cache = pd.DataFrame({field.name: records[field.name] for field in TraceHeaderField})
+        return self.__raw_dataframe_cache
 
-    def replace(self, values: pd.DataFrame, *, raw_values: Optional[pd.DataFrame] = None) -> None:
-        self._values = self._normalize(values)
-        self._raw_values = self._normalize(raw_values) if raw_values is not None else self._values.copy()
+    def __rename_dataframe(self, headers: pd.DataFrame, name_mapping: TraceHeaderNameMapping = None) -> pd.DataFrame:
+        renamed = headers.copy()
+        if name_mapping is not None:
+            renamed = renamed.rename(columns={field.name: _trace_header_name(field, name_mapping) for field in TraceHeaderField})
+        return renamed
 
-    def to_dataframe(self) -> pd.DataFrame:
-        return self.values
+    def __invalidate_cache(self) -> None:
+        self.__raw_dataframe_cache = None
+        self.__scaled_dataframe_cache = None
 
-    def raw_dataframe(self) -> pd.DataFrame:
-        return self.raw_values
 
-    def _normalize(self, values: Optional[pd.DataFrame]) -> pd.DataFrame:
-        if values is None:
-            return pd.DataFrame()
-        unknown = set(values.columns) - set(self.schema.names)
-        if unknown:
-            raise InvalidHeaders(f"Unknown trace headers: {sorted(unknown)}")
-        return values.copy()
+def read_file_header(
+    pointer: IO[bytes],
+    field: FileHeaderField,
+    layout: SGYLayout,
+) -> Any:
+    pointer.seek(field.value.offset)
+    raw = pointer.read(get_num_bytes(field.value.format))
+    if len(raw) != get_num_bytes(field.value.format):
+        raise InvalidHeaders(f"Cannot read {get_num_bytes(field.value.format)} bytes for header format {field.value.format!r}")
+    return _decode_value(raw, field.value, layout)
 
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.schema, name)
+
+def write_file_header(
+    pointer: IO[bytes],
+    field: FileHeaderField,
+    value: Any,
+    layout: SGYLayout,
+) -> None:
+    pointer.seek(field.value.offset)
+    pointer.write(_encode_value(value, field.value, layout))
+
+
+def read_trace_header(
+    pointer: IO[bytes],
+    field: TraceHeaderField,
+    trace_idx: int,
+    layout: SGYLayout,
+) -> Any:
+    pointer.seek(_trace_header_offset(field, trace_idx, layout))
+    raw = pointer.read(get_num_bytes(field.value.format))
+    if len(raw) != get_num_bytes(field.value.format):
+        raise InvalidHeaders(f"Cannot read {get_num_bytes(field.value.format)} bytes for header format {field.value.format!r}")
+    return _decode_value(raw, field.value, layout)
+
+
+def write_trace_header(
+    pointer: IO[bytes],
+    field: TraceHeaderField,
+    value: Any,
+    trace_idx: int,
+    layout: SGYLayout,
+) -> None:
+    pointer.seek(_trace_header_offset(field, trace_idx, layout))
+    pointer.write(_encode_value(value, field.value, layout))
+
+
+def _trace_header_offset(field: TraceHeaderField, trace_idx: int, layout: SGYLayout) -> int:
+    return layout.file_header_size + trace_idx * layout.trace_block_size + field.value.offset
+
+
+def _trace_header_dtype(layout: SGYLayout) -> np.dtype:
+    return _record_dtype(TraceHeaderField, layout, layout.trace_header_size)
+
+
+def _record_dtype(enum_cls: Type[Enum], layout: SGYLayout, itemsize: int) -> np.dtype:
+    prefix = _endian_prefix(layout.endianness)
+    return np.dtype(
+        {
+            "names": [field.name for field in enum_cls],
+            "formats": [_numpy_format(field.value.format, prefix) for field in enum_cls],
+            "offsets": [field.value.offset for field in enum_cls],
+            "itemsize": itemsize,
+        }
+    )
+
+
+def _numpy_format(fmt: str, endian_prefix: str) -> str:
+    if fmt.endswith("s"):
+        return f"S{get_num_bytes(fmt)}"
+    if fmt not in FORMAT_TO_NUMPY_DTYPE:
+        raise InvalidHeaders(f"Format is not interpretable by NumPy: {fmt!r}")
+    return endian_prefix + FORMAT_TO_NUMPY_DTYPE[fmt]
+
+
+def _records_from_raw(raw: bytearray, enum_cls: Type[Enum], layout: SGYLayout, itemsize: int) -> np.ndarray:
+    dtype = _record_dtype(enum_cls, layout, itemsize)
+    count = len(raw) // itemsize
+    return np.frombuffer(raw, dtype=dtype, count=count)
+
+
+def _materialize_record(raw: bytearray, record_idx: int, enum_cls: Type[Enum], layout: SGYLayout) -> Dict[Any, Any]:
+    itemsize = layout.file_header_size if enum_cls is FileHeaderField else layout.trace_header_size
+    records = _records_from_raw(raw, enum_cls, layout, itemsize)
+    return {field: _to_python_value(records[field.name][record_idx], field.value.format) for field in enum_cls}
+
+
+def _read_field_from_record(raw: bytearray, record_idx: int, field: Enum, layout: SGYLayout) -> Any:
+    itemsize = layout.file_header_size if isinstance(field, FileHeaderField) else layout.trace_header_size
+    records = _records_from_raw(raw, type(field), layout, itemsize)
+    return _to_python_value(records[field.name][record_idx], field.value.format)
+
+
+def _patch_record(
+    raw: bytearray,
+    record_idx: int,
+    values: Mapping[Enum, Any],
+    enum_cls: Type[Enum],
+    layout: SGYLayout,
+    itemsize: int,
+) -> None:
+    records = _records_from_raw(raw, enum_cls, layout, itemsize)
+    for field, value in values.items():
+        _validate_value(value, field.value.format, layout)
+        records[field.name][record_idx] = _prepare_value(value, field.value.format)
+
+
+def _decode_value(raw: bytes, info: HeaderInfo, layout: SGYLayout) -> Any:
+    dtype = np.dtype(_numpy_format(info.format, _endian_prefix(layout.endianness)))
+    value = np.frombuffer(raw, dtype=dtype, count=1)[0]
+    return _to_python_value(value, info.format)
+
+
+def _encode_value(value: Any, info: HeaderInfo, layout: SGYLayout) -> bytes:
+    _validate_value(value, info.format, layout)
+    dtype = np.dtype(_numpy_format(info.format, _endian_prefix(layout.endianness)))
+    return np.asarray([_prepare_value(value, info.format)], dtype=dtype).tobytes()
+
+
+def _prepare_value(value: Any, fmt: str) -> Any:
+    if fmt.endswith("s"):
+        value_bytes = value.encode("ascii", errors="replace") if isinstance(value, str) else bytes(value)
+        return value_bytes.ljust(get_num_bytes(fmt), b"\x00")
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _to_python_value(value: Any, fmt: str) -> Any:
+    if fmt.endswith("s"):
+        return bytes(value).rstrip(b"\x00")
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _validate_value(value: Any, fmt: str, layout: SGYLayout) -> None:
+    if fmt.endswith("s"):
+        value_bytes = value.encode("ascii", errors="replace") if isinstance(value, str) else bytes(value)
+        if len(value_bytes) > get_num_bytes(fmt):
+            raise InvalidHeaders(f"Value for header format {fmt!r} requires at most {get_num_bytes(fmt)} bytes")
+        return
+    dtype = np.dtype(_numpy_format(fmt, _endian_prefix(layout.endianness)))
+    value = value.item() if isinstance(value, np.generic) else value
+    if dtype.kind in ("i", "u"):
+        info = np.iinfo(dtype)
+        if not info.min <= int(value) <= info.max:
+            raise InvalidHeaders(f"Value {value!r} is outside range [{info.min}, {info.max}] for header format {fmt!r}")
+    elif dtype.kind == "f":
+        try:
+            float(value)
+        except (TypeError, ValueError) as exc:
+            raise InvalidHeaders(f"Value {value!r} cannot be encoded as header format {fmt!r}") from exc
+
+
+def _normalize_trace_dataframe(headers_raw: pd.DataFrame) -> pd.DataFrame:
+    field_columns = [normalize_trace_header_field(column) for column in headers_raw.columns]
+    _validate_trace_header_fields(field_columns)
+    normalized = headers_raw.copy()
+    normalized.columns = [field.name for field in field_columns]
+    return normalized

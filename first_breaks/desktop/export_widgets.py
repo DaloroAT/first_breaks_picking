@@ -29,7 +29,7 @@ from first_breaks.exports.export_picks import (
     export_to_txt,
 )
 from first_breaks.picking.picks import PickingParameters, Picks
-from first_breaks.sgy.headers import TraceHeaders
+from first_breaks.sgy.headers import TraceHeaderField
 from first_breaks.sgy.reader import SGY
 
 
@@ -148,8 +148,9 @@ class _ColumnExporter(_ExporterWidget):
             tags.append(tag)
             tag2column[tag] = col
 
-        for pos, name, _ in TraceHeaders().headers_schema:
-            tag = f"{pos + FIRST_BYTE} - {name}"
+        for field in TraceHeaderField:
+            name = field.name
+            tag = f"{field.value.offset + FIRST_BYTE} - {name}"
             tags.append(tag)
             tag2column[tag] = name
 

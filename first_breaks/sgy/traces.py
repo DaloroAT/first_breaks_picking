@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Optional, Sequence
 
 import numpy as np
@@ -8,11 +7,11 @@ import numpy as np
 from first_breaks.sgy.types import InvalidSamplesSlice, SGYInitParamsError, SGYLayout, SGYSource, SourceKind
 
 
-@dataclass
 class Traces:
-    layout: SGYLayout
-    source: SGYSource
-    _array: Optional[np.ndarray] = None
+    def __init__(self, layout: SGYLayout, source: SGYSource, array: Optional[np.ndarray] = None) -> None:
+        self.layout = layout
+        self.source = source
+        self.__array = array
 
     @classmethod
     def from_array(cls, array: np.ndarray, layout: SGYLayout, *, copy: bool = False) -> "Traces":
@@ -21,7 +20,7 @@ class Traces:
             raise SGYInitParamsError(f"Trace array shape {normalized.shape} does not match layout shape {layout.shape}")
         if copy:
             normalized = normalized.copy()
-        return cls(layout=layout, source=SGYSource(kind=SourceKind.ARRAY, value=array), _array=normalized)
+        return cls(layout=layout, source=SGYSource(kind=SourceKind.ARRAY, value=array), array=normalized)
 
     @property
     def is_array_backed(self) -> bool:
@@ -37,24 +36,24 @@ class Traces:
         min_sample: Optional[int] = None,
         max_sample: Optional[int] = None,
     ) -> np.ndarray:
-        if self._array is None:
+        if self.__array is None:
             raise NotImplementedError("Trace materialization from file/bytes sources is not implemented yet")
 
         min_idx, max_idx = self._normalize_sample_slice(min_sample, max_sample)
         trace_ids = list(ids)
-        return self._array[min_idx:max_idx, trace_ids]
+        return self.__array[min_idx:max_idx, trace_ids]
 
     def replace_array(self, array: np.ndarray, *, copy: bool = False) -> None:
         normalized = self._normalize_array(array)
         if normalized.shape != self.layout.shape:
             raise SGYInitParamsError(f"Trace array shape {normalized.shape} does not match layout shape {self.layout.shape}")
-        self._array = normalized.copy() if copy else normalized
+        self.__array = normalized.copy() if copy else normalized
         self.source = SGYSource(kind=SourceKind.ARRAY, value=array)
 
     def to_numpy(self, *, copy: bool = True) -> np.ndarray:
-        if self._array is None:
+        if self.__array is None:
             raise NotImplementedError("Trace materialization from file/bytes sources is not implemented yet")
-        return self._array.copy() if copy else self._array
+        return self.__array.copy() if copy else self.__array
 
     def _normalize_sample_slice(
         self,
