@@ -15,7 +15,7 @@ class Traces:
 
     @classmethod
     def from_array(cls, array: np.ndarray, layout: SGYLayout, *, copy: bool = False) -> "Traces":
-        normalized = cls._normalize_array(array)
+        normalized = cls.__normalize_array(array)
         if normalized.shape != layout.shape:
             raise SGYInitParamsError(f"Trace array shape {normalized.shape} does not match layout shape {layout.shape}")
         if copy:
@@ -39,12 +39,12 @@ class Traces:
         if self.__array is None:
             raise NotImplementedError("Trace materialization from file/bytes sources is not implemented yet")
 
-        min_idx, max_idx = self._normalize_sample_slice(min_sample, max_sample)
+        min_idx, max_idx = self.__normalize_sample_slice(min_sample, max_sample)
         trace_ids = list(ids)
         return self.__array[min_idx:max_idx, trace_ids]
 
     def replace_array(self, array: np.ndarray, *, copy: bool = False) -> None:
-        normalized = self._normalize_array(array)
+        normalized = self.__normalize_array(array)
         if normalized.shape != self.layout.shape:
             raise SGYInitParamsError(f"Trace array shape {normalized.shape} does not match layout shape {self.layout.shape}")
         self.__array = normalized.copy() if copy else normalized
@@ -55,7 +55,7 @@ class Traces:
             raise NotImplementedError("Trace materialization from file/bytes sources is not implemented yet")
         return self.__array.copy() if copy else self.__array
 
-    def _normalize_sample_slice(
+    def __normalize_sample_slice(
         self,
         min_sample: Optional[int],
         max_sample: Optional[int],
@@ -69,7 +69,7 @@ class Traces:
         return min_idx, max_idx
 
     @staticmethod
-    def _normalize_array(array: np.ndarray) -> np.ndarray:
+    def __normalize_array(array: np.ndarray) -> np.ndarray:
         if array.ndim == 1:
             return array.reshape((-1, 1))
         if array.ndim == 2:

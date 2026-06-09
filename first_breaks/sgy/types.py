@@ -59,9 +59,6 @@ class Endianness(str, Enum):
         return True
 
 
-# Backward-compatible spelling used by the old public API.
-Endianess = Endianness
-
 DEFAULT_ENDIANESS = Endianness.BIG
 DEFAULT_DATA_FORMAT = DataFormat.IEEE_FLOAT
 
@@ -154,20 +151,16 @@ class SGYSource:
     value: Optional[SourceInput] = None
 
 
-# Backward-compatible alias for the previous stub name.
-SourceRef = SGYSource
-
-
 @dataclass(frozen=True)
 class SGYLayout:
     dt_mcs: int
     num_samples: int
     num_traces: int
-    data_format: DataFormat = DEFAULT_DATA_FORMAT
-    endianness: Endianness = DEFAULT_ENDIANESS
-    revision: SGYRevision = SUPPORTED_SGY_REVISION
-    file_header_size: int = REV0_FILE_HEADER_SIZE
-    trace_header_size: int = REV0_TRACE_HEADER_SIZE
+    data_format: DataFormat
+    endianness: Endianness
+    revision: SGYRevision
+    file_header_size: int
+    trace_header_size: int
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "data_format", DataFormat(self.data_format))
@@ -232,8 +225,8 @@ class SGYLayout:
         traces: np.ndarray,
         *,
         dt_mcs: Union[int, float],
-        data_format: Union[DataFormat, int] = DEFAULT_DATA_FORMAT,
-        endianness: Union[Endianness, str] = DEFAULT_ENDIANESS,
+        data_format: Union[DataFormat, int],
+        endianness: Union[Endianness, str],
     ) -> "SGYLayout":
         if traces.ndim not in (1, 2):
             raise SGYInitParamsError("Only 1D and 2D arrays can be used as SGY traces")

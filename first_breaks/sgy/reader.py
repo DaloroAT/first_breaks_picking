@@ -9,9 +9,10 @@ import pandas as pd
 from first_breaks.sgy.headers import FileHeaders, TraceHeaders
 from first_breaks.sgy.traces import Traces
 from first_breaks.sgy.types import (
+    DEFAULT_DATA_FORMAT,
+    DEFAULT_ENDIANESS,
     FORMAT_TO_BYTES_PER_SAMPLE,
     DataFormat,
-    Endianess,
     Endianness,
     InvalidSamplesSlice,
     NotImplementedReader,
@@ -263,7 +264,12 @@ class SGY:
     ) -> tuple[SGYSource, SGYLayout, FileHeaders, TraceHeaders, Traces]:
         if dt_mcs is None:
             raise SGYInitParamsError("Argument 'dt_mcs' is required if np.ndarray is used as input")
-        layout = SGYLayout.from_array(source, dt_mcs=dt_mcs)
+        layout = SGYLayout.from_array(
+            source,
+            dt_mcs=dt_mcs,
+            data_format=DEFAULT_DATA_FORMAT,
+            endianness=DEFAULT_ENDIANESS,
+        )
         source_ref = SGYSource(kind=SourceKind.ARRAY, value=source)
         file_header_component = FileHeaders.from_layout(layout, overrides=file_headers)
         trace_header_component = (
@@ -279,7 +285,6 @@ class SGY:
 
 __all__ = [
     "DataFormat",
-    "Endianess",
     "Endianness",
     "InvalidSGY",
     "InvalidSamplesSlice",
