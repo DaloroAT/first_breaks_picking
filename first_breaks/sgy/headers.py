@@ -294,10 +294,8 @@ class FileHeadersPython(FileHeadersBackend):
         return deepcopy(self.__values)
 
     def write_to_sgy_pointer(self, pointer: IO[bytes]) -> None:
-        raw = bytearray(self.layout.file_header_size)
-        _encode_records(raw, self.__values, FileHeaderField, self.layout, self.layout.file_header_size)
         pointer.seek(0)
-        pointer.write(raw)
+        pointer.write(_encode_block(self.__values, FileHeaderField, self.layout, self.layout.file_header_size))
 
     def __getitem__(self, field: FileHeaderField) -> Any:
         return deepcopy(self.__values[field])
@@ -329,7 +327,7 @@ class FileHeadersBytes(FileHeadersBackend):
 
     def values(self) -> Dict[FileHeaderField, Any]:
         if self.__values_cache is None:
-            self.__values_cache = _decode_records(self.__raw, FileHeaderField, self.layout, self.layout.file_header_size)
+            self.__values_cache = _decode_block(self.__raw, FileHeaderField, self.layout, self.layout.file_header_size)
         return deepcopy(self.__values_cache)
 
     def write_to_sgy_pointer(self, pointer: IO[bytes]) -> None:
@@ -337,10 +335,10 @@ class FileHeadersBytes(FileHeadersBackend):
         pointer.write(self.__raw)
 
     def __getitem__(self, field: FileHeaderField) -> Any:
-        return deepcopy(_read_field(self.__raw, 0, field, self.layout, self.layout.file_header_size))
+        return deepcopy(_decode_value(self.__raw[field.value.offset : field.value.offset + get_num_bytes(field.value.format)], field, self.layout))
 
     def __setitem__(self, field: FileHeaderField, value: Any) -> None:
-        _write_field(self.__raw, 0, field, value, self.layout, self.layout.file_header_size)
+        _patch_value(self.__raw, 0, field, value, self.layout, self.layout.file_header_size)
         self.__values_cache = None
 
 
@@ -359,9 +357,11 @@ class TraceHeadersPython(TraceHeadersBackend):
         return self.__raw.copy()
 
     def write_to_sgy_pointer(self, pointer: IO[bytes]) -> None:
-        raw = bytearray(self.layout.num_traces * self.layout.trace_header_size)
-        _encode_records(raw, _dataframe_to_field_arrays(self.__raw, TraceHeaderField), TraceHeaderField, self.layout, self.layout.trace_header_size)
-        _write_trace_header_blocks(pointer, raw, self.layout)
+        _write_trace_header_blocks(
+            pointer,
+            _encode_blocks(self.__raw, TraceHeaderField, self.layout, self.layout.trace_header_size),
+            self.layout,
+        )
 
     def __getitem__(self, field: TraceHeaderField) -> pd.Series:
         return self.__raw[field.name].copy()
@@ -401,12 +401,7 @@ class TraceHeadersBytes(TraceHeadersBackend):
 
     def raw(self) -> pd.DataFrame:
         if self.__raw_cache is None:
-            records = np.frombuffer(
-                self.__raw,
-                dtype=_record_dtype(TraceHeaderField, self.layout, self.layout.trace_header_size),
-                count=self.layout.num_traces,
-            )
-            self.__raw_cache = pd.DataFrame({field.name: records[field.name].copy() for field in TraceHeaderField})
+            self.__raw_cache = _decode_blocks(self.__raw, TraceHeaderField, self.layout, self.layout.trace_header_size)
         return self.__raw_cache.copy()
 
     def write_to_sgy_pointer(self, pointer: IO[bytes]) -> None:
@@ -418,7 +413,7 @@ class TraceHeadersBytes(TraceHeadersBackend):
     def __setitem__(self, field: TraceHeaderField, values: Any) -> None:
         values_array = _normalize_trace_update(values, self.layout.num_traces)
         for trace_idx, value in enumerate(values_array):
-            _write_field(self.__raw, trace_idx, field, value, self.layout, self.layout.trace_header_size)
+            _patch_value(self.__raw, trace_idx, field, value, self.layout, self.layout.trace_header_size)
         self.__raw_cache = None
 
 
@@ -458,7 +453,10 @@ class FileHeaders:
         return cls(FileHeadersBytes.from_sgy_pointer(pointer, layout))
 
     def headers(self, name_mapping: FileHeaderNameMapping = None) -> Dict[str, Any]:
-        return {_mapped_name(field, name_mapping): value for field, value in self.__backend.values().items()}
+        return {
+            field.name if name_mapping is None else name_mapping.get(field, field.name): value
+            for field, value in self.__backend.values().items()
+        }
 
     @property
     def fields(self) -> tuple[FileHeaderField, ...]:
@@ -552,14 +550,12 @@ def read_file_header(pointer: IO[bytes], field: FileHeaderField, layout: SGYLayo
     raw = pointer.read(get_num_bytes(field.value.format))
     if len(raw) != get_num_bytes(field.value.format):
         raise InvalidHeaders(f"Cannot read {get_num_bytes(field.value.format)} bytes for header format {field.value.format!r}")
-    return _read_field(raw, 0, field, layout, get_num_bytes(field.value.format), offset=0)
+    return _decode_value(raw, field, layout)
 
 
 def write_file_header(pointer: IO[bytes], field: FileHeaderField, value: Any, layout: SGYLayout) -> None:
-    raw = bytearray(get_num_bytes(field.value.format))
-    _write_field(raw, 0, field, value, layout, get_num_bytes(field.value.format), offset=0)
     pointer.seek(field.value.offset)
-    pointer.write(raw)
+    pointer.write(_encode_value(value, field, layout))
 
 
 def read_trace_header(pointer: IO[bytes], field: TraceHeaderField, trace_idx: int, layout: SGYLayout) -> Any:
@@ -567,14 +563,12 @@ def read_trace_header(pointer: IO[bytes], field: TraceHeaderField, trace_idx: in
     raw = pointer.read(get_num_bytes(field.value.format))
     if len(raw) != get_num_bytes(field.value.format):
         raise InvalidHeaders(f"Cannot read {get_num_bytes(field.value.format)} bytes for header format {field.value.format!r}")
-    return _read_field(raw, 0, field, layout, get_num_bytes(field.value.format), offset=0)
+    return _decode_value(raw, field, layout)
 
 
 def write_trace_header(pointer: IO[bytes], field: TraceHeaderField, value: Any, trace_idx: int, layout: SGYLayout) -> None:
-    raw = bytearray(get_num_bytes(field.value.format))
-    _write_field(raw, 0, field, value, layout, get_num_bytes(field.value.format), offset=0)
     pointer.seek(_trace_header_offset(trace_idx, layout) + field.value.offset)
-    pointer.write(raw)
+    pointer.write(_encode_value(value, field, layout))
 
 
 def _normalize_field(key: Union[str, Enum], enum_cls: Type[Enum]) -> Any:
@@ -613,58 +607,74 @@ def _normalize_trace_values(values: pd.DataFrame) -> pd.DataFrame:
     return normalized
 
 
-def _field_dtype(info: HeaderInfo, layout: SGYLayout) -> np.dtype:
-    return np.dtype(_numpy_format(info.format, Endianness(layout.endianness).value))
-
-
-def _record_dtype(enum_cls: Type[Enum], layout: SGYLayout, itemsize: int, *, offset_shift: int = 0) -> np.dtype:
+def _record_dtype(enum_cls: Type[Enum], layout: SGYLayout, block_size: int) -> np.dtype:
     return np.dtype(
         {
             "names": [field.name for field in enum_cls],
-            "formats": [_field_dtype(field.value, layout) for field in enum_cls],
-            "offsets": [field.value.offset - offset_shift for field in enum_cls],
-            "itemsize": itemsize,
+            "formats": [_dtype_for_format(field.value.format, layout) for field in enum_cls],
+            "offsets": [field.value.offset for field in enum_cls],
+            "itemsize": block_size,
         }
     )
 
 
-def _decode_records(raw: Union[bytes, bytearray], enum_cls: Type[Enum], layout: SGYLayout, itemsize: int) -> Dict[Any, Any]:
-    records = np.frombuffer(raw, dtype=_record_dtype(enum_cls, layout, itemsize), count=len(raw) // itemsize)
-    if len(records) == 1:
-        return {field: _python_value(records[field.name][0], field.value.format) for field in enum_cls}
-    return {field: records[field.name].copy() for field in enum_cls}
+def _decode_block(raw: Union[bytes, bytearray], enum_cls: Type[Enum], layout: SGYLayout, block_size: int) -> Dict[Any, Any]:
+    if len(raw) != block_size:
+        raise InvalidHeaders(f"Header block requires {block_size} bytes, got {len(raw)}")
+    record = np.frombuffer(raw, dtype=_record_dtype(enum_cls, layout, block_size), count=1)[0]
+    return {field: _to_python_value(record[field.name], field.value.format) for field in enum_cls}
 
 
-def _encode_records(raw: bytearray, values: Mapping[Enum, Any], enum_cls: Type[Enum], layout: SGYLayout, itemsize: int) -> None:
-    records = np.frombuffer(raw, dtype=_record_dtype(enum_cls, layout, itemsize), count=len(raw) // itemsize)
+def _decode_blocks(raw: Union[bytes, bytearray], enum_cls: Type[Enum], layout: SGYLayout, block_size: int) -> pd.DataFrame:
+    if len(raw) % block_size != 0:
+        raise InvalidHeaders(f"Header blocks length {len(raw)} is not divisible by block size {block_size}")
+    records = np.frombuffer(raw, dtype=_record_dtype(enum_cls, layout, block_size), count=len(raw) // block_size)
+    return pd.DataFrame({field.name: records[field.name].copy() for field in enum_cls})
+
+
+def _encode_block(values: Mapping[Enum, Any], enum_cls: Type[Enum], layout: SGYLayout, block_size: int) -> bytearray:
     _validate_complete_fields(values.keys(), enum_cls)
+    raw = bytearray(block_size)
+    record = np.frombuffer(raw, dtype=_record_dtype(enum_cls, layout, block_size), count=1)
     for field, value in values.items():
-        if len(records) == 1:
+        _validate_value(value, field.value.format, layout)
+        record[field.name][0] = _to_numpy_value(value, field.value.format)
+    return raw
+
+
+def _encode_blocks(values: pd.DataFrame, enum_cls: Type[Enum], layout: SGYLayout, block_size: int) -> bytearray:
+    fields = [_normalize_field(column, enum_cls) for column in values.columns]
+    _validate_complete_fields(fields, enum_cls)
+    normalized = values.copy()
+    normalized.columns = [field.name for field in fields]
+    raw = bytearray(len(normalized) * block_size)
+    records = np.frombuffer(raw, dtype=_record_dtype(enum_cls, layout, block_size), count=len(normalized))
+    for field in enum_cls:
+        values_array = _normalize_trace_update(normalized[field.name].to_numpy(), len(normalized))
+        for value in values_array:
             _validate_value(value, field.value.format, layout)
-            records[field.name][0] = _prepared_value(value, field.value.format)
-        else:
-            values_array = _normalize_trace_update(value, len(records))
-            for item in values_array:
-                _validate_value(item, field.value.format, layout)
-            records[field.name] = values_array
+        records[field.name] = [_to_numpy_value(value, field.value.format) for value in values_array]
+    return raw
 
 
-def _read_field(raw: Union[bytes, bytearray], record_idx: int, field: Enum, layout: SGYLayout, itemsize: int, *, offset: Optional[int] = None) -> Any:
-    if offset == 0:
-        record = np.frombuffer(raw, dtype=_field_dtype(field.value, layout), count=1)
-        return _python_value(record[0], field.value.format)
-    records = np.frombuffer(raw, dtype=_record_dtype(type(field), layout, itemsize), count=len(raw) // itemsize)
-    return _python_value(records[field.name][record_idx], field.value.format)
+def _decode_value(raw: Union[bytes, bytearray], field: Enum, layout: SGYLayout) -> Any:
+    if len(raw) != get_num_bytes(field.value.format):
+        raise InvalidHeaders(f"Header value requires {get_num_bytes(field.value.format)} bytes, got {len(raw)}")
+    value = np.frombuffer(raw, dtype=_dtype_for_format(field.value.format, layout), count=1)[0]
+    return _to_python_value(value, field.value.format)
 
 
-def _write_field(raw: bytearray, record_idx: int, field: Enum, value: Any, layout: SGYLayout, itemsize: int, *, offset: Optional[int] = None) -> None:
+def _encode_value(value: Any, field: Enum, layout: SGYLayout) -> bytes:
     _validate_value(value, field.value.format, layout)
-    if offset == 0:
-        record = np.asarray([_prepared_value(value, field.value.format)], dtype=_field_dtype(field.value, layout))
-        raw[:] = record.tobytes()
-        return
-    records = np.frombuffer(raw, dtype=_record_dtype(type(field), layout, itemsize), count=len(raw) // itemsize)
-    records[field.name][record_idx] = _prepared_value(value, field.value.format)
+    return np.asarray([_to_numpy_value(value, field.value.format)], dtype=_dtype_for_format(field.value.format, layout)).tobytes()
+
+
+def _patch_value(raw: bytearray, record_idx: int, field: Enum, value: Any, layout: SGYLayout, block_size: int) -> None:
+    if len(raw) % block_size != 0:
+        raise InvalidHeaders(f"Header blocks length {len(raw)} is not divisible by block size {block_size}")
+    _validate_value(value, field.value.format, layout)
+    records = np.frombuffer(raw, dtype=_record_dtype(type(field), layout, block_size), count=len(raw) // block_size)
+    records[field.name][record_idx] = _to_numpy_value(value, field.value.format)
 
 
 def _scale_values(values: pd.DataFrame, scalar: pd.Series) -> pd.DataFrame:
@@ -673,12 +683,12 @@ def _scale_values(values: pd.DataFrame, scalar: pd.Series) -> pd.DataFrame:
     return values.multiply(scalar_values, axis=0)
 
 
-def _numpy_format(fmt: str, endian_prefix: str) -> str:
+def _dtype_for_format(fmt: str, layout: SGYLayout) -> np.dtype:
     if fmt.endswith("s"):
-        return f"S{get_num_bytes(fmt)}"
+        return np.dtype(f"S{get_num_bytes(fmt)}")
     if fmt not in FORMAT_TO_NUMPY_DTYPE:
         raise InvalidHeaders(f"Format is not interpretable by NumPy: {fmt!r}")
-    return endian_prefix + FORMAT_TO_NUMPY_DTYPE[fmt]
+    return np.dtype(Endianness(layout.endianness).value + FORMAT_TO_NUMPY_DTYPE[fmt])
 
 
 def _validate_value(value: Any, fmt: str, layout: SGYLayout) -> None:
@@ -687,7 +697,7 @@ def _validate_value(value: Any, fmt: str, layout: SGYLayout) -> None:
         if len(value_bytes) > get_num_bytes(fmt):
             raise InvalidHeaders(f"Value for header format {fmt!r} requires at most {get_num_bytes(fmt)} bytes")
         return
-    dtype = _field_dtype(HeaderInfo(0, fmt), layout)
+    dtype = _dtype_for_format(fmt, layout)
     value = value.item() if isinstance(value, np.generic) else value
     if dtype.kind in ("i", "u"):
         info = np.iinfo(dtype)
@@ -700,14 +710,14 @@ def _validate_value(value: Any, fmt: str, layout: SGYLayout) -> None:
             raise InvalidHeaders(f"Value {value!r} cannot be encoded as header format {fmt!r}") from exc
 
 
-def _prepared_value(value: Any, fmt: str) -> Any:
+def _to_numpy_value(value: Any, fmt: str) -> Any:
     if fmt.endswith("s"):
         value_bytes = value.encode("ascii", errors="replace") if isinstance(value, str) else bytes(value)
         return value_bytes.ljust(get_num_bytes(fmt), b"\x00")
     return value.item() if isinstance(value, np.generic) else value
 
 
-def _python_value(value: Any, fmt: str) -> Any:
+def _to_python_value(value: Any, fmt: str) -> Any:
     if fmt.endswith("s"):
         return bytes(value).rstrip(b"\x00")
     return value.item() if isinstance(value, np.generic) else value
@@ -726,10 +736,6 @@ def _normalize_trace_update(values: Any, num_traces: int) -> np.ndarray:
     return values_array
 
 
-def _dataframe_to_field_arrays(values: pd.DataFrame, enum_cls: Type[Enum]) -> Dict[Any, np.ndarray]:
-    return {field: values[field.name].to_numpy() for field in enum_cls}
-
-
 def _trace_header_offset(trace_idx: int, layout: SGYLayout) -> int:
     return layout.file_header_size + trace_idx * layout.trace_block_size
 
@@ -742,14 +748,8 @@ def _write_trace_header_blocks(pointer: IO[bytes], raw: Union[bytes, bytearray],
         pointer.write(raw[start:stop])
 
 
-def _mapped_name(field: Enum, name_mapping: Optional[Mapping[Any, str]]) -> str:
-    if name_mapping is None:
-        return field.name
-    return name_mapping.get(field, field.name)
-
-
 def _rename_trace_columns(values: pd.DataFrame, name_mapping: TraceHeaderNameMapping) -> pd.DataFrame:
     renamed = values.copy()
     if name_mapping is not None:
-        renamed = renamed.rename(columns={field.name: _mapped_name(field, name_mapping) for field in TraceHeaderField})
+        renamed = renamed.rename(columns={field.name: name_mapping.get(field, field.name) for field in TraceHeaderField})
     return renamed
