@@ -1,77 +1,72 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List, IO, Generator
 
 import numpy as np
 
-from first_breaks.sgy.types import InvalidSamplesSlice, SGYInitParamsError, SGYLayout, SGYSource, SourceKind
+from first_breaks.sgy.types import SGYLayout, SourceKind
 
 
-class Traces:
-    def __init__(self, layout: SGYLayout, source: SGYSource, array: Optional[np.ndarray] = None) -> None:
-        self.layout = layout
-        self.source = source
-        self.__array = array
+def decode_blocks(raw: List[bytes] | List[bytearray], layout: SGYLayout) -> np.ndarray:
+    # 1) use collection of bytes and sgy_layout.endianness with layout.data_format to interpret bytes as values
+    # 2) it's not necessary that raw are full traces, it might be some slice of traces
+    # 3) bytes are cooked/sliced externally
+    # 4) you may use this function to dispatch into individual data_format implementations
+    # 5) for IBM you can look at "sgy_old", maybe you will find already optimized readers
+    # 6) function should always return 2D array even for a list with 1 raw block
+    # 7) you may want to join input data into single buffer to call np.from_buffer once; or make some batching,
+    #   so it's not individual trace and not super blob - might control via global, e.g. BATCH_TRACES=32 if necessary
+    raise NotImplementedError
 
-    @classmethod
-    def from_array(cls, array: np.ndarray, layout: SGYLayout, *, copy: bool = False) -> "Traces":
-        normalized = cls.__normalize_array(array)
-        if normalized.shape != layout.shape:
-            raise SGYInitParamsError(f"Trace array shape {normalized.shape} does not match layout shape {layout.shape}")
-        if copy:
-            normalized = normalized.copy()
-        return cls(layout=layout, source=SGYSource(kind=SourceKind.ARRAY, value=array), array=normalized)
 
-    @property
-    def is_array_backed(self) -> bool:
-        return self.source.kind == SourceKind.ARRAY
+def read_traces(
+    pointer: IO[bytes],
+    trace_ids: Sequence[int],
+    layout: SGYLayout,
+    min_sample: Optional[int] = None,
+    max_sample: Optional[int] = None,
+) -> np.ndarray:
+    # 1) this function prepare a list of block for "decode_blocks" function
+    # 2) you should validate trace_ids, min_sample and max_sample against layout
+    raise NotImplementedError
 
-    def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
-        return self.read_by_ids(range(self.layout.num_traces), min_sample=min_sample, max_sample=max_sample)
 
-    def read_by_ids(
-        self,
-        ids: Sequence[int],
-        *,
-        min_sample: Optional[int] = None,
-        max_sample: Optional[int] = None,
-    ) -> np.ndarray:
-        if self.__array is None:
-            raise NotImplementedError("Trace materialization from file/bytes sources is not implemented yet")
+def get_chunked_reader(
+    pointer: IO[bytes],
+    chunk_size: int,
+    layout: SGYLayout,
+    min_sample: Optional[int] = None,
+    max_sample: Optional[int] = None,
+) -> Generator[np.ndarray, None, None]:
+    if chunk_size <= 0:
+        raise ValueError("Argument 'chunk_size' must be positive")
+    for start in range(0, layout.num_traces, chunk_size):
+        stop = min(start + chunk_size, layout.num_traces)
+        yield read_traces(
+            pointer=pointer,
+            trace_ids=list(range(start, stop)),
+            min_sample=min_sample,
+            max_sample=max_sample,
+            layout=layout,
+        )
 
-        min_idx, max_idx = self.__normalize_sample_slice(min_sample, max_sample)
-        trace_ids = list(ids)
-        return self.__array[min_idx:max_idx, trace_ids]
 
-    def replace_array(self, array: np.ndarray, *, copy: bool = False) -> None:
-        normalized = self.__normalize_array(array)
-        if normalized.shape != self.layout.shape:
-            raise SGYInitParamsError(f"Trace array shape {normalized.shape} does not match layout shape {self.layout.shape}")
-        self.__array = normalized.copy() if copy else normalized
-        self.source = SGYSource(kind=SourceKind.ARRAY, value=array)
+def encode_blocks(traces: np.ndarray, layout: SGYLayout) -> List[bytearray | bytes]:
+    # 1) it should be inverse to "decode_blocks"
+    # 2) we don't control that num samples in traces is equal to layout.num_samples, we just encode what we get
+    # 3) but need to verify amount of bytes
+    # 4) Use all notes and recommendations from "decode_blocks", they are valid here too
+    raise NotImplementedError
 
-    def to_numpy(self, *, copy: bool = True) -> np.ndarray:
-        if self.__array is None:
-            raise NotImplementedError("Trace materialization from file/bytes sources is not implemented yet")
-        return self.__array.copy() if copy else self.__array
 
-    def __normalize_sample_slice(
-        self,
-        min_sample: Optional[int],
-        max_sample: Optional[int],
-    ) -> tuple[int, int]:
-        min_idx = 0 if min_sample is None else int(min_sample)
-        max_idx = self.layout.num_samples if max_sample is None else int(max_sample)
-        if min_idx < 0 or max_idx < 0 or min_idx > max_idx or max_idx > self.layout.num_samples:
-            raise InvalidSamplesSlice(
-                f"Invalid sample slice [{min_idx}:{max_idx}] for {self.layout.num_samples} samples"
-            )
-        return min_idx, max_idx
-
-    @staticmethod
-    def __normalize_array(array: np.ndarray) -> np.ndarray:
-        if array.ndim == 1:
-            return array.reshape((-1, 1))
-        if array.ndim == 2:
-            return array
-        raise SGYInitParamsError("Only 1D and 2D arrays can be used as SGY traces")
+def write_traces(
+    pointer: IO[bytes],
+    trace_ids: Sequence[int],
+    traces: np.ndarray,
+    layout: SGYLayout,
+    start_sample: Optional[int] = None,
+) -> None:
+    # 1) we may be able to write block of traces
+    # 2) block might be started from start_sample
+    # 3) check that start_sample + len(traces) fit into layout
+    raise NotImplementedError
