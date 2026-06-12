@@ -7,11 +7,11 @@ from typing import Any, Dict, Generator, List, Optional, Sequence, Union
 import numpy as np
 import pandas as pd
 
-from first_breaks.sgy.headers import FileHeaders, TraceHeaderField, TraceHeaders
+from first_breaks.sgy.headers import FileHeaderField, FileHeaders, TraceHeaderField, TraceHeaders
 from first_breaks.sgy.traces import get_chunked_reader, read_traces, write_traces
 from first_breaks.sgy.types import (
     DEFAULT_DATA_FORMAT,
-    DEFAULT_ENDIANESS,
+    DEFAULT_ENDIANNESS,
     FORMAT_TO_BYTES_PER_SAMPLE,
     DataFormat,
     Endianness,
@@ -149,10 +149,6 @@ class SGY:
         return self.__layout.max_time_ms
 
     @property
-    def endianess(self) -> str:
-        return self.__layout.endianness.value
-
-    @property
     def endianness(self) -> Endianness:
         return self.__layout.endianness
 
@@ -247,11 +243,11 @@ class SGY:
         self,
         output_path: Union[str, Path],
         data_format: Optional[Union[DataFormat, int]] = None,
-        endianess: Optional[Union[Endianness, str]] = None,
+        endianness: Optional[Union[Endianness, str]] = None,
     ) -> None:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        write_layout = self.__make_write_layout(data_format=data_format, endianess=endianess)
+        write_layout = self.__make_write_layout(data_format=data_format, endianness=endianness)
         file_headers = self.__file_headers_for_layout(write_layout)
         trace_headers = TraceHeaders.from_values(self.__trace_headers.raw(), write_layout)
 
@@ -303,7 +299,7 @@ class SGY:
             file_headers=self.general_headers,
             traces_headers=trace_headers,
         )
-        exported.write(output_fname, data_format=self.sample_format, endianess=self.endianness)
+        exported.write(output_fname, data_format=self.sample_format, endianness=self.endianness)
 
     def __build_components(
         self,
@@ -345,7 +341,7 @@ class SGY:
             source,
             dt_mcs=dt_mcs,
             data_format=DEFAULT_DATA_FORMAT,
-            endianness=DEFAULT_ENDIANESS,
+            endianness=DEFAULT_ENDIANNESS,
         )
         self.__source = source
         self.__source_kind = SourceKind.ARRAY
@@ -427,26 +423,26 @@ class SGY:
         self,
         *,
         data_format: Optional[Union[DataFormat, int]],
-        endianess: Optional[Union[Endianness, str]],
+        endianness: Optional[Union[Endianness, str]],
     ) -> SGYLayout:
         return SGYLayout(
             dt_mcs=self.__layout.dt_mcs,
             num_samples=self.__layout.num_samples,
             num_traces=self.__layout.num_traces,
             data_format=self.__layout.data_format if data_format is None else DataFormat(data_format),
-            endianness=self.__layout.endianness if endianess is None else Endianness(endianess),
+            endianness=self.__layout.endianness if endianness is None else Endianness(endianness),
             revision=self.__layout.revision,
             file_header_size=self.__layout.file_header_size,
             trace_header_size=self.__layout.trace_header_size,
         )
 
     def __file_headers_for_layout(self, layout: SGYLayout) -> FileHeaders:
-        values = self.__file_headers.headers()
-        values[FileHeaders.dt_name] = layout.dt_mcs
-        values[FileHeaders.dt_name_orig] = layout.dt_mcs
-        values[FileHeaders.ns_name] = layout.num_samples
-        values[FileHeaders.ns_name_orig] = layout.num_samples
-        values[FileHeaders.data_sample_format_name] = int(layout.data_format)
+        values = self.__file_headers.values()
+        values[FileHeaderField.DT] = layout.dt_mcs
+        values[FileHeaderField.DT_ORIG] = layout.dt_mcs
+        values[FileHeaderField.NS] = layout.num_samples
+        values[FileHeaderField.NS_ORIG] = layout.num_samples
+        values[FileHeaderField.DATA_SAMPLE_FORMAT] = int(layout.data_format)
         return FileHeaders.from_values(values, layout)
 
 

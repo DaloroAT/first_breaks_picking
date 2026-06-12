@@ -468,12 +468,6 @@ class TraceHeadersBytes(TraceHeadersBackend):
 
 
 class FileHeaders:
-    dt_name = FileHeaderField.DT.name
-    dt_name_orig = FileHeaderField.DT_ORIG.name
-    ns_name = FileHeaderField.NS.name
-    ns_name_orig = FileHeaderField.NS_ORIG.name
-    data_sample_format_name = FileHeaderField.DATA_SAMPLE_FORMAT.name
-
     def __init__(self, backend: FileHeadersBackend) -> None:
         self.__backend = backend
 
@@ -507,6 +501,9 @@ class FileHeaders:
             field.name if name_mapping is None else name_mapping.get(field, field.name): value
             for field, value in self.__backend.values().items()
         }
+
+    def values(self) -> Dict[FileHeaderField, Any]:
+        return self.__backend.values()
 
     @property
     def fields(self) -> tuple[FileHeaderField, ...]:

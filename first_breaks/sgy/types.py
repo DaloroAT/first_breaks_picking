@@ -59,7 +59,7 @@ class Endianness(str, Enum):
         return True
 
 
-DEFAULT_ENDIANESS = Endianness.BIG
+DEFAULT_ENDIANNESS = Endianness.BIG
 DEFAULT_DATA_FORMAT = DataFormat.IEEE_FLOAT
 
 
@@ -202,10 +202,6 @@ class SGYLayout:
     @property
     def max_time_ms(self) -> float:
         return self.num_samples * self.dt_ms
-
-    @property
-    def endianess(self) -> Endianness:
-        return self.endianness
 
     @property
     def bytes_per_sample(self) -> int:
