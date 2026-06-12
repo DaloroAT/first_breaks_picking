@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from io import BytesIO
 from pathlib import Path
 from typing import Generator, IO, List, Optional, Sequence, Union
 
@@ -11,7 +12,8 @@ from first_breaks.sgy.types import (
     DataFormat,
     InvalidSamplesSlice,
     NotImplementedReader,
-    SGYLayout, SourceInput,
+    SGYLayout,
+    SourceInput,
 )
 
 
@@ -48,11 +50,11 @@ def decode_blocks(raw: List[bytes] | List[bytearray], layout: SGYLayout) -> np.n
     buffer = b"".join(bytes(block) for block in raw)
     shape = (num_samples, len(raw))
     if layout.data_format == DataFormat.IBM_FLOAT:
-        return __decode_ibm_float(buffer, shape, layout)
+        return _decode_ibm_float(buffer, shape, layout)
     if layout.data_format == DataFormat.FIXED_POINT:
         raise NotImplementedReader("Not implemented 32-bit fixed point with gain values reader")
 
-    dtype = __trace_dtype(layout)
+    dtype = _trace_dtype(layout)
     return np.ndarray(shape, dtype=dtype, buffer=buffer, order="F")
 
 
@@ -63,17 +65,17 @@ def read_traces(
     min_sample: Optional[int] = None,
     max_sample: Optional[int] = None,
 ) -> np.ndarray:
-    start_sample, stop_sample = __normalize_sample_slice(layout, min_sample, max_sample)
-    normalized_trace_ids = __normalize_trace_ids(layout, trace_ids)
+    start_sample, stop_sample = _normalize_sample_slice(layout, min_sample, max_sample)
+    normalized_trace_ids = _normalize_trace_ids(layout, trace_ids)
     num_samples = stop_sample - start_sample
 
     if not normalized_trace_ids:
-        return np.empty((num_samples, 0), dtype=__output_dtype(layout))
+        return np.empty((num_samples, 0), dtype=_output_dtype(layout))
 
     num_bytes = num_samples * layout.bytes_per_sample
     blocks: List[Union[bytes, bytearray]] = []
     for trace_id in normalized_trace_ids:
-        pointer.seek(__trace_data_offset(layout, trace_id, start_sample))
+        pointer.seek(_trace_data_offset(layout, trace_id, start_sample))
         block = pointer.read(num_bytes)
         if len(block) != num_bytes:
             raise EOFError(f"Cannot read {num_bytes} bytes for trace {trace_id}")
@@ -103,13 +105,13 @@ def get_chunked_reader(
 
 
 def encode_blocks(traces: np.ndarray, layout: SGYLayout) -> List[bytearray | bytes]:
-    normalized_traces = __normalize_traces(traces, layout)
+    normalized_traces = _normalize_traces(traces, layout)
     if layout.data_format == DataFormat.IBM_FLOAT:
-        return __encode_ibm_float(normalized_traces, layout)
+        return _encode_ibm_float(normalized_traces, layout)
     if layout.data_format == DataFormat.FIXED_POINT:
         raise NotImplementedReader("Not implemented 32-bit fixed point with gain values writer")
 
-    dtype = __trace_dtype(layout)
+    dtype = _trace_dtype(layout)
     return [normalized_traces[:, trace_id].astype(dtype).tobytes() for trace_id in range(normalized_traces.shape[1])]
 
 
@@ -126,7 +128,7 @@ def write_traces(
     if sample_offset < 0 or sample_offset > layout.num_samples:
         raise InvalidSamplesSlice(f"Argument 'start_sample' must be in [0, {layout.num_samples}]")
 
-    normalized_traces = __normalize_traces(traces, layout)
+    normalized_traces = _normalize_traces(traces, layout)
     if sample_offset + normalized_traces.shape[0] > layout.num_samples:
         raise InvalidSamplesSlice(
             "Trace write exceeds layout sample count: "
@@ -134,7 +136,7 @@ def write_traces(
             f"num_samples={layout.num_samples}"
         )
 
-    normalized_trace_ids = __normalize_trace_ids(layout, trace_ids)
+    normalized_trace_ids = _normalize_trace_ids(layout, trace_ids)
     if len(normalized_trace_ids) != normalized_traces.shape[1]:
         raise ValueError(
             "Number of trace ids must match number of trace columns: "
@@ -142,11 +144,11 @@ def write_traces(
         )
 
     for trace_id, block in zip(normalized_trace_ids, encode_blocks(normalized_traces, layout)):
-        pointer.seek(__trace_data_offset(layout, trace_id, sample_offset))
+        pointer.seek(_trace_data_offset(layout, trace_id, sample_offset))
         pointer.write(block)
 
 
-def __normalize_sample_slice(
+def _normalize_sample_slice(
     layout: SGYLayout,
     min_sample: Optional[int],
     max_sample: Optional[int],
@@ -166,7 +168,7 @@ def __normalize_sample_slice(
     return start, stop
 
 
-def __normalize_trace_ids(layout: SGYLayout, trace_ids: Sequence[int]) -> list[int]:
+def _normalize_trace_ids(layout: SGYLayout, trace_ids: Sequence[int]) -> list[int]:
     normalized_trace_ids = list(trace_ids)
     for trace_id in normalized_trace_ids:
         if not isinstance(trace_id, int):
@@ -176,7 +178,7 @@ def __normalize_trace_ids(layout: SGYLayout, trace_ids: Sequence[int]) -> list[i
     return normalized_trace_ids
 
 
-def __normalize_traces(traces: np.ndarray, layout: SGYLayout) -> np.ndarray:
+def _normalize_traces(traces: np.ndarray, layout: SGYLayout) -> np.ndarray:
     normalized_traces = np.asarray(traces)
     if normalized_traces.ndim == 1:
         normalized_traces = normalized_traces.reshape((-1, 1))
@@ -191,7 +193,7 @@ def __normalize_traces(traces: np.ndarray, layout: SGYLayout) -> np.ndarray:
     return normalized_traces
 
 
-def __trace_data_offset(layout: SGYLayout, trace_id: int, sample_id: int = 0) -> int:
+def _trace_data_offset(layout: SGYLayout, trace_id: int, sample_id: int = 0) -> int:
     return (
         layout.file_header_size
         + trace_id * layout.trace_block_size
@@ -200,20 +202,20 @@ def __trace_data_offset(layout: SGYLayout, trace_id: int, sample_id: int = 0) ->
     )
 
 
-def __trace_dtype(layout: SGYLayout) -> np.dtype:
+def _trace_dtype(layout: SGYLayout) -> np.dtype:
     try:
         return np.dtype(f"{layout.endianness.value}{FORMAT_TO_DTYPE[layout.data_format]}")
     except KeyError as exc:
         raise NotImplementedReader(f"Data format {layout.data_format.name} is not supported") from exc
 
 
-def __output_dtype(layout: SGYLayout) -> np.dtype:
+def _output_dtype(layout: SGYLayout) -> np.dtype:
     if layout.data_format == DataFormat.IBM_FLOAT:
         return np.dtype(np.float32)
-    return __trace_dtype(layout)
+    return _trace_dtype(layout)
 
 
-def __decode_ibm_float(buffer: bytes, shape: tuple[int, int], layout: SGYLayout) -> np.ndarray:
+def _decode_ibm_float(buffer: bytes, shape: tuple[int, int], layout: SGYLayout) -> np.ndarray:
     array = np.ndarray(shape, dtype=f"{layout.endianness.value}u4", buffer=buffer, order="F")
 
     zero_mask = array == 0
@@ -229,11 +231,11 @@ def __decode_ibm_float(buffer: bytes, shape: tuple[int, int], layout: SGYLayout)
     return result
 
 
-def __encode_ibm_float(traces: np.ndarray, layout: SGYLayout) -> List[Union[bytearray, bytes]]:
-    return [__encode_ibm_float_trace(traces[:, trace_id], layout) for trace_id in range(traces.shape[1])]
+def _encode_ibm_float(traces: np.ndarray, layout: SGYLayout) -> List[Union[bytearray, bytes]]:
+    return [_encode_ibm_float_trace(traces[:, trace_id], layout) for trace_id in range(traces.shape[1])]
 
 
-def __encode_ibm_float_trace(trace: np.ndarray, layout: SGYLayout) -> bytes:
+def _encode_ibm_float_trace(trace: np.ndarray, layout: SGYLayout) -> bytes:
     result = np.zeros(len(trace), dtype=f"{layout.endianness.value}u4")
     non_zero_mask = trace != 0
 
@@ -263,19 +265,22 @@ def __encode_ibm_float_trace(trace: np.ndarray, layout: SGYLayout) -> bytes:
     return result.tobytes()
 
 
-class ITracesStore(ABC):
-    @abstractmethod
+class TracesBackend(ABC):
     @property
+    @abstractmethod
     def layout(self) -> SGYLayout:
         raise NotImplementedError
 
     @abstractmethod
-    def write_to_sgy_pointer(self, pointer: IO[bytes]) -> None:
+    def write_to_sgy_pointer(self, pointer: IO[bytes], output_layout: Optional[SGYLayout]) -> None:
         raise NotImplementedError
 
-    @abstractmethod
     def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
-        raise NotImplementedError
+        return self.read_traces_by_ids(
+            ids=range(self.layout.num_traces),
+            min_sample=min_sample,
+            max_sample=max_sample,
+        )
 
     @abstractmethod
     def read_traces_by_ids(
@@ -286,43 +291,166 @@ class ITracesStore(ABC):
     ) -> np.ndarray:
         raise NotImplementedError
 
-    @abstractmethod
     def get_chunked_reader(
         self,
         chunk_size: int,
         min_sample: Optional[int] = None,
         max_sample: Optional[int] = None,
     ) -> Generator[np.ndarray, None, None]:
-        raise NotImplementedError
+        if chunk_size <= 0:
+            raise ValueError("Argument 'chunk_size' must be positive")
+        for start in range(0, self.layout.num_traces, chunk_size):
+            stop = min(start + chunk_size, self.layout.num_traces)
+            yield self.read_traces_by_ids(
+                ids=range(start, stop),
+                min_sample=min_sample,
+                max_sample=max_sample,
+            )
 
 
-class TracesStoreArray(ITracesStore):
-    def __init__(self, array: np.ndarray, layout: SGYLayout):
-        self.__array = array
+class TracesBackendArray(TracesBackend):
+    def __init__(self, array: np.ndarray, layout: SGYLayout) -> None:
+        self.__array = _normalize_traces(array, layout)
+        if self.__array.shape != layout.shape:
+            raise ValueError(f"Trace array shape must be {layout.shape}, got {self.__array.shape}")
         self.__layout = layout
-        # validate against layout
+
+    @property
+    def layout(self) -> SGYLayout:
+        return self.__layout
+
+    def write_to_sgy_pointer(self, pointer: IO[bytes], output_layout: Optional[SGYLayout]) -> None:
+        layout = self.layout if output_layout is None else output_layout
+        write_traces(
+            pointer=pointer,
+            trace_ids=range(layout.num_traces),
+            traces=self.__array,
+            layout=layout,
+        )
+
+    def read_traces_by_ids(
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
+    ) -> np.ndarray:
+        start_sample, stop_sample = _normalize_sample_slice(self.layout, min_sample, max_sample)
+        trace_ids = _normalize_trace_ids(self.layout, ids)
+        return self.__array[start_sample:stop_sample, trace_ids].copy()
 
 
-class TracesStoreBytes(ITracesStore):
-    def __init__(self, raw: bytes, layout: SGYLayout):
+class TracesBackendBytes(TracesBackend):
+    def __init__(self, raw: bytes, layout: SGYLayout) -> None:
         self.__raw = raw
         self.__layout = layout
-        self.__cached_array: np.ndarray | None = None  # in case all traces were read
+        self.__cached_array: np.ndarray | None = None
+
+    @property
+    def layout(self) -> SGYLayout:
+        return self.__layout
+
+    def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
+        if self.__is_full_read(min_sample, max_sample):
+            if self.__cached_array is None:
+                self.__cached_array = self.__read_from_source(
+                    ids=range(self.layout.num_traces),
+                    min_sample=None,
+                    max_sample=None,
+                )
+            return self.__cached_array.copy()
+        return self.read_traces_by_ids(range(self.layout.num_traces), min_sample=min_sample, max_sample=max_sample)
+
+    def read_traces_by_ids(
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
+    ) -> np.ndarray:
+        if self.__cached_array is not None:
+            start_sample, stop_sample = _normalize_sample_slice(self.layout, min_sample, max_sample)
+            trace_ids = _normalize_trace_ids(self.layout, ids)
+            return self.__cached_array[start_sample:stop_sample, trace_ids].copy()
+        return self.__read_from_source(ids=ids, min_sample=min_sample, max_sample=max_sample)
+
+    def write_to_sgy_pointer(self, pointer: IO[bytes], output_layout: Optional[SGYLayout]) -> None:
+        layout = self.layout if output_layout is None else output_layout
+        for start in range(0, self.layout.num_traces, 1024):
+            stop = min(start + 1024, self.layout.num_traces)
+            traces = self.read_traces_by_ids(range(start, stop))
+            write_traces(pointer=pointer, trace_ids=range(start, stop), traces=traces, layout=layout)
+
+    def __read_from_source(
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int],
+        max_sample: Optional[int],
+    ) -> np.ndarray:
+        pointer = BytesIO(self.__raw)
+        return read_traces(pointer, trace_ids=ids, layout=self.layout, min_sample=min_sample, max_sample=max_sample)
+
+    def __is_full_read(self, min_sample: Optional[int], max_sample: Optional[int]) -> bool:
+        return min_sample is None and max_sample is None
 
 
-class TracesStoreFile(ITracesStore):
-    def __init__(self, path: Path | str, layout: SGYLayout):
-        self.__path = path
+class TracesBackendFile(TracesBackend):
+    def __init__(self, path: Path | str, layout: SGYLayout) -> None:
+        self.__path = Path(path)
         self.__layout = layout
-        self.__cached_array: np.ndarray | None = None  # in case all traces were read
+        self.__cached_array: np.ndarray | None = None
+
+    @property
+    def layout(self) -> SGYLayout:
+        return self.__layout
+
+    def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
+        if self.__is_full_read(min_sample, max_sample):
+            if self.__cached_array is None:
+                self.__cached_array = self.__read_from_source(
+                    ids=range(self.layout.num_traces),
+                    min_sample=None,
+                    max_sample=None,
+                )
+            return self.__cached_array.copy()
+        return self.read_traces_by_ids(range(self.layout.num_traces), min_sample=min_sample, max_sample=max_sample)
+
+    def read_traces_by_ids(
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
+    ) -> np.ndarray:
+        if self.__cached_array is not None:
+            start_sample, stop_sample = _normalize_sample_slice(self.layout, min_sample, max_sample)
+            trace_ids = _normalize_trace_ids(self.layout, ids)
+            return self.__cached_array[start_sample:stop_sample, trace_ids].copy()
+        return self.__read_from_source(ids=ids, min_sample=min_sample, max_sample=max_sample)
+
+    def write_to_sgy_pointer(self, pointer: IO[bytes], output_layout: Optional[SGYLayout]) -> None:
+        layout = self.layout if output_layout is None else output_layout
+        for start in range(0, self.layout.num_traces, 1024):
+            stop = min(start + 1024, self.layout.num_traces)
+            traces = self.read_traces_by_ids(range(start, stop))
+            write_traces(pointer=pointer, trace_ids=range(start, stop), traces=traces, layout=layout)
+
+    def __read_from_source(
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int],
+        max_sample: Optional[int],
+    ) -> np.ndarray:
+        with self.__path.open("rb") as pointer:
+            return read_traces(pointer, trace_ids=ids, layout=self.layout, min_sample=min_sample, max_sample=max_sample)
+
+    def __is_full_read(self, min_sample: Optional[int], max_sample: Optional[int]) -> bool:
+        return min_sample is None and max_sample is None
 
 
-def get_traces(source: SourceInput, layout: SGYLayout) -> ITracesStore:
+def get_traces(source: SourceInput, layout: SGYLayout) -> TracesBackend:
     if isinstance(source, np.ndarray):
-        return TracesStoreArray(source, layout)
+        return TracesBackendArray(source, layout)
     elif isinstance(source, (str, Path)):
-        return TracesStoreFile(source, layout)
+        return TracesBackendFile(source, layout)
     elif isinstance(source, bytes):
-        return TracesStoreBytes(source, layout)
+        return TracesBackendBytes(source, layout)
     else:
         raise TypeError("Unsupported source type")

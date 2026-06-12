@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Sequence, Union
 
@@ -8,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaderField, FileHeaders, TraceHeaderField, TraceHeaders
-from first_breaks.sgy.traces import get_chunked_reader, read_traces, write_traces
+from first_breaks.sgy.traces import TracesBackend, get_traces
 from first_breaks.sgy.types import (
     DEFAULT_DATA_FORMAT,
     DEFAULT_ENDIANNESS,
@@ -16,7 +15,6 @@ from first_breaks.sgy.types import (
     DataFormat,
     Endianness,
     InvalidSGY,
-    InvalidSamplesSlice,
     NotImplementedReader,
     SGYInitParamsError,
     SGYLayout,
@@ -41,10 +39,10 @@ class SGY:
     ) -> None:
         self.__source: SourceInput
         self.__source_kind: SourceKind
-        self.__array: Optional[np.ndarray] = None
         self.__layout: SGYLayout
         self.__file_headers: FileHeaders
         self.__trace_headers: TraceHeaders
+        self.__traces: TracesBackend
 
         self.__build_components(
             source=source,
@@ -189,11 +187,7 @@ class SGY:
         return calc_hash(self.__source)  # type: ignore[arg-type]
 
     def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
-        return self.read_traces_by_ids(
-            ids=range(self.num_traces),
-            min_sample=min_sample,
-            max_sample=max_sample,
-        )
+        return self.__traces.read(min_sample=min_sample, max_sample=max_sample)
 
     def read_traces_by_ids(
         self,
@@ -201,13 +195,7 @@ class SGY:
         min_sample: Optional[int] = None,
         max_sample: Optional[int] = None,
     ) -> np.ndarray:
-        if self.__source_kind == SourceKind.ARRAY:
-            return self.__read_array_traces(ids=ids, min_sample=min_sample, max_sample=max_sample)
-        if self.__source_kind == SourceKind.BYTES:
-            pointer = BytesIO(self.__source)  # type: ignore[arg-type]
-            return read_traces(pointer, trace_ids=ids, layout=self.__layout, min_sample=min_sample, max_sample=max_sample)
-        with Path(self.__source).open("rb") as pointer:  # type: ignore[arg-type]
-            return read_traces(pointer, trace_ids=ids, layout=self.__layout, min_sample=min_sample, max_sample=max_sample)
+        return self.__traces.read_traces_by_ids(ids=ids, min_sample=min_sample, max_sample=max_sample)
 
     def get_chunked_reader(
         self,
@@ -215,23 +203,7 @@ class SGY:
         min_sample: Optional[int] = None,
         max_sample: Optional[int] = None,
     ) -> Generator[np.ndarray, None, None]:
-        if chunk_size <= 0:
-            raise ValueError("Argument 'chunk_size' must be positive")
-        if self.__source_kind == SourceKind.ARRAY:
-            for start in range(0, self.num_traces, chunk_size):
-                stop = min(start + chunk_size, self.num_traces)
-                yield self.__read_array_traces(
-                    ids=range(start, stop),
-                    min_sample=min_sample,
-                    max_sample=max_sample,
-                )
-            return
-        if self.__source_kind == SourceKind.BYTES:
-            pointer = BytesIO(self.__source)  # type: ignore[arg-type]
-            yield from get_chunked_reader(pointer, chunk_size, self.__layout, min_sample=min_sample, max_sample=max_sample)
-            return
-        with Path(self.__source).open("rb") as pointer:  # type: ignore[arg-type]
-            yield from get_chunked_reader(pointer, chunk_size, self.__layout, min_sample=min_sample, max_sample=max_sample)
+        yield from self.__traces.get_chunked_reader(chunk_size, min_sample=min_sample, max_sample=max_sample)
 
     def read_custom_trace_header(self, byte_position: int, encoding: str) -> tuple[Any, ...]:
         for field in TraceHeaderField:
@@ -254,15 +226,7 @@ class SGY:
         with output_path.open("wb+") as pointer:
             file_headers.write_to_sgy_pointer(pointer)
             trace_headers.write_to_sgy_pointer(pointer)
-            for start in range(0, self.num_traces, 1024):
-                stop = min(start + 1024, self.num_traces)
-                traces = self.read_traces_by_ids(range(start, stop))
-                write_traces(
-                    pointer=pointer,
-                    trace_ids=range(start, stop),
-                    traces=traces,
-                    layout=write_layout,
-                )
+            self.__traces.write_to_sgy_pointer(pointer, output_layout=write_layout)
 
     def export_sgy_with_picks(
         self,
@@ -345,22 +309,24 @@ class SGY:
         )
         self.__source = source
         self.__source_kind = SourceKind.ARRAY
-        self.__array = self.__normalize_array(source)
         self.__layout = layout
         self.__file_headers = FileHeaders.from_layout(layout, overrides=file_headers)
         self.__trace_headers = (
             TraceHeaders.from_values(traces_headers, layout) if traces_headers is not None else TraceHeaders.empty(layout)
         )
+        self.__traces = get_traces(source, layout)
 
     def __build_bytes_components(self, source: bytes) -> None:
         layout = SGYLayout.from_bytes(source)
+        from io import BytesIO
+
         pointer = BytesIO(source)
         self.__source = source
         self.__source_kind = SourceKind.BYTES
-        self.__array = None
         self.__layout = layout
         self.__file_headers = FileHeaders.from_sgy_pointer(pointer, layout)
         self.__trace_headers = TraceHeaders.from_sgy_pointer(pointer, layout)
+        self.__traces = get_traces(source, layout)
 
     def __build_file_components(self, source: Path) -> None:
         layout = SGYLayout.from_file(source)
@@ -369,55 +335,10 @@ class SGY:
             trace_headers = TraceHeaders.from_sgy_pointer(pointer, layout)
         self.__source = source
         self.__source_kind = SourceKind.FILE
-        self.__array = None
         self.__layout = layout
         self.__file_headers = file_headers
         self.__trace_headers = trace_headers
-
-    def __normalize_array(self, source: np.ndarray) -> np.ndarray:
-        traces = np.asarray(source)
-        if traces.ndim == 1:
-            traces = traces.reshape((-1, 1))
-        return traces
-
-    def __read_array_traces(
-        self,
-        *,
-        ids: Sequence[int],
-        min_sample: Optional[int],
-        max_sample: Optional[int],
-    ) -> np.ndarray:
-        if self.__array is None:
-            raise RuntimeError("Array source is not available")
-        start, stop = self.__normalize_sample_slice(min_sample, max_sample)
-        trace_ids = self.__normalize_trace_ids(ids)
-        return self.__array[start:stop, trace_ids].copy()
-
-    def __normalize_sample_slice(
-        self,
-        min_sample: Optional[int],
-        max_sample: Optional[int],
-    ) -> tuple[int, int]:
-        start = 0 if min_sample is None else min_sample
-        stop = self.num_samples if max_sample is None else max_sample
-        if not isinstance(start, int) or not isinstance(stop, int):
-            raise InvalidSamplesSlice("Arguments 'min_sample' and 'max_sample' must be integers")
-        if start < 0 or start > self.num_samples:
-            raise InvalidSamplesSlice(f"Argument 'min_sample' must be in [0, {self.num_samples}]")
-        if stop < 0 or stop > self.num_samples:
-            raise InvalidSamplesSlice(f"Argument 'max_sample' must be in [0, {self.num_samples}]")
-        if start >= stop:
-            raise InvalidSamplesSlice("Argument 'min_sample' must be less than 'max_sample'")
-        return start, stop
-
-    def __normalize_trace_ids(self, ids: Sequence[int]) -> list[int]:
-        trace_ids = list(ids)
-        for trace_id in trace_ids:
-            if not isinstance(trace_id, int):
-                raise ValueError("Trace ids must be integers")
-            if trace_id < 0 or trace_id >= self.num_traces:
-                raise ValueError(f"Trace id must be in [0, {self.num_traces}), got {trace_id}")
-        return trace_ids
+        self.__traces = get_traces(source, layout)
 
     def __make_write_layout(
         self,
@@ -450,7 +371,6 @@ __all__ = [
     "DataFormat",
     "Endianness",
     "InvalidSGY",
-    "InvalidSamplesSlice",
     "NotImplementedReader",
     "SGY",
     "SGYRevision",
