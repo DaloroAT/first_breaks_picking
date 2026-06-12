@@ -263,7 +263,7 @@ def __encode_ibm_float_trace(trace: np.ndarray, layout: SGYLayout) -> bytes:
     return result.tobytes()
 
 
-class ITraces(ABC):
+class ITracesStore(ABC):
     @abstractmethod
     @property
     def layout(self) -> SGYLayout:
@@ -296,33 +296,33 @@ class ITraces(ABC):
         raise NotImplementedError
 
 
-class TracesArray(ITraces):
+class TracesStoreArray(ITracesStore):
     def __init__(self, array: np.ndarray, layout: SGYLayout):
         self.__array = array
         self.__layout = layout
         # validate against layout
 
 
-class TracesBytes(ITraces):
+class TracesStoreBytes(ITracesStore):
     def __init__(self, raw: bytes, layout: SGYLayout):
         self.__raw = raw
         self.__layout = layout
         self.__cached_array: np.ndarray | None = None  # in case all traces were read
 
 
-class TracesFile(ITraces):
+class TracesStoreFile(ITracesStore):
     def __init__(self, path: Path | str, layout: SGYLayout):
         self.__path = path
         self.__layout = layout
         self.__cached_array: np.ndarray | None = None  # in case all traces were read
 
 
-def get_traces(source: SourceInput, layout: SGYLayout) -> ITraces:
+def get_traces(source: SourceInput, layout: SGYLayout) -> ITracesStore:
     if isinstance(source, np.ndarray):
-        return TracesArray(source, layout)
+        return TracesStoreArray(source, layout)
     elif isinstance(source, (str, Path)):
-        return TracesFile(source, layout)
+        return TracesStoreFile(source, layout)
     elif isinstance(source, bytes):
-        return TracesBytes(source, layout)
+        return TracesStoreBytes(source, layout)
     else:
         raise TypeError("Unsupported source type")
