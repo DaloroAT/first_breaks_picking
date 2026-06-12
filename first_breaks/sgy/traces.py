@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Generator, IO, List, Optional, Sequence, Union
 
 import numpy as np
@@ -9,7 +11,7 @@ from first_breaks.sgy.types import (
     DataFormat,
     InvalidSamplesSlice,
     NotImplementedReader,
-    SGYLayout,
+    SGYLayout, SourceInput,
 )
 
 
@@ -259,3 +261,68 @@ def __encode_ibm_float_trace(trace: np.ndarray, layout: SGYLayout) -> bytes:
         result[non_zero_mask] = (sign << IBM_SIGN_BIT) | (ibm_exp_biased << IBM_MANTISSA_BITS) | mantissa_int
 
     return result.tobytes()
+
+
+class ITraces(ABC):
+    @abstractmethod
+    @property
+    def layout(self) -> SGYLayout:
+        raise NotImplementedError
+
+    @abstractmethod
+    def write_to_sgy_pointer(self, pointer: IO[bytes]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def read_traces_by_ids(
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
+    ) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_chunked_reader(
+        self,
+        chunk_size: int,
+        min_sample: Optional[int] = None,
+        max_sample: Optional[int] = None,
+    ) -> Generator[np.ndarray, None, None]:
+        raise NotImplementedError
+
+
+class TracesArray(ITraces):
+    def __init__(self, array: np.ndarray, layout: SGYLayout):
+        self.__array = array
+        self.__layout = layout
+        # validate against layout
+
+
+class TracesBytes(ITraces):
+    def __init__(self, raw: bytes, layout: SGYLayout):
+        self.__raw = raw
+        self.__layout = layout
+        self.__cached_array: np.ndarray | None = None  # in case all traces were read
+
+
+class TracesFile(ITraces):
+    def __init__(self, path: Path | str, layout: SGYLayout):
+        self.__path = path
+        self.__layout = layout
+        self.__cached_array: np.ndarray | None = None  # in case all traces were read
+
+
+def get_traces(source: SourceInput, layout: SGYLayout) -> ITraces:
+    if isinstance(source, np.ndarray):
+        return TracesArray(source, layout)
+    elif isinstance(source, (str, Path)):
+        return TracesFile(source, layout)
+    elif isinstance(source, bytes):
+        return TracesBytes(source, layout)
+    else:
+        raise TypeError("Unsupported source type")
