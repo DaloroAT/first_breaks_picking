@@ -339,11 +339,10 @@ class TracesBackendArray(TracesBackend):
         return self.__array[start_sample:stop_sample, trace_ids].copy()
 
 
-class TracesBackendBytes(TracesBackend):
-    def __init__(self, raw: bytes, layout: SGYLayout) -> None:
-        self.__raw = raw
+class _CachedSourceTracesBackend(TracesBackend):
+    def __init__(self, layout: SGYLayout) -> None:
         self.__layout = layout
-        self.__cached_array: np.ndarray | None = None
+        self.__cached_backend: TracesBackendArray | None = None
 
     @property
     def layout(self) -> SGYLayout:
@@ -351,13 +350,16 @@ class TracesBackendBytes(TracesBackend):
 
     def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
         if self.__is_full_read(min_sample, max_sample):
-            if self.__cached_array is None:
-                self.__cached_array = self.__read_from_source(
-                    ids=range(self.layout.num_traces),
-                    min_sample=None,
-                    max_sample=None,
+            if self.__cached_backend is None:
+                self.__cached_backend = TracesBackendArray(
+                    self._read_from_source(
+                        ids=range(self.layout.num_traces),
+                        min_sample=None,
+                        max_sample=None,
+                    ),
+                    self.layout,
                 )
-            return self.__cached_array.copy()
+            return self.__cached_backend.read()
         return self.read_traces_by_ids(range(self.layout.num_traces), min_sample=min_sample, max_sample=max_sample)
 
     def read_traces_by_ids(
@@ -366,20 +368,48 @@ class TracesBackendBytes(TracesBackend):
         min_sample: Optional[int] = None,
         max_sample: Optional[int] = None,
     ) -> np.ndarray:
-        if self.__cached_array is not None:
-            start_sample, stop_sample = _normalize_sample_slice(self.layout, min_sample, max_sample)
-            trace_ids = _normalize_trace_ids(self.layout, ids)
-            return self.__cached_array[start_sample:stop_sample, trace_ids].copy()
-        return self.__read_from_source(ids=ids, min_sample=min_sample, max_sample=max_sample)
+        if self.__cached_backend is not None:
+            return self.__cached_backend.read_traces_by_ids(ids=ids, min_sample=min_sample, max_sample=max_sample)
+        return self._read_from_source(ids=ids, min_sample=min_sample, max_sample=max_sample)
 
     def write_to_sgy_pointer(self, pointer: IO[bytes], output_layout: Optional[SGYLayout]) -> None:
         layout = self.layout if output_layout is None else output_layout
+        if output_layout is None or output_layout == self.layout:
+            self._copy_raw_trace_data_to_pointer(pointer=pointer, layout=layout)
+            return
+
+        if self.__cached_backend is not None:
+            self.__cached_backend.write_to_sgy_pointer(pointer=pointer, output_layout=layout)
+            return
+
         for start in range(0, self.layout.num_traces, 1024):
             stop = min(start + 1024, self.layout.num_traces)
-            traces = self.read_traces_by_ids(range(start, stop))
+            traces = self._read_from_source(ids=range(start, stop), min_sample=None, max_sample=None)
             write_traces(pointer=pointer, trace_ids=range(start, stop), traces=traces, layout=layout)
 
-    def __read_from_source(
+    @abstractmethod
+    def _read_from_source(
+        self,
+        ids: Sequence[int],
+        min_sample: Optional[int],
+        max_sample: Optional[int],
+    ) -> np.ndarray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def _copy_raw_trace_data_to_pointer(self, pointer: IO[bytes], layout: SGYLayout) -> None:
+        raise NotImplementedError
+
+    def __is_full_read(self, min_sample: Optional[int], max_sample: Optional[int]) -> bool:
+        return min_sample is None and max_sample is None
+
+
+class TracesBackendBytes(_CachedSourceTracesBackend):
+    def __init__(self, raw: bytes, layout: SGYLayout) -> None:
+        self.__raw = raw
+        super().__init__(layout=layout)
+
+    def _read_from_source(
         self,
         ids: Sequence[int],
         min_sample: Optional[int],
@@ -388,51 +418,23 @@ class TracesBackendBytes(TracesBackend):
         pointer = BytesIO(self.__raw)
         return read_traces(pointer, trace_ids=ids, layout=self.layout, min_sample=min_sample, max_sample=max_sample)
 
-    def __is_full_read(self, min_sample: Optional[int], max_sample: Optional[int]) -> bool:
-        return min_sample is None and max_sample is None
+    def _copy_raw_trace_data_to_pointer(self, pointer: IO[bytes], layout: SGYLayout) -> None:
+        for trace_id in range(self.layout.num_traces):
+            source_start = _trace_data_offset(self.layout, trace_id)
+            source_stop = source_start + self.layout.trace_data_size
+            block = self.__raw[source_start:source_stop]
+            if len(block) != self.layout.trace_data_size:
+                raise EOFError(f"Cannot read {self.layout.trace_data_size} bytes for trace {trace_id}")
+            pointer.seek(_trace_data_offset(layout, trace_id))
+            pointer.write(block)
 
 
-class TracesBackendFile(TracesBackend):
+class TracesBackendFile(_CachedSourceTracesBackend):
     def __init__(self, path: Path | str, layout: SGYLayout) -> None:
         self.__path = Path(path)
-        self.__layout = layout
-        self.__cached_array: np.ndarray | None = None
+        super().__init__(layout=layout)
 
-    @property
-    def layout(self) -> SGYLayout:
-        return self.__layout
-
-    def read(self, min_sample: Optional[int] = None, max_sample: Optional[int] = None) -> np.ndarray:
-        if self.__is_full_read(min_sample, max_sample):
-            if self.__cached_array is None:
-                self.__cached_array = self.__read_from_source(
-                    ids=range(self.layout.num_traces),
-                    min_sample=None,
-                    max_sample=None,
-                )
-            return self.__cached_array.copy()
-        return self.read_traces_by_ids(range(self.layout.num_traces), min_sample=min_sample, max_sample=max_sample)
-
-    def read_traces_by_ids(
-        self,
-        ids: Sequence[int],
-        min_sample: Optional[int] = None,
-        max_sample: Optional[int] = None,
-    ) -> np.ndarray:
-        if self.__cached_array is not None:
-            start_sample, stop_sample = _normalize_sample_slice(self.layout, min_sample, max_sample)
-            trace_ids = _normalize_trace_ids(self.layout, ids)
-            return self.__cached_array[start_sample:stop_sample, trace_ids].copy()
-        return self.__read_from_source(ids=ids, min_sample=min_sample, max_sample=max_sample)
-
-    def write_to_sgy_pointer(self, pointer: IO[bytes], output_layout: Optional[SGYLayout]) -> None:
-        layout = self.layout if output_layout is None else output_layout
-        for start in range(0, self.layout.num_traces, 1024):
-            stop = min(start + 1024, self.layout.num_traces)
-            traces = self.read_traces_by_ids(range(start, stop))
-            write_traces(pointer=pointer, trace_ids=range(start, stop), traces=traces, layout=layout)
-
-    def __read_from_source(
+    def _read_from_source(
         self,
         ids: Sequence[int],
         min_sample: Optional[int],
@@ -441,8 +443,15 @@ class TracesBackendFile(TracesBackend):
         with self.__path.open("rb") as pointer:
             return read_traces(pointer, trace_ids=ids, layout=self.layout, min_sample=min_sample, max_sample=max_sample)
 
-    def __is_full_read(self, min_sample: Optional[int], max_sample: Optional[int]) -> bool:
-        return min_sample is None and max_sample is None
+    def _copy_raw_trace_data_to_pointer(self, pointer: IO[bytes], layout: SGYLayout) -> None:
+        with self.__path.open("rb") as source:
+            for trace_id in range(self.layout.num_traces):
+                source.seek(_trace_data_offset(self.layout, trace_id))
+                block = source.read(self.layout.trace_data_size)
+                if len(block) != self.layout.trace_data_size:
+                    raise EOFError(f"Cannot read {self.layout.trace_data_size} bytes for trace {trace_id}")
+                pointer.seek(_trace_data_offset(layout, trace_id))
+                pointer.write(block)
 
 
 def get_traces(source: SourceInput, layout: SGYLayout) -> TracesBackend:
