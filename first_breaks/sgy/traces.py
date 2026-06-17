@@ -283,7 +283,7 @@ def is_all_data(
     return is_all_traces and is_from_start and is_until_end
 
 
-def can_copy_raw_trace_data(source_layout: SGYLayout, output_layout: SGYLayout) -> bool:
+def can_copy_raw_trace_samples_without_transcoding(source_layout: SGYLayout, output_layout: SGYLayout) -> bool:
     return (
         source_layout.shape == output_layout.shape
         and source_layout.data_format == output_layout.data_format
@@ -297,7 +297,7 @@ def copy_raw_trace_data(
     source_layout: SGYLayout,
     output_layout: SGYLayout,
 ) -> None:
-    if not can_copy_raw_trace_data(source_layout, output_layout):
+    if not can_copy_raw_trace_samples_without_transcoding(source_layout, output_layout):
         raise ValueError("Raw trace data can only be copied between matching trace-data layouts")
 
     for trace_id in range(source_layout.num_traces):
@@ -433,7 +433,7 @@ class TracesBackendRawSource(TracesBackend, ABC):
 
     def write_to_sgy_pointer(self, pointer: IO[bytes], output_layout: Optional[SGYLayout]) -> None:
         layout = self.__layout if output_layout is None else output_layout
-        if can_copy_raw_trace_data(self.__layout, layout):
+        if can_copy_raw_trace_samples_without_transcoding(self.__layout, layout):
             with self._open_pointer() as read_pointer:
                 copy_raw_trace_data(
                     read_pointer=read_pointer,

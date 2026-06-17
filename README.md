@@ -151,7 +151,6 @@ The following snippet implements the picking process of the demo file. As a resu
 the project preview.
 
 [code-block-start]:e2e-example
-
 ```python
 from first_breaks.utils.utils import download_demo_sgy
 from first_breaks.sgy.sgy import SGY
@@ -211,7 +210,6 @@ We provide several ways to create `SGY` object: from file, `bytes` or `numpy` ar
 From file:
 
 [code-block-start]:init-from-path
-
 ```python
 from first_breaks.sgy.sgy import SGY
 
@@ -223,7 +221,6 @@ sgy = SGY(sgy_filename)
 From `bytes`:
 
 [code-block-start]:init-from-bytes
-
 ```python
 from first_breaks.sgy.sgy import SGY
 
@@ -239,7 +236,6 @@ sgy = SGY(sgy_bytes)
 If you want to create from `numpy` array, extra argument `dt_mcs` is required:
 
 [code-block-start]:init-from-np
-
 ```python
 import numpy as np
 from first_breaks.sgy.sgy import SGY
@@ -258,7 +254,6 @@ sgy = SGY(traces, dt_mcs=dt_mcs)
 Created `SGY` allows you to read traces, get observation parameters and view headers (empty if created from `numpy`)
 
 [code-block-start]:sgy-content
-
 ```python
 from first_breaks.sgy.sgy import SGY
 
@@ -294,7 +289,6 @@ best quality, they must be matched to specific data. You can use the desktop app
 A detailed description of the parameters can be found  in the `Picking process` chapter.
 
 [code-block-start]:create-task
-
 ```python
 from first_breaks.sgy.sgy import SGY
 from first_breaks.picking.task import Task
@@ -347,7 +341,6 @@ picker_gpu.change_settings(device='cpu', batch_size=1)
 Now, using all the created components, we can pick the first breaks and retrieve results.
 
 [code-block-start]:pick-fb
-
 ```python
 from first_breaks.picking.task import Task
 from first_breaks.picking.picker_onnx import PickerONNX
@@ -422,7 +415,6 @@ use them all. See the function arguments for more visualization options.
 Plot `SGY` only:
 
 [code-block-start]:plot-sgy
-
 ```python
 from first_breaks.sgy.sgy import SGY
 from first_breaks.desktop.graph import export_image
@@ -443,7 +435,6 @@ export_image(sgy, image_filename,
 Plot `numpy` traces:
 
 [code-block-start]:plot-np
-
 ```python
 import numpy as np
 from first_breaks.sgy.sgy import SGY
@@ -469,7 +460,6 @@ export_image(sgy, image_filename,
 Plot `SGY` with custom picks:
 
 [code-block-start]:plot-sgy-custom-picks
-
 ```python
 import numpy as np
 from first_breaks.picking.picks import Picks
@@ -492,7 +482,6 @@ export_image(sgy, image_filename,
 Plot result of picking:
 
 [code-block-start]:plot-sgy-real-picks
-
 ```python
 from first_breaks.picking.task import Task
 from first_breaks.picking.picker_onnx import PickerONNX
@@ -523,7 +512,6 @@ Unfortunately, processing of a part of a file is not currently supported nativel
 However, you can use the following workaround to do this:
 
 [code-block-start]:pick-limited
-
 ```python
 from first_breaks.sgy.sgy import SGY
 
