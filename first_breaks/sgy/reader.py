@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from first_breaks.sgy.headers import FileHeaderField, FileHeaders, TraceHeaderField, TraceHeaders
-from first_breaks.sgy.traces import TracesBackend, get_traces
+from first_breaks.sgy.traces import TracesBackend, get_traces_backend
 from first_breaks.sgy.types import (
     DEFAULT_DATA_FORMAT,
     DEFAULT_ENDIANNESS,
@@ -314,7 +314,7 @@ class SGY:
         self.__trace_headers = (
             TraceHeaders.from_values(traces_headers, layout) if traces_headers is not None else TraceHeaders.empty(layout)
         )
-        self.__traces = get_traces(source, layout)
+        self.__traces = get_traces_backend(source, layout)
 
     def __build_bytes_components(self, source: bytes) -> None:
         layout = SGYLayout.from_bytes(source)
@@ -326,7 +326,7 @@ class SGY:
         self.__layout = layout
         self.__file_headers = FileHeaders.from_sgy_pointer(pointer, layout)
         self.__trace_headers = TraceHeaders.from_sgy_pointer(pointer, layout)
-        self.__traces = get_traces(source, layout)
+        self.__traces = get_traces_backend(source, layout)
 
     def __build_file_components(self, source: Path) -> None:
         layout = SGYLayout.from_file(source)
@@ -338,7 +338,7 @@ class SGY:
         self.__layout = layout
         self.__file_headers = file_headers
         self.__trace_headers = trace_headers
-        self.__traces = get_traces(source, layout)
+        self.__traces = get_traces_backend(source, layout)
 
     def __make_write_layout(
         self,
