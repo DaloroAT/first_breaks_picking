@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 import numpy as np
 
 from first_breaks.picking.picks import Picks
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.filtering import apply_savgol_filter
 
 

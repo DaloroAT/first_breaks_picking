@@ -6,7 +6,7 @@ from pydantic_core.core_schema import FieldValidationInfo
 
 from first_breaks.data_models.independent import DefaultModel, TraceBytePosition
 from first_breaks.sgy.headers import FORMAT_TO_SIZE, TraceHeaderField
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.engine import get_recommended_device
 
 TRACE_HEADER_NAMES = [field.name for field in TraceHeaderField]

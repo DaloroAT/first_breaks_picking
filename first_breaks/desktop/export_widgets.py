@@ -30,7 +30,7 @@ from first_breaks.exports.export_picks import (
 )
 from first_breaks.picking.picks import PickingParameters, Picks
 from first_breaks.sgy.headers import TraceHeaderField
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 
 class _ExporterWidget(QWidget):

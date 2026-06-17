@@ -21,7 +21,7 @@ from first_breaks.desktop.spectrum_window import SpectrumWindow
 from first_breaks.picking.picks import Picks
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import resolve_postime2xy as postime2xy
 from first_breaks.utils.utils import resolve_xy2postime as xy2postime
 
@@ -606,7 +606,7 @@ def export_image(
 
 
 if __name__ == "__main__":
-    from first_breaks.sgy.reader import SGY
+    from first_breaks.sgy.sgy import SGY
     from first_breaks.utils.utils import download_demo_sgy
 
     demo_sgy = download_demo_sgy()

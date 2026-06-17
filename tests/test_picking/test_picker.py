@@ -4,7 +4,7 @@ import pytest
 
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 
 @pytest.mark.parametrize("traces_per_gather", [48, 90])

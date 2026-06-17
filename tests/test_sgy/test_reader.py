@@ -5,7 +5,7 @@ from typing import Type
 import numpy as np
 import pytest
 
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import multiply_iterable_by
 
 

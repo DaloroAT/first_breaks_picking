@@ -8,7 +8,7 @@ import pandas as pd
 
 from first_breaks.picking.picks import Picks
 from first_breaks.sgy.headers import TraceHeaderField
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 
 def export_to_sgy(

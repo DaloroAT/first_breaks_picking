@@ -10,7 +10,7 @@ from first_breaks.desktop.threads import CallInThread, PickerQRunnable
 from first_breaks.picking.ipicker import IPicker
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.picking.task import Task
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import remove_unused_kwargs
 
 

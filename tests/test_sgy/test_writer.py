@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import calc_hash
 
 
