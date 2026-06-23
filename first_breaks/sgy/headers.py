@@ -531,7 +531,6 @@ class FileHeaders:
 
 
 class TraceHeaders:
-    fb_pick_default = TraceHeaderField.FB_PICK.name
     scalar_from2apply: Dict[TraceHeaderField, tuple[TraceHeaderField, ...]] = {
         TraceHeaderField.ELEVATION_SCALAR: (
             TraceHeaderField.REC_ELEV,

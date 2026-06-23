@@ -37,8 +37,6 @@ from first_breaks.utils.utils import UnitsConverter, calc_hash
 
 
 class SGY:
-    fmt2bps = FORMAT_TO_BYTES_PER_SAMPLE
-
     def __init__(
         self,
         source: SourceInput,
@@ -160,10 +158,6 @@ class SGY:
         return self.__layout.endianness
 
     @property
-    def data_format(self) -> int:
-        return int(self.__layout.data_format)
-
-    @property
     def sample_format(self) -> DataFormat:
         return self.__layout.data_format
 
@@ -178,14 +172,6 @@ class SGY:
     @property
     def traces_headers(self) -> pd.DataFrame:
         return self.__trace_headers.scaled()
-
-    @property
-    def traces_headers_raw(self) -> pd.DataFrame:
-        return self.__trace_headers.raw()
-
-    @property
-    def traces_headers_schema(self) -> TraceHeaders:
-        return self.__trace_headers
 
     def ms2index(self, ms_value: float) -> int:
         return self.__units_converter.ms2index(ms_value)  # type: ignore[return-value]

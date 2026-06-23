@@ -42,22 +42,10 @@ class DataFormat(IntEnum):
     def is_supported_for_reading(cls, value: Union["DataFormat", int]) -> bool:
         return cls(value) in (cls.IBM_FLOAT, cls.INT32, cls.INT16, cls.IEEE_FLOAT, cls.IEEE_DOUBLE)
 
-    @classmethod
-    def is_supported_for_writing(cls, value: Union["DataFormat", int]) -> bool:
-        return cls(value) in (cls.IBM_FLOAT, cls.INT32, cls.INT16, cls.IEEE_FLOAT, cls.IEEE_DOUBLE)
-
 
 class Endianness(str, Enum):
     BIG = ">"
     LITTLE = "<"
-
-    @classmethod
-    def is_valid(cls, value: Union["Endianness", str]) -> bool:
-        try:
-            cls(value)
-        except ValueError:
-            return False
-        return True
 
 
 DEFAULT_ENDIANNESS = Endianness.BIG
