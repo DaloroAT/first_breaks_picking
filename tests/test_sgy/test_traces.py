@@ -256,7 +256,9 @@ def test_backend_write_to_sgy_pointer_uses_explicit_output_layout() -> None:
         dtype=np.float32,
     )
     backend = get_traces_backend(traces, layout)
-    pointer = BytesIO(bytearray(output_layout.file_header_size + output_layout.num_traces * output_layout.trace_block_size))
+    pointer = BytesIO(
+        bytearray(output_layout.file_header_size + output_layout.num_traces * output_layout.trace_block_size)
+    )
 
     backend.write_to_sgy_pointer(pointer, output_layout=output_layout)
     decoded = read_traces(pointer, trace_ids=range(output_layout.num_traces), layout=output_layout)
@@ -284,7 +286,7 @@ def test_backend_write_to_sgy_pointer_accepts_explicit_none_output_layout() -> N
     assert np.allclose(decoded, traces)
 
 
-def test_bytes_backend_same_layout_write_copies_raw_trace_data_without_encoding(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_bytes_backend_same_layout_write_copies_raw_trace_data_without_encoding(monkeypatch) -> None:
     layout = make_layout()
     traces = np.array(
         [
@@ -306,7 +308,9 @@ def test_bytes_backend_same_layout_write_copies_raw_trace_data_without_encoding(
         file_header_size=layout.file_header_size,
         trace_header_size=layout.trace_header_size,
     )
-    pointer = BytesIO(bytearray(output_layout.file_header_size + output_layout.num_traces * output_layout.trace_block_size))
+    pointer = BytesIO(
+        bytearray(output_layout.file_header_size + output_layout.num_traces * output_layout.trace_block_size)
+    )
 
     def fail_write_traces(*args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         raise AssertionError("same-layout bytes backend write must not encode traces")
@@ -319,7 +323,7 @@ def test_bytes_backend_same_layout_write_copies_raw_trace_data_without_encoding(
     assert np.allclose(decoded, traces)
 
 
-def test_file_backend_same_layout_write_copies_raw_trace_data_without_encoding(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_file_backend_same_layout_write_copies_raw_trace_data_without_encoding(tmp_path, monkeypatch) -> None:
     layout = make_layout()
     traces = np.array(
         [

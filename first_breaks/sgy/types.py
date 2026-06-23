@@ -7,7 +7,6 @@ from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 
-
 SizeHW = Tuple[int, int]
 SourceInput = Union[str, Path, bytes, np.ndarray]
 

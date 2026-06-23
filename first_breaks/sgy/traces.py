@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from io import BytesIO
 from pathlib import Path
-from typing import ContextManager, Generator, IO, List, Optional, Sequence, Union
+from typing import IO, ContextManager, Generator, List, Optional, Sequence, Union
 
 import numpy as np
 
@@ -15,7 +15,6 @@ from first_breaks.sgy.types import (
     SGYLayout,
     SourceInput,
 )
-
 
 IBM_EXPONENT_BIAS = 64
 IBM_MANTISSA_BITS = 24
@@ -43,9 +42,7 @@ def validate_raw_blocks(raw: List[bytes] | List[bytearray], layout: SGYLayout) -
 
     num_samples = block_size // layout.bytes_per_sample
     if num_samples > layout.num_samples:
-        raise ValueError(
-            f"Trace byte blocks contain {num_samples} samples, but layout contains {layout.num_samples}"
-        )
+        raise ValueError(f"Trace byte blocks contain {num_samples} samples, but layout contains {layout.num_samples}")
 
 
 def decode_blocks(raw: List[bytes] | List[bytearray], layout: SGYLayout) -> np.ndarray:

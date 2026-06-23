@@ -3,7 +3,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, IO, Iterable, Mapping, NamedTuple, Optional, Sequence, Type, Union
+from typing import (
+    IO,
+    Any,
+    Dict,
+    Iterable,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Type,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
@@ -325,7 +336,9 @@ class FileHeadersBytes(FileHeadersBackend):
         pointer.seek(0)
         raw = pointer.read(layout.file_header_size)
         if len(raw) != layout.file_header_size:
-            raise InvalidHeaders(f"Cannot read {layout.file_header_size} bytes for file headers")
+            raise InvalidHeaders(
+                f"Cannot read {layout.file_header_size} bytes for file headers, " f"it has only {len(raw)} bytes"
+            )
         return cls(raw, layout)
 
     def values(self) -> Dict[FileHeaderField, Any]:
@@ -334,8 +347,7 @@ class FileHeadersBytes(FileHeadersBackend):
             infos = [field.value for field in fields]
             record = _decode_block(self.__raw, infos, self.layout.endianness, self.layout.file_header_size)
             self.__values_cache = {
-                field: _to_python_value(record[f"f{idx}"], field.value.format)
-                for idx, field in enumerate(fields)
+                field: _to_python_value(record[f"f{idx}"], field.value.format) for idx, field in enumerate(fields)
             }
         return deepcopy(self.__values_cache)
 
@@ -393,7 +405,9 @@ class TraceHeadersPython(TraceHeadersBackend):
         if values_array.ndim == 0:
             values_array = np.full(self.layout.num_traces, values_array.item())
         if len(values_array) != self.layout.num_traces:
-            raise InvalidHeaders(f"Trace header update contains {len(values_array)} values, expected {self.layout.num_traces}")
+            raise InvalidHeaders(
+                f"Trace header update contains {len(values_array)} values, expected {self.layout.num_traces}"
+            )
         for value in values_array:
             _validate_value(value, field.value, self.layout.endianness)
         self.__raw[field.name] = values_array
@@ -434,12 +448,7 @@ class TraceHeadersBytes(TraceHeadersBackend):
                 for start in range(0, len(self.__raw), self.layout.trace_header_size)
             ]
             records = _decode_blocks(blocks, infos, self.layout.endianness, self.layout.trace_header_size)
-            self.__raw_cache = pd.DataFrame(
-                {
-                    field.name: records[f"f{idx}"].copy()
-                    for idx, field in enumerate(fields)
-                }
-            )
+            self.__raw_cache = pd.DataFrame({field.name: records[f"f{idx}"].copy() for idx, field in enumerate(fields)})
         return self.__raw_cache.copy()
 
     def write_to_sgy_pointer(self, pointer: IO[bytes]) -> None:
@@ -457,7 +466,9 @@ class TraceHeadersBytes(TraceHeadersBackend):
         if values_array.ndim == 0:
             values_array = np.full(self.layout.num_traces, values_array.item())
         if len(values_array) != self.layout.num_traces:
-            raise InvalidHeaders(f"Trace header update contains {len(values_array)} values, expected {self.layout.num_traces}")
+            raise InvalidHeaders(
+                f"Trace header update contains {len(values_array)} values, expected {self.layout.num_traces}"
+            )
         info = field.value
         for trace_idx, value in enumerate(values_array):
             encoded = _encode_value(value, info, self.layout.endianness)
@@ -711,9 +722,11 @@ def _validate_value(value: Any, info: HeaderInfo, endianness: Endianness) -> Non
     dtype = _dtype_for_format(fmt, endianness)
     value = value.item() if isinstance(value, np.generic) else value
     if dtype.kind in ("i", "u"):
-        info = np.iinfo(dtype)
-        if not info.min <= int(value) <= info.max:
-            raise InvalidHeaders(f"Value {value!r} is outside range [{info.min}, {info.max}] for header format {fmt!r}")
+        iinfo = np.iinfo(dtype)
+        if not iinfo.min <= int(value) <= iinfo.max:
+            raise InvalidHeaders(
+                f"Value {value!r} is outside range [{iinfo.min}, {iinfo.max}] for header format {fmt!r}"
+            )
     elif dtype.kind == "f":
         try:
             float(value)
@@ -737,5 +750,49 @@ def _to_python_value(value: Any, fmt: str) -> Any:
 def _rename_trace_columns(values: pd.DataFrame, name_mapping: TraceHeaderNameMapping) -> pd.DataFrame:
     renamed = values.copy()
     if name_mapping is not None:
-        renamed = renamed.rename(columns={field.name: name_mapping.get(field, field.name) for field in TraceHeaderField})
+        renamed = renamed.rename(
+            columns={field.name: name_mapping.get(field, field.name) for field in TraceHeaderField}
+        )
     return renamed
+
+
+def write_custom_traces_header(pointer: IO[bytes], values: np.ndarray, info: HeaderInfo, layout: SGYLayout) -> None:
+    _validate_custom_traces_header_info(info, layout)
+    assert values.ndim == 1, f"Values must have exactly 1 dimension, got {values.ndim}"
+    assert len(values) == layout.num_traces, f"Values should have exactly {layout.num_traces} values, got {len(values)}"
+    for trace_idx, value in enumerate(values):
+        encoded = _encode_value(value=value, info=info, endianness=layout.endianness)
+        pointer.seek(_custom_trace_header_offset(layout, trace_idx, info.offset))
+        pointer.write(encoded)
+
+
+def read_custom_traces_header(pointer: IO[bytes], info: HeaderInfo, layout: SGYLayout) -> tuple[Any, ...]:
+    _validate_custom_traces_header_info(info, layout)
+    size = get_num_bytes(info.format)
+    dtype = _dtype_for_format(info.format, layout.endianness)
+    values = []
+    for trace_idx in range(layout.num_traces):
+        pointer.seek(_custom_trace_header_offset(layout, trace_idx, info.offset))
+        raw = pointer.read(size)
+        if len(raw) != size:
+            raise InvalidHeaders(f"Header value requires {size} bytes, got {len(raw)}")
+        values.append(_to_python_value(np.frombuffer(raw, dtype=dtype, count=1)[0], info.format))
+    return tuple(values)
+
+
+def _validate_custom_traces_header_info(info: HeaderInfo, layout: SGYLayout) -> None:
+    if not isinstance(info.offset, int):
+        raise InvalidHeaders("Trace header byte offset must be integer")
+    if info.offset < 0:
+        raise InvalidHeaders("Trace header byte offset must be non-negative")
+    size = get_num_bytes(info.format)
+    if info.offset + size > layout.trace_header_size:
+        raise InvalidHeaders(
+            "Custom trace header value exceeds trace header size: "
+            f"offset={info.offset}, format={info.format!r}, size={size}, "
+            f"trace_header_size={layout.trace_header_size}"
+        )
+
+
+def _custom_trace_header_offset(layout: SGYLayout, trace_idx: int, byte_position: int) -> int:
+    return layout.file_header_size + trace_idx * layout.trace_block_size + byte_position

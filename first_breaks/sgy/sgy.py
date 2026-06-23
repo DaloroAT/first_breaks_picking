@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
 
-from first_breaks.sgy.headers import FileHeaderField, FileHeaders, TraceHeaderField, TraceHeaders
+from first_breaks.sgy.headers import (
+    FileHeaderField,
+    FileHeaders,
+    HeaderInfo,
+    TraceHeaderField,
+    TraceHeaders,
+    read_custom_traces_header,
+    write_custom_traces_header,
+)
 from first_breaks.sgy.traces import TracesBackend, get_traces_backend
 from first_breaks.sgy.types import (
     DEFAULT_DATA_FORMAT,
@@ -206,10 +215,13 @@ class SGY:
         yield from self.__traces.get_chunked_reader(chunk_size, min_sample=min_sample, max_sample=max_sample)
 
     def read_custom_trace_header(self, byte_position: int, encoding: str) -> tuple[Any, ...]:
-        for field in TraceHeaderField:
-            if field.value.offset == byte_position and field.value.format == encoding:
-                return tuple(self.__trace_headers[field].tolist())
-        raise NotImplementedError("Reading arbitrary trace header byte positions is not implemented")
+        info = HeaderInfo(byte_position, encoding)
+        if self.__source_kind == SourceKind.BYTES:
+            return read_custom_traces_header(BytesIO(self.__source), info, self.__layout)  # type: ignore[arg-type]
+        if self.__source_kind == SourceKind.FILE:
+            with Path(self.__source).open("rb") as pointer:  # type: ignore[arg-type]
+                return read_custom_traces_header(pointer, info, self.__layout)
+        raise NotImplementedReader("Custom trace header reading is available only for file and bytes sources")
 
     def write(
         self,
@@ -236,17 +248,16 @@ class SGY:
         encoding: Optional[str] = None,
         picks_unit: Optional[str] = "mcs",
     ) -> None:
-        field = TraceHeaderField.FB_PICK
-        if byte_position != field.value.offset:
-            raise NotImplementedError("Only FB_PICK trace header export is implemented")
-        if encoding is not None and encoding != field.value.format:
-            raise NotImplementedError("Only FB_PICK trace header export with its standard encoding is implemented")
+        output_path = Path(output_fname)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        effective_encoding = TraceHeaderField.FB_PICK.value.format if encoding is None else encoding
+        info = HeaderInfo(byte_position, effective_encoding)
         if len(picks_in_mcs) != self.num_traces:
             raise ValueError(f"Number of picks ({len(picks_in_mcs)}) must match number of traces ({self.num_traces})")
         if picks_unit not in ("ms", "mcs", "sample"):
             raise ValueError("Argument 'picks_unit' must be one of 'ms', 'mcs', or 'sample'")
 
-        cast_to = int
+        cast_to = float if effective_encoding in ("f", "d") else int
         if picks_unit == "ms":
             picks = self.__units_converter.mcs2ms(picks_in_mcs, cast_to=cast_to)
         elif picks_unit == "sample":
@@ -254,16 +265,15 @@ class SGY:
         else:
             picks = np.asarray(picks_in_mcs).astype(cast_to)
 
-        trace_headers = self.__trace_headers.raw()
-        trace_headers[field.name] = picks
+        write_layout = self.__make_write_layout(data_format=self.sample_format, endianness=self.endianness)
+        file_headers = self.__file_headers_for_layout(write_layout)
+        trace_headers = TraceHeaders.from_values(self.__trace_headers.raw(), write_layout)
 
-        exported = SGY(
-            self.read(),
-            dt_mcs=self.dt_mcs,
-            file_headers=self.general_headers,
-            traces_headers=trace_headers,
-        )
-        exported.write(output_fname, data_format=self.sample_format, endianness=self.endianness)
+        with output_path.open("wb+") as pointer:
+            file_headers.write_to_sgy_pointer(pointer)
+            trace_headers.write_to_sgy_pointer(pointer)
+            self.__traces.write_to_sgy_pointer(pointer, output_layout=write_layout)
+            write_custom_traces_header(pointer, np.asarray(picks), info, write_layout)
 
     def __build_components(
         self,
@@ -312,7 +322,9 @@ class SGY:
         self.__layout = layout
         self.__file_headers = FileHeaders.from_layout(layout, overrides=file_headers)
         self.__trace_headers = (
-            TraceHeaders.from_values(traces_headers, layout) if traces_headers is not None else TraceHeaders.empty(layout)
+            TraceHeaders.from_values(traces_headers, layout)
+            if traces_headers is not None
+            else TraceHeaders.empty(layout)
         )
         self.__traces = get_traces_backend(source, layout)
 
