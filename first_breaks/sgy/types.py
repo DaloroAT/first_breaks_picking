@@ -17,6 +17,8 @@ REV0_DT_OFFSET = 3216
 REV0_NS_OFFSET = 3220
 REV0_DATA_FORMAT_OFFSET = 3224
 REV0_REVISION_OFFSET = 3500
+REV0_FIXED_LENGTH_TRACE_FLAG_OFFSET = 3502
+REV0_NUMBER_OF_TEXTUAL_HEADERS_OFFSET = 3504
 MCS_TO_MS_FACTOR = 1e-3
 MS_TO_HZ_FACTOR = 1000
 
@@ -87,9 +89,6 @@ class SGYRevision(IntEnum):
         byte_order = "big" if Endianness(endianness) == Endianness.BIG else "little"
         return cls.from_header_value(int.from_bytes(raw, byteorder=byte_order, signed=False))
 
-    def is_supported(self) -> bool:
-        return self == SUPPORTED_SGY_REVISION
-
 
 SUPPORTED_SGY_REVISION = SGYRevision.REV_0
 
@@ -131,14 +130,6 @@ class UnsupportedSGYRevision(Exception):
     pass
 
 
-def ensure_supported_revision(revision: Union[SGYRevision, int]) -> None:
-    parsed_revision = SGYRevision.from_header_value(revision)
-    if not parsed_revision.is_supported():
-        raise UnsupportedSGYRevision(
-            f"Only SEG-Y revision {SUPPORTED_SGY_REVISION.name} is supported, got {parsed_revision.name}"
-        )
-
-
 class SourceKind(Enum):
     FILE = "file"
     BYTES = "bytes"
@@ -166,7 +157,6 @@ class SGYLayout:
         object.__setattr__(self, "data_format", DataFormat(self.data_format))
         object.__setattr__(self, "endianness", Endianness(self.endianness))
         revision = SGYRevision.from_header_value(self.revision)
-        ensure_supported_revision(revision)
         object.__setattr__(self, "revision", revision)
         if self.dt_mcs <= 0:
             raise InvalidSGY(f"Sample interval must be positive, got {self.dt_mcs}")
@@ -259,7 +249,7 @@ class SGYLayout:
             header[REV0_REVISION_OFFSET : REV0_REVISION_OFFSET + 2],
             endianness=endianness,
         )
-        ensure_supported_revision(revision)
+        _ensure_fixed_size_revision(header, revision, endianness)
         data_format = DataFormat(_unpack_unsigned_short(header, REV0_DATA_FORMAT_OFFSET, endianness))
         if not DataFormat.is_supported_for_reading(data_format):
             raise NotImplementedReader(f"Data format {data_format.name} is not supported for reading")
@@ -296,6 +286,23 @@ def _unpack_unsigned_short(header: bytes, offset: int, endianness: Endianness) -
         byteorder="big" if endianness == Endianness.BIG else "little",
         signed=False,
     )
+
+
+def _ensure_fixed_size_revision(header: bytes, revision: SGYRevision, endianness: Endianness) -> None:
+    if revision == SGYRevision.REV_0:
+        return
+
+    fixed_length_trace_flag = _unpack_unsigned_short(header, REV0_FIXED_LENGTH_TRACE_FLAG_OFFSET, endianness)
+    number_of_textual_headers = _unpack_unsigned_short(header, REV0_NUMBER_OF_TEXTUAL_HEADERS_OFFSET, endianness)
+    if number_of_textual_headers != 0:
+        raise UnsupportedSGYRevision(
+            "SEG-Y files with extended textual headers are not supported: "
+            f"revision={revision.name}, number_of_textual_headers={number_of_textual_headers}"
+        )
+    if fixed_length_trace_flag == 0:
+        raise UnsupportedSGYRevision(
+            f"SEG-Y files with variable-length traces are not supported: revision={revision.name}"
+        )
 
 
 def _detect_endianness(header: bytes) -> Endianness:
