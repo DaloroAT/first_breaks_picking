@@ -6,13 +6,15 @@ import numpy as np
 import pytest
 
 from first_breaks.const import PROJECT_ROOT
-from first_breaks.sgy.headers import TraceHeaderField, FileHeadersPython, TraceHeadersPython
-
+from first_breaks.sgy.headers import (
+    FileHeadersPython,
+    TraceHeaderField,
+    TraceHeadersPython,
+)
 from first_breaks.sgy.sgy import SGY
 from first_breaks.sgy.traces import TracesBackendArray
 from first_breaks.sgy.types import Endianness
-from first_breaks.utils.utils import multiply_iterable_by, calc_hash
-
+from first_breaks.utils.utils import calc_hash, multiply_iterable_by
 
 ROUND_TRIP_FILES = sorted((PROJECT_ROOT / "tests/data").glob("*.sgy"))
 
