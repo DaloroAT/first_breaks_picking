@@ -4,13 +4,16 @@ from typing import Type
 
 import numpy as np
 import pytest
+
+from first_breaks.const import PROJECT_ROOT
 from first_breaks.sgy.headers import TraceHeaderField
 
 from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import multiply_iterable_by
 
-
-
+@pytest.mark.parametrize("file", sorted((PROJECT_ROOT / "tests/data").glob("*.sgy")), ids=lambda x: x.stem)
+def test_round_trip(file: Path) -> None:
+    sgy = SGY(file)
 
 
 def test_reader_open_different_sources(demo_sgy: Path) -> None:
