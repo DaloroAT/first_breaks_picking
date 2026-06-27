@@ -21,7 +21,7 @@ from first_breaks.desktop.spectrum_window import SpectrumWindow
 from first_breaks.picking.picks import Picks
 from first_breaks.picking.task import Task
 from first_breaks.picking.utils import preprocess_gather
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import resolve_postime2xy as postime2xy
 from first_breaks.utils.utils import resolve_xy2postime as xy2postime
 
@@ -229,7 +229,7 @@ class GraphWidget(pg.PlotWidget):
                 if v % 1 == 0:
                     v = int(v) - 1
                     if 0 <= v < self.sgy.num_traces:
-                        labels_from_headers.append(str(self.sgy.traces_headers[self.pos_ax_header].iloc[v]))
+                        labels_from_headers.append(str(self.sgy.scaled_trace_headers[self.pos_ax_header].iloc[v]))
                     else:
                         labels_from_headers.append("")
                 else:
@@ -606,7 +606,7 @@ def export_image(
 
 
 if __name__ == "__main__":
-    from first_breaks.sgy.reader import SGY
+    from first_breaks.sgy.sgy import SGY
     from first_breaks.utils.utils import download_demo_sgy
 
     demo_sgy = download_demo_sgy()

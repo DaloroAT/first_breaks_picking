@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from first_breaks.picking.task import Task
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 
 @pytest.fixture

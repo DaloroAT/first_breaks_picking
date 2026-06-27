@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 
 from first_breaks.picking.picks import Picks
-from first_breaks.sgy.headers import TraceHeaders
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.headers import TraceHeaderField
+from first_breaks.sgy.sgy import SGY
 
 
 def export_to_sgy(
@@ -52,7 +52,7 @@ def _prepare_column_values_to_export(
         )
 
     available_columns = PICKS_COLUMNS.copy()
-    traces_columns = [name for pos, name, encoding in TraceHeaders().headers_schema]
+    traces_columns = [field.name for field in TraceHeaderField]
     available_columns = available_columns + traces_columns
     unsupported_columns = set(columns) - set(available_columns)
     if unsupported_columns:
@@ -76,7 +76,7 @@ def _prepare_column_values_to_export(
             else:
                 raise ValueError("Unsupported column")
         else:
-            value = sgy.traces_headers[column]
+            value = sgy.scaled_trace_headers[column]
 
         value = np.array(value)
 

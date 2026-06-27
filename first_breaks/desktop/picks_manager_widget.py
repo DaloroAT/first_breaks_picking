@@ -31,7 +31,7 @@ from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
 from first_breaks.desktop.export_widgets import ExporterJSON, ExporterSGY, ExporterTXT
 from first_breaks.desktop.utils import LabelWithHelp, set_geometry
 from first_breaks.picking.picks import DEFAULT_PICKS_WIDTH, Picks
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 ACTIVE_PICKS_WIDTH = DEFAULT_PICKS_WIDTH * 1.7
 

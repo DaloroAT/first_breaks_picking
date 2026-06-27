@@ -37,7 +37,7 @@ from first_breaks.desktop.settings_processing_widget import (
 )
 from first_breaks.desktop.utils import MessageBox, set_geometry
 from first_breaks.picking.task import Task
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import calc_hash, download_demo_sgy, download_model_onnx
 
 warnings.filterwarnings("ignore")

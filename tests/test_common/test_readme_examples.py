@@ -1,5 +1,7 @@
 import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -60,7 +62,17 @@ def test_code_blocks_in_readme(block_name: str, demo_sgy: Path, logs_dir_for_tes
         f.write(code)
 
     try:
-        exit_code = os.system(f"python {tmp_fname}")
-        assert exit_code == 0
+        result = subprocess.run(
+            [sys.executable, tmp_fname],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, (
+            f"\nScript: {Path(tmp_fname).resolve()}"
+            f"\nReturn code: {result.returncode}"
+            f"\n\nSTDOUT:\n{result.stdout}"
+            f"\n\nSTDERR:\n{result.stderr}"
+            f"\n\nCODE:\n{code}"
+        )
     finally:
         Path(tmp_fname).unlink()

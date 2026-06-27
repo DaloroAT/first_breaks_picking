@@ -128,7 +128,7 @@ venv.bak/
 
 # mkdocs documentation
 /site
-
+str(x)
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -144,3 +144,4 @@ fb.onnx
 
 local_dev
 /debug/
+/tests/data/

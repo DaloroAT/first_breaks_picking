@@ -5,7 +5,7 @@ import pyqtgraph as pg
 from PyQt5.QtGui import QCloseEvent, QFont
 
 from first_breaks.desktop.roi_manager import RoiManager, get_rect_of_roi
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.fourier_transforms import (
     build_amplitude_filter,
     get_mean_amplitude_spectrum,

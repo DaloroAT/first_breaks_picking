@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 
 def test_demo_sgy_params(demo_sgy: Path) -> None:

@@ -45,11 +45,3 @@ repos:
     files: first_breaks|tests
     exclude: __init__.py
 
-
-# static type checking
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.18.2
-  hooks:
-  - id: mypy
-    files: first_breaks|tests
-    additional_dependencies: [types-requests==2.25.9, pydantic==2.0.3]

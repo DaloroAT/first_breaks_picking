@@ -21,7 +21,7 @@ from first_breaks.desktop.settings_processing_widget import (
     MaximumTimeLine,
 )
 from first_breaks.picking.picks import DEFAULT_PICKS_WIDTH, Picks
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 
 def find_global(widget_class: Type[QWidget]) -> QWidget:

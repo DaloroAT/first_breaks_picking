@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
 
 from first_breaks.const import FIRST_BYTE, HIGH_DPI
 from first_breaks.desktop.combobox_with_mapping import QComboBoxMapping
-from first_breaks.sgy.headers import Headers
+from first_breaks.sgy.headers import FORMAT_TO_SIZE
 
 if HIGH_DPI:
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -35,7 +35,7 @@ def build_encoding_mapping() -> Dict[int, Tuple[str, str]]:
         6: ("Float 4", "f"),
         7: ("Double 8", "d"),
     }
-    assert all(v[1] in Headers.format2size.keys() for v in mapping.values())
+    assert all(v[1] in FORMAT_TO_SIZE.keys() for v in mapping.values())
     return mapping
 
 
@@ -109,7 +109,7 @@ class QByteEncodeUnitWidget(QWidget):
         self.byte_position_value = self.byte_position_widget.value()
         self.picks_unit_value = self.picks_unit_widget.value()
 
-        byte_position_maximum_aligned = self.first_byte + 240 - Headers.format2size[self.encoding_value]
+        byte_position_maximum_aligned = self.first_byte + 240 - FORMAT_TO_SIZE[self.encoding_value]
         byte_position_value_aligned = min(self.byte_position_value, byte_position_maximum_aligned)
 
         if byte_position_maximum_aligned != self.byte_position_maximum:

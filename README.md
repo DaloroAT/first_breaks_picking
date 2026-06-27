@@ -153,7 +153,7 @@ the project preview.
 [code-block-start]:e2e-example
 ```python
 from first_breaks.utils.utils import download_demo_sgy
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.picking.task import Task
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.desktop.graph import export_image
@@ -211,7 +211,7 @@ From file:
 
 [code-block-start]:init-from-path
 ```python
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 sgy_filename = 'data.sgy'
 sgy = SGY(sgy_filename)
@@ -222,7 +222,7 @@ From `bytes`:
 
 [code-block-start]:init-from-bytes
 ```python
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 sgy_filename = 'data.sgy'
 
@@ -238,7 +238,7 @@ If you want to create from `numpy` array, extra argument `dt_mcs` is required:
 [code-block-start]:init-from-np
 ```python
 import numpy as np
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 num_samples = 1000
 num_traces = 48
@@ -255,7 +255,7 @@ Created `SGY` allows you to read traces, get observation parameters and view hea
 
 [code-block-start]:sgy-content
 ```python
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 sgy_filename = 'data.sgy'
 sgy = SGY(sgy_filename)
@@ -276,9 +276,9 @@ print(sgy.shape)
 print(sgy.dt, sgy.dt_mcs, sgy.dt_ms, sgy.fs)
 
 # dict with headers in the first 3600 bytes of the file
-print(sgy.general_headers)
+print(sgy.file_header_values)
 # pandas DataFrame with headers for each trace
-print(sgy.traces_headers.head())
+print(sgy.scaled_trace_headers.head())
 ```
 [code-block-end]:sgy-content
 
@@ -290,7 +290,7 @@ A detailed description of the parameters can be found  in the `Picking process` 
 
 [code-block-start]:create-task
 ```python
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.picking.task import Task
 
 sgy_filename = 'data.sgy'
@@ -344,7 +344,7 @@ Now, using all the created components, we can pick the first breaks and retrieve
 ```python
 from first_breaks.picking.task import Task
 from first_breaks.picking.picker_onnx import PickerONNX
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 sgy_filename = 'data.sgy'
 sgy = SGY(sgy_filename)
@@ -416,7 +416,7 @@ Plot `SGY` only:
 
 [code-block-start]:plot-sgy
 ```python
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.desktop.graph import export_image
 
 sgy_filename = 'data.sgy'
@@ -437,7 +437,7 @@ Plot `numpy` traces:
 [code-block-start]:plot-np
 ```python
 import numpy as np
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.desktop.graph import export_image
 
 image_filename = 'image.png'
@@ -463,7 +463,7 @@ Plot `SGY` with custom picks:
 ```python
 import numpy as np
 from first_breaks.picking.picks import Picks
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 from first_breaks.desktop.graph import export_image
 
 sgy_filename = 'data.sgy'
@@ -486,7 +486,7 @@ Plot result of picking:
 from first_breaks.picking.task import Task
 from first_breaks.picking.picker_onnx import PickerONNX
 from first_breaks.desktop.graph import export_image
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 sgy_filename = 'data.sgy'
 image_filename = 'image.png'
@@ -513,7 +513,7 @@ However, you can use the following workaround to do this:
 
 [code-block-start]:pick-limited
 ```python
-from first_breaks.sgy.reader import SGY
+from first_breaks.sgy.sgy import SGY
 
 sgy_filename = 'data.sgy'
 sgy = SGY(sgy_filename)
@@ -679,4 +679,3 @@ but the requirements listed above must be met.
 <a href="https://geodevice.co/"><img src="https://geodevice.co/local/templates/geodevice_15_07_2019/assets/images/logo_geodevice.png?1" style="width: 200px;" alt="Geodevice"></a>
 
 We would like to thank [GEODEVICE](https://geodevice.co/) for providing field data from land and borehole seismic surveys with annotated first breaks for model training.
-
