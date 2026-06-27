@@ -10,6 +10,9 @@ from first_breaks.sgy.sgy import SGY
 from first_breaks.utils.utils import multiply_iterable_by
 
 
+
+
+
 def test_reader_open_different_sources(demo_sgy: Path) -> None:
     sgy_from_path = SGY(demo_sgy)
     traces_from_path = sgy_from_path.read()
