@@ -9,11 +9,15 @@ from first_breaks.const import PROJECT_ROOT
 from first_breaks.sgy.headers import TraceHeaderField
 
 from first_breaks.sgy.sgy import SGY
-from first_breaks.utils.utils import multiply_iterable_by
+from first_breaks.utils.utils import multiply_iterable_by, calc_hash
+
 
 @pytest.mark.parametrize("file", sorted((PROJECT_ROOT / "tests/data").glob("*.sgy")), ids=lambda x: x.stem)
-def test_round_trip(file: Path) -> None:
+def test_round_trip(file: Path, tmp_path: Path) -> None:
     sgy = SGY(file)
+    tmp_path = tmp_path / file.stem
+    sgy.write(output_path=tmp_path)
+    assert calc_hash(file) == calc_hash(tmp_path)
 
 
 def test_reader_open_different_sources(demo_sgy: Path) -> None:
