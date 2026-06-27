@@ -76,7 +76,7 @@ def _prepare_column_values_to_export(
             else:
                 raise ValueError("Unsupported column")
         else:
-            value = sgy.traces_headers[column]
+            value = sgy.scaled_trace_headers[column]
 
         value = np.array(value)
 

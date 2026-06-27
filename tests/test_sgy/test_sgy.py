@@ -55,12 +55,12 @@ def test_write_round_trip_through_python(file: Path, tmp_path: Path) -> None:
     sgy = SGY(file)
     layout = sgy.layout
     traces = TracesBackendArray(array=sgy.read(), layout=layout)
-    file_headers = FileHeadersPython(values=sgy.general_headers, layout=layout)
-    traces_headers = TraceHeadersPython(values=sgy.trace_headers.raw(), layout=layout)
+    file_headers = FileHeadersPython(values=sgy.file_header_values, layout=layout)
+    trace_headers = TraceHeadersPython(values=sgy.raw_trace_headers, layout=layout)
     output_path = tmp_path / file.name
     with open(output_path, "wb+") as f:
         file_headers.write_to_sgy_pointer(f)
-        traces_headers.write_to_sgy_pointer(f)
+        trace_headers.write_to_sgy_pointer(f)
         traces.write_to_sgy_pointer(f, output_layout=None)
 
     assert calc_hash(file) == calc_hash(output_path)
@@ -91,7 +91,7 @@ def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, logs_dir_for_
     sgy = SGY(demo_sgy)
     picks_col_name = TraceHeaderField.FB_PICK.name
 
-    assert np.all(sgy.traces_headers[picks_col_name] == 0), sgy.traces_headers[picks_col_name]
+    assert np.all(sgy.scaled_trace_headers[picks_col_name] == 0), sgy.scaled_trace_headers[picks_col_name]
 
     if picks_in_samples_type == list:
         picks_in_samples = [randint(0, sgy.num_samples) for _ in range(sgy.num_traces)]
@@ -106,4 +106,4 @@ def test_export_picks(demo_sgy: Path, picks_in_samples_type: Type, logs_dir_for_
     sgy.export_sgy_with_picks(sgy_with_picks_path, picks_in_mcs)  # type: ignore
     sgy_with_picks = SGY(sgy_with_picks_path)
 
-    assert np.all(picks_in_mcs == sgy_with_picks.traces_headers[picks_col_name])
+    assert np.all(picks_in_mcs == sgy_with_picks.scaled_trace_headers[picks_col_name])

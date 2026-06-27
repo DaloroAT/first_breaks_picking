@@ -40,8 +40,8 @@ class SGY:
         self,
         source: SourceInput,
         dt_mcs: Optional[Union[int, float]] = None,
-        file_headers: Optional[Dict[str, Any]] = None,
-        traces_headers: Optional[pd.DataFrame] = None,
+        file_header_values: Optional[Dict[str, Any]] = None,
+        raw_trace_headers: Optional[pd.DataFrame] = None,
     ) -> None:
         self.__source: SourceInput
         self.__source_kind: SourceKind
@@ -53,8 +53,8 @@ class SGY:
         self.__build_components(
             source=source,
             dt_mcs=dt_mcs,
-            file_headers=file_headers,
-            traces_headers=traces_headers,
+            file_header_values=file_header_values,
+            raw_trace_headers=raw_trace_headers,
         )
         self.__units_converter = UnitsConverter(sgy_mcs=self.__layout.dt_mcs)
 
@@ -78,14 +78,14 @@ class SGY:
         traces: np.ndarray,
         *,
         dt_mcs: Union[int, float],
-        file_headers: Optional[Dict[str, Any]] = None,
-        traces_headers: Optional[pd.DataFrame] = None,
+        file_header_values: Optional[Dict[str, Any]] = None,
+        raw_trace_headers: Optional[pd.DataFrame] = None,
     ) -> "SGY":
         return cls(
             traces,
             dt_mcs=dt_mcs,
-            file_headers=file_headers,
-            traces_headers=traces_headers,
+            file_header_values=file_header_values,
+            raw_trace_headers=raw_trace_headers,
         )
 
     @property
@@ -165,11 +165,15 @@ class SGY:
         return self.__source_kind == SourceKind.ARRAY
 
     @property
-    def general_headers(self) -> Dict[str, Any]:
+    def file_header_values(self) -> Dict[str, Any]:
         return self.__file_headers.headers()
 
     @property
-    def traces_headers(self) -> pd.DataFrame:
+    def raw_trace_headers(self) -> pd.DataFrame:
+        return self.__trace_headers.raw()
+
+    @property
+    def scaled_trace_headers(self) -> pd.DataFrame:
         return self.__trace_headers.scaled()
 
     def ms2index(self, ms_value: float) -> int:
@@ -265,19 +269,23 @@ class SGY:
         *,
         source: SourceInput,
         dt_mcs: Optional[Union[int, float]],
-        file_headers: Optional[Dict[str, Any]],
-        traces_headers: Optional[pd.DataFrame],
+        file_header_values: Optional[Dict[str, Any]],
+        raw_trace_headers: Optional[pd.DataFrame],
     ) -> None:
         if isinstance(source, np.ndarray):
-            self.__build_array_components(source, dt_mcs, file_headers, traces_headers)
+            self.__build_array_components(source, dt_mcs, file_header_values, raw_trace_headers)
             return
 
         if dt_mcs is not None:
             raise SGYInitParamsError("Argument 'dt_mcs' must be empty if SGY is created from external source")
-        if file_headers is not None:
-            raise SGYInitParamsError("Argument 'file_headers' must be empty if SGY is created from external source")
-        if traces_headers is not None:
-            raise SGYInitParamsError("Argument 'traces_headers' must be empty if SGY is created from external source")
+        if file_header_values is not None:
+            raise SGYInitParamsError(
+                "Argument 'file_header_values' must be empty if SGY is created from external source"
+            )
+        if raw_trace_headers is not None:
+            raise SGYInitParamsError(
+                "Argument 'raw_trace_headers' must be empty if SGY is created from external source"
+            )
 
         if isinstance(source, bytes):
             self.__build_bytes_components(source)
@@ -291,8 +299,8 @@ class SGY:
         self,
         source: np.ndarray,
         dt_mcs: Optional[Union[int, float]],
-        file_headers: Optional[Dict[str, Any]],
-        traces_headers: Optional[pd.DataFrame],
+        file_header_values: Optional[Dict[str, Any]],
+        raw_trace_headers: Optional[pd.DataFrame],
     ) -> None:
         if dt_mcs is None:
             raise SGYInitParamsError("Argument 'dt_mcs' is required if np.ndarray is used as input")
@@ -305,10 +313,10 @@ class SGY:
         self.__source = source
         self.__source_kind = SourceKind.ARRAY
         self.__layout = layout
-        self.__file_headers = FileHeaders.from_layout(layout, overrides=file_headers)
+        self.__file_headers = FileHeaders.from_layout(layout, overrides=file_header_values)
         self.__trace_headers = (
-            TraceHeaders.from_values(traces_headers, layout)
-            if traces_headers is not None
+            TraceHeaders.from_values(raw_trace_headers, layout)
+            if raw_trace_headers is not None
             else TraceHeaders.empty(layout)
         )
         self.__traces = get_traces_backend(source, layout)

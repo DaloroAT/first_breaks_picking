@@ -276,9 +276,9 @@ print(sgy.shape)
 print(sgy.dt, sgy.dt_mcs, sgy.dt_ms, sgy.fs)
 
 # dict with headers in the first 3600 bytes of the file
-print(sgy.general_headers)
+print(sgy.file_header_values)
 # pandas DataFrame with headers for each trace
-print(sgy.traces_headers.head())
+print(sgy.scaled_trace_headers.head())
 ```
 [code-block-end]:sgy-content
 
@@ -679,4 +679,3 @@ but the requirements listed above must be met.
 <a href="https://geodevice.co/"><img src="https://geodevice.co/local/templates/geodevice_15_07_2019/assets/images/logo_geodevice.png?1" style="width: 200px;" alt="Geodevice"></a>
 
 We would like to thank [GEODEVICE](https://geodevice.co/) for providing field data from land and borehole seismic surveys with annotated first breaks for model training.
-

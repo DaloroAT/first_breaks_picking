@@ -229,7 +229,7 @@ class GraphWidget(pg.PlotWidget):
                 if v % 1 == 0:
                     v = int(v) - 1
                     if 0 <= v < self.sgy.num_traces:
-                        labels_from_headers.append(str(self.sgy.traces_headers[self.pos_ax_header].iloc[v]))
+                        labels_from_headers.append(str(self.sgy.scaled_trace_headers[self.pos_ax_header].iloc[v]))
                     else:
                         labels_from_headers.append("")
                 else:
