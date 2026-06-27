@@ -20,7 +20,6 @@ from first_breaks.sgy.traces import TracesBackend, get_traces_backend
 from first_breaks.sgy.types import (
     DEFAULT_DATA_FORMAT,
     DEFAULT_ENDIANNESS,
-    FORMAT_TO_BYTES_PER_SAMPLE,
     DataFormat,
     Endianness,
     InvalidSGY,

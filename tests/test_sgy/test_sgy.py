@@ -6,9 +6,10 @@ import numpy as np
 import pytest
 
 from first_breaks.const import PROJECT_ROOT
-from first_breaks.sgy.headers import TraceHeaderField
+from first_breaks.sgy.headers import TraceHeaderField, FileHeadersPython, TraceHeadersPython
 
 from first_breaks.sgy.sgy import SGY
+from first_breaks.sgy.traces import TracesBackendArray
 from first_breaks.sgy.types import Endianness
 from first_breaks.utils.utils import multiply_iterable_by, calc_hash
 
@@ -50,9 +51,19 @@ def test_write_with_layout_change_preserves_traces_semantically(file: Path, tmp_
 
 
 @pytest.mark.parametrize("file", ROUND_TRIP_FILES, ids=lambda x: x.stem)
-def test_write_from_python(file: Path, tmp_path: Path) -> None:
-    # test should
-    raise NotImplementedError
+def test_write_round_trip_through_python(file: Path, tmp_path: Path) -> None:
+    sgy = SGY(file)
+    layout = sgy.layout
+    traces = TracesBackendArray(array=sgy.read(), layout=layout)
+    file_headers = FileHeadersPython(values=sgy.general_headers, layout=layout)
+    traces_headers = TraceHeadersPython(values=sgy.trace_headers.raw(), layout=layout)
+    output_path = tmp_path / file.name
+    with open(output_path, "wb+") as f:
+        file_headers.write_to_sgy_pointer(f)
+        traces_headers.write_to_sgy_pointer(f)
+        traces.write_to_sgy_pointer(f, output_layout=None)
+
+    assert calc_hash(file) == calc_hash(output_path)
 
 
 def test_reader_open_different_sources(demo_sgy: Path) -> None:
