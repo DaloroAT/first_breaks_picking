@@ -219,7 +219,7 @@ class SGY:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         write_layout = self.__make_write_layout(data_format=data_format, endianness=endianness)
         file_headers = self.__file_headers_for_layout(write_layout)
-        trace_headers = TraceHeaders.from_values(self.__trace_headers.raw(), write_layout)
+        trace_headers = self.__trace_headers_for_layout(write_layout)
 
         with output_path.open("wb+") as pointer:
             file_headers.write_to_sgy_pointer(pointer)
@@ -253,7 +253,7 @@ class SGY:
 
         write_layout = self.__make_write_layout(data_format=self.sample_format, endianness=self.endianness)
         file_headers = self.__file_headers_for_layout(write_layout)
-        trace_headers = TraceHeaders.from_values(self.__trace_headers.raw(), write_layout)
+        trace_headers = self.__trace_headers_for_layout(write_layout)
 
         with output_path.open("wb+") as pointer:
             file_headers.write_to_sgy_pointer(pointer)
@@ -356,13 +356,18 @@ class SGY:
         )
 
     def __file_headers_for_layout(self, layout: SGYLayout) -> FileHeaders:
+        if layout == self.__layout:
+            return self.__file_headers
         values = self.__file_headers.values()
         values[FileHeaderField.DT] = layout.dt_mcs
-        values[FileHeaderField.DT_ORIG] = layout.dt_mcs
         values[FileHeaderField.NS] = layout.num_samples
-        values[FileHeaderField.NS_ORIG] = layout.num_samples
         values[FileHeaderField.DATA_SAMPLE_FORMAT] = int(layout.data_format)
         return FileHeaders.from_values(values, layout)
+
+    def __trace_headers_for_layout(self, layout: SGYLayout) -> TraceHeaders:
+        if layout == self.__layout:
+            return self.__trace_headers
+        return TraceHeaders.from_values(self.__trace_headers.raw(), layout)
 
 
 __all__ = [

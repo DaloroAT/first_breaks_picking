@@ -9,15 +9,50 @@ from first_breaks.const import PROJECT_ROOT
 from first_breaks.sgy.headers import TraceHeaderField
 
 from first_breaks.sgy.sgy import SGY
+from first_breaks.sgy.types import Endianness
 from first_breaks.utils.utils import multiply_iterable_by, calc_hash
 
 
-@pytest.mark.parametrize("file", sorted((PROJECT_ROOT / "tests/data").glob("*.sgy")), ids=lambda x: x.stem)
+ROUND_TRIP_FILES = sorted((PROJECT_ROOT / "tests/data").glob("*.sgy"))
+
+
+@pytest.mark.parametrize("file", ROUND_TRIP_FILES, ids=lambda x: x.stem)
 def test_round_trip(file: Path, tmp_path: Path) -> None:
     sgy = SGY(file)
     tmp_path = tmp_path / file.stem
     sgy.write(output_path=tmp_path)
     assert calc_hash(file) == calc_hash(tmp_path)
+
+
+@pytest.mark.parametrize("file", ROUND_TRIP_FILES, ids=lambda x: x.stem)
+def test_round_trip_with_explicit_same_layout_params(file: Path, tmp_path: Path) -> None:
+    sgy = SGY(file)
+    output_path = tmp_path / file.name
+
+    sgy.write(output_path=output_path, data_format=sgy.sample_format, endianness=sgy.endianness)
+
+    assert calc_hash(file) == calc_hash(output_path)
+
+
+@pytest.mark.parametrize("file", ROUND_TRIP_FILES, ids=lambda x: x.stem)
+def test_write_with_layout_change_preserves_traces_semantically(file: Path, tmp_path: Path) -> None:
+    sgy = SGY(file)
+    output_path = tmp_path / file.name
+    output_endianness = Endianness.LITTLE if sgy.endianness == Endianness.BIG else Endianness.BIG
+
+    sgy.write(output_path=output_path, endianness=output_endianness)
+    written = SGY(output_path)
+
+    assert written.endianness == output_endianness
+    assert written.shape == sgy.shape
+    assert np.allclose(written.read(), sgy.read())
+    assert calc_hash(file) != calc_hash(output_path)
+
+
+@pytest.mark.parametrize("file", ROUND_TRIP_FILES, ids=lambda x: x.stem)
+def test_write_from_python(file: Path, tmp_path: Path) -> None:
+    # test should
+    raise NotImplementedError
 
 
 def test_reader_open_different_sources(demo_sgy: Path) -> None:
